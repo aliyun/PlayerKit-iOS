@@ -1,0 +1,54 @@
+#use_frameworks!
+install! 'cocoapods', :deterministic_uuids => false
+source 'https://github.com/CocoaPods/Specs.git'
+
+platform :ios, '9.0'
+
+def aliyun_uicom
+
+  # 播放器 SDK 版本（建议保持与官方最新版本一致）
+  # 参考更新日志：https://help.aliyun.com/zh/vod/developer-reference/release-notes-for-apsaravideo-player-sdk-for-ios
+  player_sdk_version = '7.15.0'
+
+  # Rts低延时直播组件版本（建议保持与官方最新版本一致）
+  # 您可以参考官网获取 RTS SDK 最新版本：https://help.aliyun.com/zh/live/pull-streams-over-rts-on-ios
+  rts_sdk_version = '7.12.0'
+
+  # 播放器SDK
+  pod 'AliPlayerSDK_iOS', player_sdk_version
+  # 播放器与Rts低延时直播组件的桥接层（AlivcArtc），版本号需要与播放器一致，需要和 Rts低延时直播组件 一起集成
+  pod 'AliPlayerSDK_iOS_ARTC', player_sdk_version
+  # Rts低延时直播组件
+  pod 'RtsSDK', rts_sdk_version
+
+end
+
+target 'Example' do
+  use_frameworks!
+  
+  aliyun_uicom
+  
+  # App 模块：提供首页导航、动态模块发现与 Schema 路由框架
+  pod 'App', :path => '../App'
+  
+  # AliPlayerKit 核心模块：提供开箱即用、可配置的播放器 UI 组件，覆盖基础播放与常见交互能力。
+  pod 'PlayerKit', :path => '../PlayerKit'
+  
+  # AliPlayerKit 场景模块：基于 AliPlayerKit 核心组件，提供开箱即用的标准播放场景方案。
+  pod 'PlayerKitScenes', :path => '../PlayerKitScenes'
+  
+  # AliPlayerKit 使用示例模块：演示 AliPlayerKit 各子系统/能力怎么用
+  # 适合需要深入理解架构、进行定制开发或能力扩展的开发者参考使用
+  pod 'PlayerKitUsages', :path => '../PlayerKitUsages'
+  
+  # Demo 设置模块：提供 Demo 级别的持久化存储、链接配置与二维码扫码能力。
+  pod 'DemoSettings', :path => '../DemoSettings'
+end
+
+post_install do |installer|
+    installer.pods_project.build_configurations.each do |config|
+        config.build_settings['CLANG_WARN_DOCUMENTATION_COMMENTS'] = 'NO'
+        config.build_settings['CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER'] = 'NO'
+        config.build_settings['ENABLE_USER_SCRIPT_SANDBOXING'] = 'NO'
+    end
+end

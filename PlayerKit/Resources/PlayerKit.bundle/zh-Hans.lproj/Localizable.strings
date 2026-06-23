@@ -1,0 +1,53 @@
+/* PlayerKit 本地化字符串 - 简体中文 */
+
+/* PlayState Slot */
+"play_state.error_code_label"      = "错误代码";
+"play_state.error_message_label"   = "错误信息";
+"play_state.error_message_default" = "发生了一个意外错误。";
+"play_state.error_details_format"  = "%@: %ld\n%@: %@";
+"play_state.loading"               = "加载中...";
+"play_state.snapshot_completed"    = "截图已完成";
+"play_state.track_switch_completed" = "已切换至 %@";
+
+/* BottomBar Slot */
+"bottom_bar.time_zero"      = "00:00 / 00:00";
+"bottom_bar.time_format"    = "%02ld:%02ld / %02ld:%02ld";
+"bottom_bar.speed"          = "倍速";
+"bottom_bar.quality"        = "清晰度";
+
+/* CenterDisplay Slot */
+"center_display.speed_hint" = "倍速播放中";
+
+/* SettingMenu Slot */
+"setting_menu.title"        = "设置";
+"setting.cancel"            = "取消";
+
+/* Setting Item Titles */
+"setting.speed"             = "倍速";
+"setting.loop"              = "循环播放";
+"setting.mute"              = "静音播放";
+"setting.quality"           = "清晰度";
+"setting.mirror"            = "镜像模式";
+"setting.scale"             = "渲染填充";
+"setting.rotate"            = "旋转模式";
+
+/* Mirror Mode Labels */
+"mirror.none"               = "无";
+"mirror.horizontal"         = "水平";
+"mirror.vertical"           = "垂直";
+
+/* Scale Mode Labels */
+"scale.fit_xy"              = "拉伸填充";
+"scale.fit_center"          = "适应";
+"scale.center_crop"         = "裁剪填充";
+
+/* LogPanel Slot */
+"log_panel.title_hide"      = "日志面板 (点击收起)";
+"log_panel.title_show"      = "日志面板 (点击展开)";
+"log_panel.clear"           = "清除";
+
+/* LandscapeHint Slot */
+"landscape_hint.fullscreen"     = "全屏观看";
+
+/* Common */
+"common.unknown"            = "未知";

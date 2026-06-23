@@ -1,0 +1,33 @@
+name: ✨ 功能请求 | Feature Request
+description: 提出新功能建议 | Suggest a new feature
+title: "[FEATURE] "
+labels: [enhancement]
+type: "Feature"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢提出功能建议！请描述你的想法。
+        Thanks for the suggestion! Please describe your idea.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 功能描述 | Description
+      placeholder: |
+        - 你希望有什么功能？/ What feature do you want?
+        - 它解决什么问题？/ What problem does it solve?
+        - 在什么场景下使用？/ In what scenario would you use it?
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: 补充信息 | Additional Context
+      placeholder: |
+        - 期望的实现方式 / Expected implementation
+        - 替代方案 / Alternatives
+        - 参考链接 / Reference links
+    validations:
+      required: false

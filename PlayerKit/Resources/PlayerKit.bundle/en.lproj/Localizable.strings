@@ -1,0 +1,53 @@
+/* PlayerKit Localized Strings - English */
+
+/* PlayState Slot */
+"play_state.error_code_label"      = "Error Code";
+"play_state.error_message_label"   = "Error Message";
+"play_state.error_message_default" = "An unexpected error occurred.";
+"play_state.error_details_format"  = "%@: %ld\n%@: %@";
+"play_state.loading"               = "Loading...";
+"play_state.snapshot_completed"    = "Screenshot saved";
+"play_state.track_switch_completed" = "Switched to %@";
+
+/* BottomBar Slot */
+"bottom_bar.time_zero"      = "00:00 / 00:00";
+"bottom_bar.time_format"    = "%02ld:%02ld / %02ld:%02ld";
+"bottom_bar.speed"          = "Speed";
+"bottom_bar.quality"        = "Quality";
+
+/* CenterDisplay Slot */
+"center_display.speed_hint" = "Playback Speed Active";
+
+/* SettingMenu Slot */
+"setting_menu.title"        = "Settings";
+"setting.cancel"            = "Cancel";
+
+/* Setting Item Titles */
+"setting.speed"             = "Playback Speed";
+"setting.loop"              = "Loop Playback";
+"setting.mute"              = "Mute Playback";
+"setting.quality"           = "Video Quality";
+"setting.mirror"            = "Mirror Mode";
+"setting.scale"             = "Scale Mode";
+"setting.rotate"            = "Rotate Mode";
+
+/* Mirror Mode Labels */
+"mirror.none"               = "None";
+"mirror.horizontal"         = "Horizontal";
+"mirror.vertical"           = "Vertical";
+
+/* Scale Mode Labels */
+"scale.fit_xy"              = "Stretch Fill";
+"scale.fit_center"          = "Fit";
+"scale.center_crop"         = "Crop Fill";
+
+/* LogPanel Slot */
+"log_panel.title_hide"      = "Log Panel (Tap to Collapse)";
+"log_panel.title_show"      = "Log Panel (Tap to Expand)";
+"log_panel.clear"           = "Clear";
+
+/* LandscapeHint Slot */
+"landscape_hint.fullscreen"     = "Fullscreen View";
+
+/* Common */
+"common.unknown"            = "Unknown";

@@ -1,0 +1,34 @@
+name: ❓ 问题咨询 | Question
+description: 使用问题 | Usage questions
+title: "[QUESTION] "
+labels: [question]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢提问！请描述你遇到的问题。
+        Thanks for asking! Please describe your issue.
+
+  - type: textarea
+    id: question
+    attributes:
+      label: 问题描述 | Question
+      placeholder: |
+        - 报错信息 / Error messages
+        - 异常行为 / Unexpected behavior
+        - 期望实现 / Expected outcome
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: 补充信息 | Additional Context
+      placeholder: |
+        - 版本信息 / Version info (PlayerKit, Player SDK, CocoaPods)
+        - 相关代码片段 / Related code snippets
+        - 已尝试的方法 / What you've tried
+        - 控制台日志 / Console logs
+      render: shell
+    validations:
+      required: false

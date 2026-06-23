@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>AliPlayerKit - iOS 播放器组件</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="description" content="AliPlayerKit iOS 播放器组件文档 - 低代码播放器 UI 组件与场景化解决方案">
+    <meta name="viewport"
+        content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify@latest/lib/themes/vue.css">
+    <style>
+        /* --- 1. 品牌色配置 (iOS System Blue) --- */
+        :root {
+            --theme-color: #007AFF;
+            --theme-color-dark: #0056CC;
+        }
+
+        /* --- 2. 暗黑模式样式 --- */
+        :root {
+            --dark-bg: #1c1c1e;
+            --dark-text: #e5e5e7;
+            --dark-sidebar: #1c1c1e;
+            --dark-code-bg: #2c2c2e;
+            --dark-border: #38383a;
+        }
+
+        body.dark-mode {
+            background-color: var(--dark-bg);
+            color: var(--dark-text);
+        }
+
+        /* 侧边栏适配 */
+        body.dark-mode .sidebar {
+            background-color: var(--dark-sidebar);
+            border-right: 1px solid var(--dark-border);
+            color: var(--dark-text);
+        }
+        body.dark-mode .sidebar-nav li a {
+            color: #98989d;
+        }
+        body.dark-mode .sidebar-nav li a:hover {
+            color: var(--theme-color);
+        }
+        body.dark-mode .sidebar-nav li.active > a {
+            color: var(--theme-color);
+            border-right: 2px solid var(--theme-color);
+        }
+
+        /* 代码块适配 */
+        body.dark-mode pre {
+            background-color: var(--dark-code-bg) !important;
+        }
+        body.dark-mode code {
+            background-color: var(--dark-code-bg) !important;
+            color: #e5e5e7 !important;
+        }
+        body.dark-mode .markdown-section code {
+            color: #64d2ff;
+            background-color: rgba(100, 210, 255, 0.1);
+        }
+
+        /* 代码高亮 token */
+        body.dark-mode .token.keyword,
+        body.dark-mode .token.tag,
+        body.dark-mode .token.selector {
+            color: #ff7eb6 !important;
+        }
+        body.dark-mode .token.string,
+        body.dark-mode .token.attr-value {
+            color: #ff8170 !important;
+        }
+        body.dark-mode .token.function {
+            color: #67b7a4 !important;
+        }
+        body.dark-mode .token.number,
+        body.dark-mode .token.constant {
+            color: #d0bf69 !important;
+        }
+        body.dark-mode .token.comment {
+            color: #6c7986 !important;
+        }
+
+        /* 标题和引用适配 */
+        body.dark-mode h1, body.dark-mode h2, body.dark-mode h3, body.dark-mode h4 {
+            color: #f5f5f7;
+        }
+        body.dark-mode blockquote {
+            color: #98989d;
+            background: rgba(255,255,255,0.05);
+            border-left-color: var(--theme-color);
+        }
+        body.dark-mode .markdown-section a {
+            color: #0a84ff;
+        }
+
+        /* 表格适配 */
+        body.dark-mode .markdown-section tr:nth-child(2n) {
+            background-color: rgba(255,255,255,0.03);
+        }
+        body.dark-mode .markdown-section td,
+        body.dark-mode .markdown-section th {
+            border-color: var(--dark-border);
+        }
+        body.dark-mode table th {
+            background: #2c2c2e;
+            color: #f5f5f7;
+        }
+
+        /* Mermaid 图表适配 */
+        body.dark-mode .mermaid {
+            filter: invert(1) hue-rotate(180deg);
+        }
+
+        /* 分页导航适配 */
+        body.dark-mode .docsify-pagination-container {
+            border-top-color: var(--dark-border);
+        }
+        body.dark-mode .pagination-item-label {
+            color: #98989d;
+        }
+
+        /* --- 3. 侧边栏开关按钮样式 --- */
+        .sidebar-toggle-btn {
+            cursor: pointer;
+            display: block;
+            text-align: center;
+            padding: 10px 0;
+            margin: 0 15px 10px 15px;
+            font-weight: 500;
+            font-size: 13px;
+            border-radius: 8px;
+            background-color: rgba(0, 122, 255, 0.08);
+            color: #007AFF;
+            border: 1px solid rgba(0, 122, 255, 0.2);
+            transition: all 0.2s ease;
+        }
+        body.dark-mode .sidebar-toggle-btn {
+            background-color: rgba(10, 132, 255, 0.15);
+            color: #0a84ff;
+            border: 1px solid rgba(10, 132, 255, 0.3);
+        }
+        .sidebar-toggle-btn:hover {
+            background-color: var(--theme-color);
+            color: white;
+            border-color: var(--theme-color);
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">加载中...</div>
+    <script>
+        // 初始化暗黑模式
+        if (localStorage.getItem('theme-mode') === 'dark') {
+            document.body.classList.add('dark-mode');
+        }
+
+        window.$docsify = {
+            name: 'AliPlayerKit',
+            nameLink: {
+                '/': '#/'
+            },
+            repo: '',
+            loadSidebar: true,
+            auto2top: true,
+            subMaxLevel: 3,
+            pagination: {
+                previousText: '上一章节',
+                nextText: '下一章节',
+            },
+            count: {
+                countable: true,
+                fontsize: '0.9em',
+                color: 'rgb(90,90,90)',
+                language: 'chinese'
+            },
+            search: {
+                maxAge: 86400000,
+                paths: 'auto',
+                placeholder: '搜索',
+                noData: '没有结果',
+                depth: 6
+            },
+            plugins: [
+                function(hook, vm) {
+                    hook.doneEach(function() {
+                        const sidebar = document.querySelector('.sidebar-nav');
+                        if (!sidebar || document.querySelector('.sidebar-toggle-btn')) return;
+
+                        const btn = document.createElement('div');
+                        btn.className = 'sidebar-toggle-btn';
+
+                        const savedTheme = localStorage.getItem('theme-mode');
+                        if (savedTheme === 'dark') {
+                            document.body.classList.add('dark-mode');
+                            btn.textContent = '🌙 切换亮色';
+                        } else {
+                            btn.textContent = '☀️ 切换暗色';
+                        }
+
+                        btn.onclick = function() {
+                            document.body.classList.toggle('dark-mode');
+                            const isDark = document.body.classList.contains('dark-mode');
+                            localStorage.setItem('theme-mode', isDark ? 'dark' : 'light');
+                            btn.textContent = isDark ? '🌙 切换亮色' : '☀️ 切换暗色';
+                        };
+
+                        sidebar.insertBefore(btn, sidebar.firstChild);
+                    });
+                }
+            ]
+        }
+    </script>
+    <!-- Docsify 核心 -->
+    <script src="//cdn.jsdelivr.net/npm/docsify@latest/lib/docsify.min.js"></script>
+    <!-- Mermaid 支持 -->
+    <script src="//cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/docsify-mermaid@latest/dist/docsify-mermaid.min.js"></script>
+    <!-- 代码高亮 -->
+    <script src="//cdn.jsdelivr.net/npm/prismjs@latest/components/prism-bash.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/prismjs@latest/components/prism-swift.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/prismjs@latest/components/prism-objectivec.js"></script>
+    <!-- 分页导航 -->
+    <script src="//cdn.jsdelivr.net/npm/docsify-pagination@latest/dist/docsify-pagination.min.js"></script>
+    <!-- 代码复制 -->
+    <script src="//cdn.jsdelivr.net/npm/docsify-copy-code"></script>
+    <!-- 图片放大 -->
+    <script src="//cdn.jsdelivr.net/npm/docsify/lib/plugins/zoom-image.min.js"></script>
+    <!-- 外部链接 -->
+    <script src="//cdn.jsdelivr.net/npm/docsify/lib/plugins/external-script.min.js"></script>
+    <!-- 字数统计 -->
+    <script src="//unpkg.com/docsify-count/dist/countable.js"></script>
+    <!-- 搜索 -->
+    <script src="//cdn.jsdelivr.net/npm/docsify/lib/plugins/search.min.js"></script>
+</body>
+
+</html>

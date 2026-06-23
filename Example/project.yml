@@ -1,0 +1,36 @@
+name: Example
+options:
+  bundleIdPrefix: com.aliyun.playerkit
+  deploymentTarget:
+    iOS: "11.0"
+  xcodeVersion: "15.0"
+  generateEmptyDirectories: true
+  createIntermediateGroups: true
+
+settings:
+  base:
+    PRODUCT_BUNDLE_IDENTIFIER: com.aliyun.playerkit.example
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "5.0"
+    TARGETED_DEVICE_FAMILY: "1,2"
+
+targets:
+  Example:
+    type: application
+    platform: iOS
+    sources:
+      - path: Example
+        excludes:
+          - "*.xcodeproj"
+          - "*.xcworkspace"
+    settings:
+      base:
+        INFOPLIST_FILE: Example/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.aliyun.playerkit.example
+      configs:
+        Debug:
+          CODE_SIGN_IDENTITY: "Apple Development"
+          CODE_SIGN_STYLE: Automatic
+        Release:
+          CODE_SIGN_IDENTITY: "Apple Development"
+          CODE_SIGN_STYLE: Automatic

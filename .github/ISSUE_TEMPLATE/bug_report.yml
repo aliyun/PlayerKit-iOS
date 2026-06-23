@@ -1,0 +1,64 @@
+name: 🐛 Bug 报告 | Bug Report
+description: 报告一个 Bug | Report a bug
+title: "[BUG] "
+labels: [bug]
+type: "Bug"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢提交 Bug 报告！请简要描述问题。
+        Thanks for reporting! Please briefly describe the issue.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述 | Description
+      placeholder: |
+        描述你遇到的问题 / Describe the issue:
+        - 预期行为是什么？/ What was expected?
+        - 实际发生了什么？/ What actually happened?
+        - 是否稳定复现？（必现/偶现/难以复现）/ Reproducibility? (Always / Sometimes / Rare)
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤 | Steps to Reproduce
+      placeholder: |
+        1. 打开播放器 / Open the player
+        2. 点击播放按钮 / Tap play button
+        3. 观察到... / Observed...
+    validations:
+      required: false
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: 环境信息 | Environment
+      value: |
+        ### 1. 版本信息 / Version
+        - PlayerKit:
+        - Player SDK:
+
+        ### 2. 设备信息 / Device
+        - iOS 版本 / iOS version:
+        - 设备型号 / Device model:
+
+        ### 3. 播放信息 / Playback
+        - 播放场景 / Scene:
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志 / 截图 | Logs / Screenshots
+      placeholder: |
+        - 控制台日志 / Console logs
+        - 崩溃堆栈 / Crash stacktrace
+        - 截图或录屏 / Screenshots or recordings
+      render: shell
+    validations:
+      required: false
