@@ -7,7 +7,7 @@
 - **高级功能**
   - [插槽系统](./advanced/SlotSystem.md)
   - [策略系统](./advanced/StrategySystem.md)
-  - [事件系统](./advanced/EventSystem.md)
+  - [通知系统](./advanced/NotificationSystem.md)
   - [自定义配置](./advanced/CustomConfig.md)
   - [播放器生命周期策略](./advanced/PlayerLifecycleStrategy.md)
   - [日志系统](./advanced/LogSystem.md)

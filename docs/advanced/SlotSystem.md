@@ -55,49 +55,51 @@ AliPlayerKit 内置 11 种插槽类型，按 Z-Order 从底到顶排列：
 
 | 插槽类型 | 枚举值 | 说明 | 默认实现 |
 |---------|--------|------|---------|
-| 视频画面 | `SlotTypePlayerSurface` | 显示播放器视频内容（最底层） | `PlayerSurfaceSlot` |
-| 全屏管理 | `SlotTypeFullscreen` | 无头插槽，管理全屏切换逻辑 | `FullscreenSlot` |
-| 手势控制 | `SlotTypeGestureControl` | 处理单击/双击/长按/拖动 | `GestureControlSlot` |
-| 横屏提示 | `SlotTypeLandscapeHint` | 横屏视频在竖屏时提示全屏观看 | `LandscapeHintSlot` |
-| 封面图 | `SlotTypeCover` | 播放前显示视频封面 | `CoverSlot` |
-| 中心显示 | `SlotTypeCenterDisplay` | 显示倍速/亮度/音量等状态提示 | `CenterDisplaySlot` |
-| 播放状态 | `SlotTypePlayState` | 显示加载中/错误/播放完成等 | `PlayStateSlot` |
-| 日志面板 | `SlotTypeLogPanel` | 调试时显示播放器日志 | `LogPanelSlot` |
-| 顶部控制栏 | `SlotTypeTopBar` | 返回按钮/标题/设置按钮 | `TopBarSlot` |
-| 底部控制栏 | `SlotTypeBottomBar` | 播放暂停/进度条/全屏按钮 | `BottomBarSlot` |
-| 设置菜单 | `SlotTypeSettingMenu` | 倍速/清晰度/镜像/旋转（最顶层） | `SettingMenuSlot` |
+| 视频画面 | `SlotTypePlayerSurface` (10) | 显示播放器视频内容（最底层） | `PlayerSurfaceSlot` |
+| 手势控制 | `SlotTypeGestureControl` (20) | 处理单击/双击/长按/拖动 | `GestureControlSlot` |
+| 横屏提示 | `SlotTypeLandscapeHint` (30) | 横屏视频在竖屏时提示全屏观看 | `LandscapeHintSlot` |
+| 封面图 | `SlotTypeCover` (40) | 播放前显示视频封面 | `CoverSlot` |
+| 中心显示 | `SlotTypeCenterDisplay` (50) | 显示倍速/亮度/音量等状态提示 | `CenterDisplaySlot` |
+| 播放状态 | `SlotTypePlayState` (60) | 显示加载中/错误/播放完成等 | `PlayStateSlot` |
+| 日志面板 | `SlotTypeLogPanel` (70) | 调试时显示播放器日志 | `LogPanelSlot` |
+| 顶部控制栏 | `SlotTypeTopBar` (80) | 返回按钮/标题/设置按钮 | `TopBarSlot` |
+| 底部控制栏 | `SlotTypeBottomBar` (90) | 播放暂停/进度条/全屏按钮 | `BottomBarSlot` |
+| 设置菜单 | `SlotTypeSettingMenu` (100) | 倍速/清晰度/镜像/旋转 | `SettingMenuSlot` |
+| 选项面板 | `SlotTypeOptionPanel` (110) | 倍速/清晰度选项弹出面板（最顶层） | `OptionPanelSlot` |
+
+> **说明**：枚举值间隔为 10，以便后续插入新类型时不影响现有排序。枚举值同时决定了插槽的 Z 轴顺序（值越小越靠下）。通过 `SlotTypeName()` 函数可获取插槽类型的可读名称，`SlotTypeAllBuiltinTypes()` 函数可获取所有内置类型的有序数组。
 
 ### **2.3 Z-Order 层级示意**
 
 ```text
 ┌────────────────────────────────────────┐  ← 最顶层
-│         SettingMenu (设置菜单)           │  Z=10
+│       OptionPanel (选项面板)            │  Z=110
 ├────────────────────────────────────────┤
-│         BottomBar (底部控制栏)           │  Z=9
+│       SettingMenu (设置菜单)            │  Z=100
 ├────────────────────────────────────────┤
-│         TopBar (顶部控制栏)             │  Z=8
+│       BottomBar (底部控制栏)            │  Z=90
 ├────────────────────────────────────────┤
-│         LogPanel (日志面板)             │  Z=7
+│       TopBar (顶部控制栏)              │  Z=80
 ├────────────────────────────────────────┤
-│         PlayState (播放状态)            │  Z=6
+│       LogPanel (日志面板)              │  Z=70
 ├────────────────────────────────────────┤
-│         CenterDisplay (中心显示)        │  Z=5
+│       PlayState (播放状态)             │  Z=60
 ├────────────────────────────────────────┤
-│         Cover (封面图)                  │  Z=4
+│       CenterDisplay (中心显示)         │  Z=50
 ├────────────────────────────────────────┤
-│         LandscapeHint (横屏提示)        │  Z=3
+│       Cover (封面图)                   │  Z=40
 ├────────────────────────────────────────┤
-│         GestureControl (手势控制)       │  Z=2
+│       LandscapeHint (横屏提示)         │  Z=30
 ├────────────────────────────────────────┤
-│         Fullscreen (全屏管理，无头)      │  Z=1
+│       GestureControl (手势控制)        │  Z=20
 ├────────────────────────────────────────┤
-│         PlayerSurface (视频画面)         │  Z=0
+│       PlayerSurface (视频画面)          │  Z=10
 └────────────────────────────────────────┘  ← 最底层
 ```
 
 ### **2.4 场景适配**
 
-AliPlayerKit 定义了 5 种播放场景，不同场景下插槽行为自动适配：
+AliPlayerKit 定义了 5 种播放场景，不同场景下插槽的可见性和行为自动适配。场景适配通过 `SlotConfig` 实现，`DefaultSlotFactory` 预置了所有内置插槽的默认配置。
 
 | 场景 | 枚举值 | 说明 | 典型应用 |
 |-----|--------|------|---------|
@@ -107,12 +109,11 @@ AliPlayerKit 定义了 5 种播放场景，不同场景下插槽行为自动适�
 | RESTRICTED | `SceneTypeRestricted` | 受限播放场景，限制跳跃播放 | 教育培训、考试监控 |
 | MINIMAL | `SceneTypeMinimal` | 最小化播放场景，仅显示视频画面 | 背景视频、装饰视频 |
 
-**插槽可见性规则**：
+**插槽可见性规则**（由 `DefaultSlotFactory.defaultConfigs` 定义）：
 
 | 插槽 | VOD | LIVE | VIDEO_LIST | RESTRICTED | MINIMAL |
 |------|-----|------|------------|------------|---------|
 | PlayerSurface | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Fullscreen | ✓ | ✓ | ✓ | ✓ | ✓ |
 | GestureControl | ✓ | ✓ | ✓ | ✓ | ✗ |
 | LandscapeHint | ✓ | ✓ | ✓ | ✓ | ✗ |
 | Cover | ✓ | ✗ | ✓ | ✗ | ✗ |
@@ -122,6 +123,7 @@ AliPlayerKit 定义了 5 种播放场景，不同场景下插槽行为自动适�
 | TopBar | ✓ | ✓ | ✓ | ✓ | ✗ |
 | BottomBar | ✓ | ✓ | ✓ | ✓ | ✗ |
 | SettingMenu | ✓ | ✓ | ✓ | ✓ | ✗ |
+| OptionPanel | ✓ | ✓ | ✓ | ✓ | ✗ |
 
 **手势行为差异**：
 
@@ -150,7 +152,6 @@ AliPlayerKit 定义了 5 种播放场景，不同场景下插槽行为自动适�
 
     // 1. 创建播放器视图
     AliPlayerView *playerView = [[AliPlayerView alloc] initWithFrame:self.view.bounds];
-    playerView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     [self.view addSubview:playerView];
 
     // 2. 创建控制器
@@ -189,7 +190,7 @@ SlotManager *slotManager = playerView.slotManager;
 
 ### **3.3 策略三：完全自定义界面**
 
-清除所有默认实现，逐一注册自定义插槽：
+清除所有默认配置，逐一注册自定义插槽：
 
 ```objc
 // 1. 获取 SlotManager 并清除默认配置
@@ -215,9 +216,94 @@ SlotManager *slotManager = playerView.slotManager;
 不替换插槽实现，仅控制显示/隐藏：
 
 ```objc
-// 隐藏指定类型插槽
+SlotManager *slotManager = playerView.slotManager;
+
+// 隐藏整个插槽（rebuildSlots 时不构建）
 [slotManager hideSlot:SlotTypeLogPanel];
+
+// 显示之前隐藏的插槽（需调用 rebuildSlots 生效）
+[slotManager showSlot:SlotTypeLogPanel];
+[slotManager rebuildSlots];
+
+// 检查插槽是否被隐藏
+BOOL hidden = [slotManager isSlotHidden:SlotTypeLogPanel];
 ```
+
+### **3.5 元素级可见性控制**
+
+插槽系统支持对插槽内部的单个 UI 元素进行细粒度可见性控制，通过位掩码（`SlotElements.h`）实现：
+
+```objc
+SlotManager *slotManager = playerView.slotManager;
+
+// 隐藏顶部栏中的下载按钮和截图按钮
+[slotManager hideElements:(TopBarElementDownload | TopBarElementSnapshot)
+                  forSlot:SlotTypeTopBar];
+
+// 隐藏底部栏中的刷新按钮
+[slotManager hideElements:BottomBarElementRefresh
+                  forSlot:SlotTypeBottomBar];
+
+// 禁用水平拖动手势（对 GestureControl 插槽，隐藏元素表示禁用对应手势）
+[slotManager hideElements:GestureElementHorizontalDrag
+                  forSlot:SlotTypeGestureControl];
+
+// 显示之前隐藏的元素
+[slotManager showElements:TopBarElementDownload
+                  forSlot:SlotTypeTopBar];
+
+// 批量设置所有插槽的隐藏元素（替换式）
+[slotManager setAllHiddenElementMasks:@{
+    @(SlotTypeTopBar): @(TopBarElementDownload | TopBarElementSnapshot),
+    @(SlotTypeBottomBar): @(BottomBarElementRefresh),
+}];
+
+// 清空所有元素可见性配置
+[slotManager clearAllElementMasks];
+```
+
+**元素位掩码类型**：
+
+| 插槽类型 | 元素类型 | 可控元素 |
+|---------|---------|---------|
+| TopBar | `TopBarElement` | Back / Title / Download / Snapshot / Settings |
+| BottomBar | `BottomBarElement` | Play / Progress / Refresh / Speed |
+| SettingMenu | `SettingMenuElement` | Speed / TrackInfo / Loop / Mute / MirrorMode / RotateMode / ScaleMode / Subtitle |
+| CenterDisplay | `CenterDisplayElement` | Volume / Brightness / Speed |
+| GestureControl | `GestureElement` | SingleTap / DoubleTap / LongPress / HorizontalDrag / LeftVerticalDrag / RightVerticalDrag |
+| PlayState | `PlayStateElement` | ErrorMessage / LoadingMessage |
+
+> **说明**：各插槽子类通过 `onRegisterElements` 声明默认可见的元素组合。外部可通过 `hideElements:forSlot:` 覆盖默认可见的元素，或通过 `showElements:forSlot:` 覆盖默认隐藏的元素。最终可见性通过 `isElementVisible:` 查询。
+
+### **3.6 场景可见性配置**
+
+通过 `SlotConfig` 控制插槽在不同场景下的可见性：
+
+```objc
+SlotManager *slotManager = playerView.slotManager;
+
+// 配置封面图插槽在 Live 和 Restricted 场景下不可见
+SlotConfig *coverConfig = [SlotConfig configWithSlotType:SlotTypeCover
+                                         excludedScenes:[NSSet setWithObjects:@(SceneTypeLive), @(SceneTypeRestricted), nil]];
+[slotManager registerSlotConfig:coverConfig];
+
+// 使用 visibilityCondition 进行动态可见性控制
+SlotConfig *logConfig = [SlotConfig configWithSlotType:SlotTypeLogPanel
+                                       excludedScenes:[NSSet setWithObject:@(SceneTypeMinimal)]
+                                  visibilityCondition:^BOOL{
+    return [AliPlayerKit isDebugModeEnabled];
+}];
+[slotManager registerSlotConfig:logConfig];
+
+// 移除场景可见性配置（该插槽在所有场景下均可见）
+[slotManager unregisterSlotConfigForType:SlotTypeCover];
+
+// 查询配置
+SlotConfig *config = [slotManager slotConfigForType:SlotTypeCover];
+BOOL visible = [config isVisibleInScene:SceneTypeLive];
+```
+
+> **说明**：`DefaultSlotFactory.defaultConfigs` 已为所有内置插槽预置了默认的场景可见性配置。通过 `registerSlotConfig:` 可覆盖默认配置。
 
 ---
 
@@ -229,8 +315,6 @@ SlotManager *slotManager = playerView.slotManager;
 
 ```objc
 @protocol SlotProtocol <NSObject>
-
-@required
 
 #pragma mark - View 生命周期
 
@@ -251,13 +335,19 @@ SlotManager *slotManager = playerView.slotManager;
 @end
 ```
 
+`SlotProvider` 是构建插槽视图的 Block 类型：
+
+```objc
+typedef UIView<SlotProtocol> * _Nullable (^SlotProvider)(UIView *parentView);
+```
+
 ### **4.2 双生命周期**
 
 插槽采用独立的 View 生命周期和 Data 生命周期：
 
 | 生命周期 | 回调方法 | 时机 | 职责 |
 |---------|---------|------|------|
-| **View 开始** | `onAttach:` | `playerView.attach` 触发 | 建立宿主连接、订阅通知、初始化视图 |
+| **View 开始** | `onAttach:` | `playerView.attach:` 触发 | 建立宿主连接、订阅通知、初始化视图 |
 | **Data 开始** | `onBindData:` | `controller.configure:` 设置播放数据后 | 绑定业务数据（封面图、标题等） |
 | **Data 结束** | `onUnbindData` | 播放数据被清除或更新前 | 清理数据相关资源 |
 | **View 结束** | `onDetach` | `playerView.detach` 或插槽被移除时 | 释放所有资源，断开所有连接 |
@@ -284,27 +374,67 @@ SlotManager *slotManager = playerView.slotManager;
 
 `BaseSlot` 是所有 UI 插槽的推荐基类，封装了生命周期管理、通知订阅、场景适配等通用逻辑。
 
+**核心属性**：
+
+| 属性 | 类型 | 说明 |
+|-----|------|------|
+| `host` | `id<SlotHost>` (weak, readonly) | 当前插槽所附属的宿主 |
+| `slotType` | `SlotType` | 当前插槽的类型标识符（由 `SlotHostLayout` 在构建时注入） |
+| `safeAreaEdges` | `SlotSafeAreaEdge` | 需要避让的安全区域边缘（默认 `SlotSafeAreaEdgeAll`） |
+| `deferContentCreation` | `BOOL` | 延迟内容创建开关 |
+| `contentReady` | `BOOL` (readonly) | 内容是否已创建 |
+| `touchPassthrough` | `BOOL` | 触摸穿透开关（默认 `YES`） |
+
+**核心方法**：
+
+| 方法 | 说明 |
+|-----|------|
+| `setupContentView` | 子类重写以创建自定义 UI 元素 |
+| `show` / `hide` | 可见性控制 |
+| `showWithAnimation:` / `hideWithAnimation:` | 带动画的可见性控制 |
+| `isShowing` | 查询当前可见状态 |
+| `dismiss` | 通过宿主进行正确的生命周期管理来移除插槽 |
+| `ensureContentReady` | 确保延迟内容已创建（幂等） |
+| `currentSceneType` | 安全读取当前场景类型 |
+| `onRegisterElements` | 子类重写以声明支持的元素及其默认可见性 |
+| `isElementVisible:` | 查询指定元素的最终可见性 |
+
+**安全区域避让 (SlotSafeAreaEdge)**：
+
 ```objc
-@interface BaseSlot : UIView <SlotProtocol>
-
-/// 当前绑定的宿主（onAttach: 后可用，弱引用）
-@property (nonatomic, weak, readonly, nullable) id<SlotHost> host;
-
-/// 子类设置内容视图的钩子方法（onAttach: 时调用）
-- (void)setupContentView;
-
-/// 显示/隐藏/移除插槽
-- (void)show;
-- (void)hide;
-- (void)dismiss;
-- (BOOL)isShowing;
-
-/// 遵循 PlayerNotificationDelegate 协议，
-/// 在 onAttach: 时自动注册为控制器通知代理，
-/// 子类直接实现感兴趣的回调方法即可接收播放器事件。
-
-@end
+typedef NS_OPTIONS(NSUInteger, SlotSafeAreaEdge) {
+    SlotSafeAreaEdgeNone   = 0,
+    SlotSafeAreaEdgeTop    = 1 << 0,
+    SlotSafeAreaEdgeLeft   = 1 << 1,
+    SlotSafeAreaEdgeBottom = 1 << 2,
+    SlotSafeAreaEdgeRight  = 1 << 3,
+    SlotSafeAreaEdgeAll    = SlotSafeAreaEdgeTop | SlotSafeAreaEdgeLeft | SlotSafeAreaEdgeBottom | SlotSafeAreaEdgeRight,
+};
 ```
+
+`SlotHostLayout` 在 `layoutSubviews` 中根据 `safeAreaEdges` 收缩对应边的 frame，使插槽内部布局直接使用自身锚点即可避开刘海、Home Indicator 等区域。子类可在 `initWithFrame:` 中设置此属性。
+
+**延迟内容创建 (deferContentCreation)**：
+
+设为 `YES` 时，`onAttach:` 不会调用 `setupContentView`，内容将在首次调用 `show` 或 `ensureContentReady` 时创建。适用于使用频率较低的插槽（如 SettingMenu），避免在初始化时创建不必要的视图。
+
+```objc
+- (instancetype)initWithFrame:(CGRect)frame {
+    self = [super initWithFrame:frame];
+    if (self) {
+        self.deferContentCreation = YES;
+    }
+    return self;
+}
+```
+
+**自动隐藏延迟常量**：
+
+```objc
+FOUNDATION_EXPORT const NSTimeInterval SlotAutoHideDelay;
+```
+
+控制栏自动隐藏类插槽（如 TopBar、BottomBar）在无交互后的隐藏延迟时间（秒）。
 
 ### **4.4 自定义插槽完整示例**
 
@@ -323,12 +453,15 @@ SlotManager *slotManager = playerView.slotManager;
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (self) {
-        [self setupUI];
+        // 可选：配置安全区域避让
+        self.safeAreaEdges = SlotSafeAreaEdgeNone;
     }
     return self;
 }
 
-- (void)setupUI {
+#pragma mark - 内容创建
+
+- (void)setupContentView {
     _coverImageView = [[UIImageView alloc] init];
     _coverImageView.contentMode = UIViewContentModeScaleAspectFill;
     _coverImageView.clipsToBounds = YES;
@@ -344,7 +477,6 @@ SlotManager *slotManager = playerView.slotManager;
 
 - (void)onAttach:(id<SlotHost>)host {
     [super onAttach:host];
-    // 初始化（此时可访问 host）
 }
 
 - (void)onBindData:(AliPlayerModel *)model {
@@ -369,12 +501,7 @@ SlotManager *slotManager = playerView.slotManager;
 #pragma mark - PlayerNotificationDelegate
 
 - (void)playerDidRenderFirstFrame {
-    [UIView animateWithDuration:0.3 animations:^{
-        self.alpha = 0;
-    } completion:^(BOOL finished) {
-        [self hide];
-        self.alpha = 1;
-    }];
+    [self hideWithAnimation:YES];
 }
 
 - (void)playerDidChangeState:(PlayerState)state {
@@ -383,12 +510,7 @@ SlotManager *slotManager = playerView.slotManager;
     }
 }
 
-#pragma mark - 场景适配
-
-- (BOOL)shouldShowInScene:(SceneType)sceneType {
-    return sceneType == SceneTypeVOD ||
-           sceneType == SceneTypeVideoList;
-}
+#pragma mark - 布局
 
 - (void)layoutSubviews {
     [super layoutSubviews];
@@ -399,6 +521,8 @@ SlotManager *slotManager = playerView.slotManager;
 
 @end
 ```
+
+> **说明**：`BaseSlot` 遵循 `PlayerNotificationDelegate` 协议，在 `onAttach:` 时自动注册为控制器的通知代理。子类直接实现感兴趣的回调方法即可接收播放器事件，无需手动订阅。
 
 **Step 2**：注册并使用：
 
@@ -411,29 +535,61 @@ SlotManager *slotManager = playerView.slotManager;
 [playerView attach:controller];
 ```
 
-### **4.5 无头插槽**
+### **4.5 元素级可见性声明**
 
-无头插槽只处理业务逻辑、不渲染 UI。`slotView` 方法返回一个零尺寸的空视图：
+子类通过 `onRegisterElements` 声明支持的元素及其默认可见性：
 
 ```objc
-@implementation MyHeadlessSlot
+@implementation MyCustomTopBarSlot
 
-- (UIView *)slotView {
-    UIView *emptyView = [[UIView alloc] initWithFrame:CGRectZero];
-    emptyView.userInteractionEnabled = NO;
-    return emptyView;
+- (NSUInteger)onRegisterElements {
+    // 返回默认可见的元素位掩码
+    // Back 和 Title 默认可见，Download 和 Snapshot 默认不可见
+    return TopBarElementBack | TopBarElementTitle;
 }
 
-#pragma mark - PlayerNotificationDelegate
-
-- (void)playerDidChangeFullscreen:(BOOL)isFullscreen {
-    [self toggleFullscreen];
+- (void)setupContentView {
+    // 根据元素可见性决定是否创建 UI
+    if ([self isElementVisible:TopBarElementBack]) {
+        // 创建返回按钮
+    }
+    if ([self isElementVisible:TopBarElementDownload]) {
+        // 创建下载按钮（默认不可见，但外部可通过 showElements 开启）
+    }
 }
 
 @end
 ```
 
-### **4.6 在插槽中发送命令**
+`isElementVisible:` 的合并逻辑：
+1. 外部 `hideElements:forSlot:` → 强制隐藏
+2. 外部 `showElements:forSlot:` → 强制显示
+3. 无外部覆盖 → 使用 `onRegisterElements` 声明的默认值
+
+### **4.6 自定义插槽类型 (CustomSlotType)**
+
+除内置插槽类型外，可通过 `CustomSlotType` 在任意位置插入自定义插槽：
+
+```objc
+// 在 TopBar(80) 和 BottomBar(90) 之间插入自定义插槽
+CustomSlotType *type = [CustomSlotType typeWithKey:@"myCustomSlot" order:85];
+[playerView.slotManager registerCustomSlotType:type provider:^UIView<SlotProtocol> *(UIView *parentView) {
+    return [[MyCustomSlotView alloc] initWithFrame:parentView.bounds];
+}];
+
+// 检查自定义插槽是否已注册
+BOOL registered = [playerView.slotManager isCustomSlotRegistered:type];
+
+// 获取所有已注册的自定义插槽类型
+NSArray<CustomSlotType *> *types = [playerView.slotManager customSlotTypes];
+
+// 注销自定义插槽
+[playerView.slotManager unregisterCustomSlotType:type];
+```
+
+> **说明**：`CustomSlotType` 通过 `key`（唯一标识）和 `order`（排序值）定义。相等判断仅基于 `key`，同一 key 不可重复注册。自定义插槽在 `rebuildSlots` 时按 `order` 与内置插槽统一排序。
+
+### **4.7 在插槽中发送命令**
 
 插槽通过 `host.controller` 向控制器发送命令，实现单向数据流：
 
@@ -441,7 +597,7 @@ SlotManager *slotManager = playerView.slotManager;
 // 播放/暂停切换
 - (void)onPlayPauseButtonTapped {
     AliPlayerController *controller = self.host.controller;
-    if (controller.isPlaying) {
+    if (controller.playerState == PlayerStatePlaying) {
         [controller pause];
     } else {
         [controller play];
@@ -450,97 +606,106 @@ SlotManager *slotManager = playerView.slotManager;
 
 // 进度跳转
 - (void)onSeekBarValueChanged:(UISlider *)slider {
-    AliPlayerController *controller = self.host.controller;
     long position = (long)(slider.value * self.host.playerStateStore.duration);
-    [controller seekTo:position];
+    [self.host.controller seekTo:position];
+}
+
+// 全屏切换
+- (void)onFullscreenButtonTapped {
+    BOOL isFullscreen = self.host.viewState.isFullscreen;
+    [self.host.controller setFullscreen:!isFullscreen];
 }
 ```
 
-### **4.7 插槽注册表**
+### **4.8 SlotBehavior（组合模式）**
 
-`SlotManager` 管理插槽类型到 Provider 的映射关系：
+`SlotBehavior` 采用组合模式设计，使非 `UIView` 对象也能获得插槽能力（生命周期管理、事件订阅）。适用于纯逻辑组件需要监听播放器事件的场景。
 
 ```objc
-// 注册插槽 Provider
-[slotManager registerSlotType:SlotTypeTopBar provider:^UIView<SlotProtocol> *(UIView *parentView) {
-    return [[MyCustomSlot alloc] initWithFrame:parentView.bounds];
-}];
+@interface MyAnalyticsTracker : NSObject <PlayerNotificationDelegate>
 
-// 注销指定类型
-[slotManager unregisterSlotType:SlotTypeLogPanel];
+@property (nonatomic, strong) SlotBehavior *behavior;
 
-// 检查是否已注册
-BOOL registered = [slotManager isRegistered:SlotTypeTopBar];
+@end
+
+@implementation MyAnalyticsTracker
+
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        _behavior = [[SlotBehavior alloc] init];
+    }
+    return self;
+}
+
+- (void)attachToHost:(id<SlotHost>)host {
+    [self.behavior attachToHost:host];
+    // 通过 behavior 注册通知代理，detach 时自动取消订阅
+    [self.behavior addNotificationDelegate:self toController:host.controller];
+}
+
+- (void)detach {
+    [self.behavior detach];
+}
+
+#pragma mark - PlayerNotificationDelegate
+
+- (void)playerDidRenderFirstFrame {
+    // 上报首帧渲染事件
+}
+
+- (void)playerDidEncounterError:(NSError *)error {
+    // 上报播放错误
+}
+
+@end
 ```
 
-**槽位选择优先级**：自定义实现 > 默认实现 > 跳过（不创建）
+**核心优势**：通过 `addNotificationDelegate:toController:` 注册的所有代理，在 `detach` 时自动取消注册，避免手动管理订阅生命周期导致的内存泄漏。
 
 ---
 
-## **5. API 速查**
+## **5. 宿主协议 (SlotHost)**
 
-### **5.1 核心协议与类**
+`SlotHost` 协议由 `SlotHostLayout`（内部实现）遵循，为插槽提供上下文访问能力：
 
-| 类/协议 | 说明 | 详见 |
-|--------|------|------|
-| `SlotProtocol` | 插槽协议，定义最小生命周期契约 | [ApiReference.md](../ApiReference.md) |
-| `BaseSlot` | 插槽基类，封装通用逻辑 | [ApiReference.md](../ApiReference.md) |
-| `SlotManager` | 插槽注册表，管理类型→构建器映射 | [ApiReference.md](../ApiReference.md) |
-| `SlotHost` | 宿主协议，提供上下文能力 | [ApiReference.md](../ApiReference.md) |
-| `SlotType` | 插槽类型枚举 | [ApiReference.md](../ApiReference.md) |
-
-### **5.2 SlotProtocol 方法**
-
-| 方法 | 说明 |
-|-----|------|
-| `onAttach:` | View 生命周期开始，初始化视图和通知订阅 |
-| `onDetach` | View 生命周期结束，释放所有资源 |
-| `onBindData:` | Data 生命周期开始，绑定业务数据 |
-| `onUnbindData` | Data 生命周期结束，清理数据资源 |
-
-### **5.3 BaseSlot 方法**
-
-| 方法 | 说明 |
-|-----|------|
-| `setupContentView` | 子类重写以创建自定义 UI 元素 |
-| `show` / `hide` / `dismiss` | 可见性控制 |
-| `isShowing` | 查询当前可见状态 |
-| `currentSceneType` | 安全读取当前场景类型 |
-| `onRegisterElements` | 声明支持的元素及其默认可见性 |
-| `isElementVisible:` | 查询指定元素的最终可见性 |
-
-### **5.4 SlotManager 方法**
-
-| 方法 | 说明 |
-|-----|------|
-| `registerSlotType:provider:` | 注册插槽类型的 Provider |
-| `unregisterSlotType:` | 注销指定类型的插槽 |
-| `isRegistered:` | 检查指定类型是否已注册 |
-| `hideSlot:` / `showSlot:` | 插槽级可见性控制 |
-| `hideElements:forSlot:` | 隐藏插槽内的特定元素 |
-| `showElements:forSlot:` | 显示插槽内的特定元素 |
-| `slotViewForType:` | 获取已挂载的插槽视图 |
-| `rebuildSlots` | 重建所有插槽 |
-
-### **5.5 SlotHost 方法**
-
-| 方法 | 说明 |
-|-----|------|
+| 方法/属性 | 说明 |
+|----------|------|
 | `hostView` | 返回宿主容器视图 |
 | `model` | 获取当前播放器模型 |
-| `controller` | 获取播放器控制器 |
+| `controller` | 获取播放器控制器（弱引用） |
 | `playerStateStore` | 获取播放器状态存储（只读） |
-| `viewState` | 获取视图层级状态 |
-| `setRenderView:` | 为播放器设置渲染视图 |
-| `slotViewForType:` | 根据类型获取已挂载插槽视图 |
-| `slotManager` | 获取插槽管理器 |
+| `viewState` | 获取视图层级状态（全屏、控制栏可见性等） |
 | `sceneType` | 获取当前场景类型 |
+| `setRenderView:` | 为播放器设置渲染视图（由 `PlayerSurfaceSlot` 调用） |
+| `dismissSlotView:` | 解散插槽视图，确保生命周期管理的一致性 |
+| `allSlotViews` | 返回所有已挂载的插槽视图 |
+| `slotViewForType:` | 根据类型获取已挂载插槽视图（O(1) 查找） |
+| `slotManager` | 获取插槽管理器（用于元素可见性查询） |
+| `notifyBackPressed` | 通知宿主：返回键被按下（非全屏状态） |
 
---
+> **说明**：插槽应优先通过 `host.sceneType` 或 `BaseSlot.currentSceneType` 读取场景类型，而不是经由 `host.model.sceneType` 链式访问，避免在 model 尚未绑定时返回 nil 透传出的隐性 `SceneTypeVOD`(0) 默认值。
 
-## **6. 技术原理**
+---
 
-### **6.1 槽位选择策略**
+## **6. 默认插槽工厂 (DefaultSlotFactory)**
+
+`DefaultSlotFactory` 集中管理所有内置插槽的默认注册：
+
+| 类方法 | 说明 |
+|--------|------|
+| `+defaultProviders` | 返回 `SlotType → SlotProvider` 的工厂闭包映射字典 |
+| `+defaultConfigs` | 返回内置插槽的场景可见性配置数组（`SlotConfig` 数组） |
+
+`SlotManager` 在初始化时一次性拉取这两份数据完成默认注册。新增或移除内置插槽仅需修改 `DefaultSlotFactory`。
+
+通过 `SlotManager.clearAll` 可清空所有配置并重新注册默认值。
+
+---
+
+## **7. 技术原理**
+
+### **7.1 槽位选择策略**
 
 ```text
 请求创建插槽 → 自定义注册表中有该类型？
@@ -550,7 +715,7 @@ BOOL registered = [slotManager isRegistered:SlotTypeTopBar];
                               └── 否 → 跳过（不创建）
 ```
 
-### **6.2 单向数据流**
+### **7.2 单向数据流**
 
 插槽系统采用单向数据流架构，插槽不直接持有控制器引用：
 
@@ -562,7 +727,7 @@ Slot → Command → Controller（命令上行，只发）
 - **状态下行**：通过 `host.playerStateStore` 主动查询，或通过 `PlayerNotificationDelegate` 回调被动接收
 - **命令上行**：通过 `host.controller` 调用播放命令，由控制器执行
 
-### **6.3 插槽间隔离**
+### **7.3 插槽间隔离**
 
 插槽之间严禁直接获取对方实例或进行点对点通信。当一个插槽需要影响另一个插槽时：
 
@@ -571,7 +736,7 @@ Slot → Command → Controller（命令上行，只发）
 
 通过这种"事件上浮，状态下沉"的链路，避免了网状的 UI 耦合。
 
-### **6.4 底部控制栏场景差异**
+### **7.4 底部控制栏场景差异**
 
 | 控件 | VOD | LIVE | VIDEO_LIST | RESTRICTED | MINIMAL |
 |------|-----|------|------------|------------|--------|
@@ -583,8 +748,52 @@ Slot → Command → Controller（命令上行，只发）
 
 ---
 
-## **7. 下一步**
+## **8. API 速查**
 
-- 了解插槽间的通信机制：[事件系统](./EventSystem.md)
-- 了解如何添加自定义业务逻辑：[策略系统](./StrategySystem.md)
-- 查看完整 API 参考：[API 文档](../ApiReference.md)
+### **8.1 核心协议与类**
+
+| 类/协议 | 说明 |
+|--------|------|
+| `SlotProtocol` | 插槽协议，定义最小生命周期契约 |
+| `BaseSlot` | 插槽基类，封装通用逻辑 |
+| `SlotManager` | 插槽管理器，统一注册、可见性控制与运行时访问 |
+| `SlotHost` | 宿主协议，提供上下文访问能力 |
+| `SlotHostLayout` | 宿主协议的内部实现（`UIView` 子类） |
+| `SlotConfig` | 场景可见性配置 |
+| `SlotBehavior` | 组合模式行为类，为非 UIView 对象提供插槽能力 |
+| `DefaultSlotFactory` | 默认插槽工厂，集中管理内置插槽注册 |
+| `CustomSlotType` | 自定义插槽类型，支持在内置插槽之间插入 |
+| `SlotType` | 内置插槽类型枚举 |
+
+### **8.2 SlotManager 方法速查**
+
+| 分类 | 方法 | 说明 |
+|------|-----|------|
+| 插槽注册 | `registerSlotType:provider:` | 注册/覆盖内置插槽 Provider |
+| | `unregisterSlotType:` | 注销指定类型的插槽 |
+| | `isRegistered:` | 检查是否已注册 |
+| 自定义插槽 | `registerCustomSlotType:provider:` | 注册自定义插槽 |
+| | `unregisterCustomSlotType:` | 注销自定义插槽 |
+| | `isCustomSlotRegistered:` | 检查自定义插槽是否已注册 |
+| | `customSlotTypes` | 获取所有已注册的自定义插槽类型 |
+| 插槽可见性 | `hideSlot:` / `showSlot:` | 整体隐藏/显示插槽 |
+| | `isSlotHidden:` | 检查插槽是否被隐藏 |
+| 场景可见性 | `registerSlotConfig:` | 注册场景可见性配置 |
+| | `unregisterSlotConfigForType:` | 移除场景可见性配置 |
+| | `slotConfigForType:` | 获取场景可见性配置 |
+| 元素可见性 | `hideElements:forSlot:` | 隐藏插槽内特定元素 |
+| | `showElements:forSlot:` | 显示插槽内特定元素 |
+| | `setHiddenElementMask:forSlot:` | 替换隐藏元素掩码 |
+| | `hiddenElementMaskForSlot:` | 获取隐藏元素掩码 |
+| | `shownElementMaskForSlot:` | 获取显示元素掩码 |
+| | `setAllHiddenElementMasks:` | 批量设置所有隐藏元素掩码 |
+| | `clearAllElementMasks` | 清空所有元素可见性配置 |
+| 运行时 | `slotViewForType:` | 获取已挂载的插槽视图 |
+| | `rebuildSlots` | 重建所有插槽 |
+| | `clearAll` | 清空配置并重新注册默认值 |
+
+---
+
+## **9. 示例参考**
+
+> **参考**：`PlayerKitUsages/UsageSlotSystem` 模块提供了完整的插槽系统使用示例，演示了默认插槽配置的开箱即用、通过 `SlotManager` 自定义插槽注册与隐藏，以及插槽生命周期的自动管理。

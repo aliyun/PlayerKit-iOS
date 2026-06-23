@@ -22,7 +22,7 @@
 
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│  全局初始化      │ ──▶ │  创建视图        │ ──▶ │  配置数据        │ ──▶ │  绑定并播放      │
+│  全局初始化       │ ──▶ │  创建视图        │ ──▶ │  配置数据        │ ──▶ │  绑定并播放      │
 │  [AliPlayerKit   │     │  AliPlayerView   │     │  AliPlayerModel  │     │  attach + play   │
 │   setup]         │     │                  │     │  configure       │     │                  │
 └─────────────────┘     └─────────────────┘     └─────────────────┘     └─────────────────┘
@@ -145,10 +145,10 @@ view.addSubview(playerView)
     VideoSource *source = [VideoSource vidAuthSourceWithVid:@"您的视频 ID"
                                                   playAuth:@"您的播放凭证"];
     AliPlayerModel *model = [[AliPlayerModel alloc] initWithVideoSource:source];
-    model.autoPlay = YES;
-    [self.controller configure:model];
+    model.videoTitle = @"示例视频";
 
-    // 4. 绑定视图与控制器
+    // 4. 配置播放源并绑定视图（绑定后自动开始播放）
+    [self.controller configure:model];
     [self.playerView attach:self.controller];
 }
 
@@ -180,10 +180,10 @@ class VideoPlayerViewController: UIViewController {
         // 2. 配置播放数据（推荐使用 VidAuth 方式）
         let source = VideoSource.vidAuthSource(withVid: "您的视频 ID", playAuth: "您的播放凭证")
         let model = AliPlayerModel(videoSource: source)
-        model.autoPlay = true
-        controller.configure(model)
+        model.videoTitle = "示例视频"
 
-        // 3. 绑定视图与控制器
+        // 3. 配置播放源并绑定视图（绑定后自动开始播放）
+        controller.configure(model)
         playerView.attach(controller)
     }
 
@@ -199,6 +199,15 @@ class VideoPlayerViewController: UIViewController {
 > ```objc
 > VideoSource *source = [VideoSource urlSourceWithUrl:@"https://example.com/video.mp4"];
 > ```
+>
+> 场景模块内置了 `SceneConstants` 示例数据，也可直接参考使用。
+
+> **说明**：
+>
+> - `AliPlayerModel.autoPlay` 默认为 `YES`，配置完成后自动开始播放，无需手动调用 `play`
+> - `AliPlayerController.autoLifecycleManagement` 默认为 `YES`，会自动处理应用前后台切换时的播放暂停与恢复。但页面级导航（如 push/pop）需要手动在 `viewDidAppear` / `viewWillDisappear` 中调用 `onResume` / `onPause`
+> - `configure:` 内部通过生命周期策略获取播放器实例、设置数据源并准备播放
+> - `dealloc` 中必须调用 `destroy` 销毁控制器，否则会导致内存泄漏
 
 ### **步骤 3（可选）：处理返回键**
 
@@ -208,7 +217,7 @@ class VideoPlayerViewController: UIViewController {
 
 ```objc
 __weak typeof(self) weakSelf = self;
-playerView.onBackPressed = ^{
+self.playerView.onBackPressed = ^{
     [weakSelf.navigationController popViewControllerAnimated:YES];
 };
 ```
@@ -221,7 +230,32 @@ playerView.onBackPressed = { [weak self] in
 }
 ```
 
-> **说明**：当播放器处于全屏状态时，返回操作会自动退出全屏，不触发此回调。仅在非全屏状态下，返回操作才会通过此回调通知外部。若未设置此回调，播放器将执行默认导航行为（pop/dismiss）。
+> **说明**：当播放器处于全屏状态时，返回操作会自动退出全屏，不触发此回调。仅在非全屏状态下，返回操作才会通过此回调通知外部。若未设置此回调，播放器将通过 responder chain 尝试默认导航行为（pop / dismiss）。
+>
+> **跨平台差异**：Android 端通过 `Activity.onBackPressed()` 拦截，调用 `playerView.onBackPressed()` 方法并根据返回值判断是否已消费；iOS 端通过 Block 回调通知外部。
+
+### **步骤 4（可选）：自定义配置**
+
+如需在播放器准备前注入自定义 SDK 配置（如缓冲策略、Referer 等），可通过 `onPlayerConfigBlock` 实现：
+
+* **Objective-C**：
+
+```objc
+model.onPlayerConfigBlock = ^(id<MediaPlayer> player) {
+    // 在 prepare 前执行，可访问底层播放器实例进行自定义配置
+    // 例如：设置缓冲配置、Referer、setOption 等
+};
+```
+
+* **Swift**：
+
+```swift
+model.onPlayerConfigBlock = { player in
+    // 在 prepare 前执行，可访问底层播放器实例进行自定义配置
+}
+```
+
+> **说明**：全局配置通过 `[AliPlayerKit setOnGlobalInitBlock:]` 在 `setup` 前设置（仅执行一次）；实例配置通过 `model.onPlayerConfigBlock` 在每次 `configure:` 时触发。详见 [自定义配置](./advanced/CustomConfig.md)。
 
 ---
 
@@ -243,16 +277,20 @@ playerView.onBackPressed = { [weak self] in
 | `SceneLive` | `PlayerKitScenes/SceneLive` | **直播场景**：提供直播播放的完整解决方案 |
 | `ScenePlaylist` | `PlayerKitScenes/ScenePlaylist` | **列表播放场景**：提供视频列表播放的完整解决方案 |
 
+> **跨平台对齐**：场景模块与 Android 端对齐（`scene-longvideo` / `scene-shortvideo` / `scene-live` / `scene-playlist`）。各场景的业务能力和 UI 交互在多端间保持一致。
+
 ### **步骤 2：启动场景页面**
 
 场景模块集成完成后，可通过以下两种方式启动场景页面：
 
-#### **方式一：直接实例化**
+#### **方式一：直接实例化（推荐）**
+
+每个场景模块提供独立的 ViewController，可直接实例化并通过 `UINavigationController` 跳转：
 
 * **Objective-C**：
 
 ```objc
-#import <PlayerKitScenes/SceneLongVideo.h>
+#import "SceneLongVideoViewController.h"
 
 // 跳转到中长视频场景
 SceneLongVideoViewController *vc = [[SceneLongVideoViewController alloc] init];
@@ -262,16 +300,39 @@ SceneLongVideoViewController *vc = [[SceneLongVideoViewController alloc] init];
 * **Swift**：
 
 ```swift
-import PlayerKitScenes
-
 // 跳转到中长视频场景
 let vc = SceneLongVideoViewController()
 navigationController?.pushViewController(vc, animated: true)
 ```
 
+各场景对应的 ViewController：
+
+| 场景 | ViewController |
+|------|----------------|
+| 中长视频 | `SceneLongVideoViewController` |
+| 短视频 | `SceneShortVideoViewController` |
+| 直播 | `SceneLiveViewController` |
+| 列表播放 | `ScenePlaylistViewController` |
+
 #### **方式二：Schema 路由**
 
-场景模块支持通过 Schema 协议启动对应的播放场景。Schema 格式为：`playerkit://scenes/<场景名>`
+场景模块支持通过 Schema 协议启动对应的播放场景。Demo 工程中提供了 `AppSchemaRouter` 路由工具类，可通过 Schema URL 自动发现并跳转到对应场景：
+
+* **Objective-C**：
+
+```objc
+#import "AppSchemaRouter.h"
+
+// 通过 Schema 跳转到中长视频场景
+[AppSchemaRouter navigateToSchema:@"playerkit://scenes/longvideo" fromViewController:self];
+```
+
+* **Swift**：
+
+```swift
+// 通过 Schema 跳转到中长视频场景
+AppSchemaRouter.navigate(toSchema: "playerkit://scenes/longvideo", from: self)
+```
 
 各场景对应的 Schema 地址：
 
@@ -282,34 +343,97 @@ navigationController?.pushViewController(vc, animated: true)
 | 直播 | `playerkit://scenes/live` |
 | 列表播放 | `playerkit://scenes/playlist` |
 
-* **Objective-C**：
-
-```objc
-#import <App/App.h>
-
-// 通过 Schema 跳转到中长视频场景
-[AppSchemaRouter navigateToSchema:@"playerkit://scenes/longvideo" fromViewController:self];
-```
-
-* **Swift**：
-
-```swift
-import App
-
-// 通过 Schema 跳转到中长视频场景
-AppSchemaRouter.navigate(toSchema: "playerkit://scenes/longvideo", from: self)
-```
+> **说明**：`AppSchemaRouter` 是 Demo 工程（`App` 模块）中提供的路由工具，基于 `AppModuleProtocol` 协议实现模块自动发现。场景模块通过 `*Module` 类（如 `SceneLongVideoModule`）注册自身的 Schema、标题和优先级。如需在您的应用中使用 Schema 路由，可参考此实现或对接您自己的路由框架。
+>
+> **跨平台对比**：Android 端通过 `Intent` + `AndroidManifest.xml` 的 `<intent-filter>` 实现 Schema 路由；iOS 端通过 `AppModuleProtocol` + 运行时反射实现模块自动发现。Schema 格式在各平台间保持一致。
 
 ---
 
-## **6. 示例与扩展**
+## **6. 场景实现参考**
+
+场景模块的源码可作为组件层接入的最佳实践参考。以下是各场景的核心实现模式：
+
+### **6.1 中长视频场景**
+
+`SceneLongVideoViewController` 展示了标准的组件层接入流程：
+
+```objc
+// 初始化 AliPlayerKit 播放组件
+- (void)setupPlayerKit {
+    // 1. 创建播放器组件视图
+    self.playerView = [[AliPlayerView alloc] initWithFrame:self.view.bounds];
+    [self.view addSubview:self.playerView];
+
+    // 可选：设置返回键回调
+    __weak typeof(self) weakSelf = self;
+    self.playerView.onBackPressed = ^{
+        [weakSelf.navigationController popViewControllerAnimated:YES];
+    };
+
+    // 2. 创建播放器组件控制器
+    self.playerController = [[AliPlayerController alloc] init];
+
+    // 3. 配置播放器组件数据
+    VideoSource *source = [VideoSource vidAuthSourceWithVid:@"视频 ID" playAuth:@"播放凭证"];
+    AliPlayerModel *model = [[AliPlayerModel alloc] initWithVideoSource:source];
+    model.videoTitle = @"Long Video";
+
+    // 4. 配置播放源并将控制器挂载到视图（挂载后自动开始播放）
+    [self.playerController configure:model];
+    [self.playerView attach:self.playerController];
+}
+```
+
+### **6.2 直播场景**
+
+`SceneLiveViewController` 展示了 URL 源 + 直播场景类型的用法：
+
+```objc
+VideoSource *source = [VideoSource urlSourceWithUrl:liveUrl];
+AliPlayerModel *model = [[AliPlayerModel alloc] initWithVideoSource:source];
+model.videoTitle = @"Live Stream";
+model.sceneType = SceneTypeLive;  // 设置为直播场景类型
+
+[self.playerController configure:model];
+[self.playerView attach:self.playerController];
+```
+
+> **说明**：`SceneType` 影响插槽可见性配置和 UI 行为。直播场景下会自动隐藏进度条等点播元素。详见 [场景类型](./advanced/SceneType.md)。
+
+### **6.3 列表播放场景**
+
+`ScenePlaylistViewController` 展示了 `SingletonLifecycleStrategy` + `PlayerNotificationDelegate` 实现自动连播的高级用法：
+
+```objc
+// 使用单例生命周期策略复用播放器实例
+self.lifecycleStrategy = [SingletonLifecycleStrategy sharedInstance];
+self.currentController = [[AliPlayerController alloc] initWithLifecycleStrategy:self.lifecycleStrategy];
+
+// 注册播放完成通知，用于触发自动播放下一个
+[self.currentController addNotificationDelegate:self];
+
+// PlayerNotificationDelegate 回调
+- (void)playerDidCompletion {
+    [self playNextVideo];  // 当前视频播放完成，自动播放下一个
+}
+```
+
+> **说明**：列表播放场景通过 `initWithLifecycleStrategy:` 指定生命周期策略，复用播放器实例以提升性能。详见 [播放器生命周期策略](./advanced/PlayerLifecycleStrategy.md)。
+
+---
+
+## **7. 示例与扩展**
 
 通过以上步骤，您已经完成了 AliPlayerKit 的基础接入，并成功实现了视频播放。
 
 如需查看更多示例，可参考以下目录：
 
-- `PlayerKitUsages`：提供常见 API 的使用示例（日志系统、策略系统、预加载等）
-- `PlayerKitScenes`：提供典型播放场景的解决方案（长视频、短视频、直播、列表播放）
+| 模块 | 说明 |
+|------|------|
+| `PlayerKitUsages` | 提供常见 API 的使用示例（日志系统、插槽系统、通知系统、策略系统、生命周期策略、预加载、视频源、本地化） |
+| `PlayerKitScenes` | 提供典型播放场景的解决方案（长视频、短视频、直播、列表播放） |
+
+各使用示例的 Schema 路由格式为 `playerkit://usages/<模块名>`，可通过 Demo 工程首页直接进入。
 
 如果您在接入或使用过程中遇到问题，可联系官方技术支持获取帮助。
 

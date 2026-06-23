@@ -1,18 +1,16 @@
+Language: 中文简体 | [English](README-EN.md)
+
+![alibaba_cloud_logo](https://alivc-demo-cms.alicdn.com/versionProduct/installPackage/AliPlayerKit/AlibabaCloud.svg)
+
 # AliPlayerKit iOS
 
-[![Platform](https://img.shields.io/badge/Platform-iOS%209.0%2B-blue.svg)](https://developer.apple.com/ios/)
-[![Language](https://img.shields.io/badge/Language-Objective--C-orange.svg)](https://developer.apple.com/documentation/objectivec)
-[![CocoaPods](https://img.shields.io/badge/CocoaPods-compatible-green.svg)](https://cocoapods.org/)
-[![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](./LICENSE)
-[![Version](https://img.shields.io/badge/Version-7.13.0-brightgreen.svg)]()
-
-> 🎬 面向业务的**低代码播放器 UI 组件**与**场景化解决方案**，帮助开发者以极低的接入成本快速完成 App 播放能力建设。
+[![Platform](https://img.shields.io/badge/Platform-iOS%2011.0%2B-blue.svg)](https://developer.apple.com/ios/)[![Language](https://img.shields.io/badge/Language-Objective--C-orange.svg)](https://developer.apple.com/documentation/objectivec)[![CocoaPods](https://img.shields.io/badge/CocoaPods-compatible-green.svg)](https://cocoapods.org/)[![website](https://img.shields.io/badge/Product-VOD-FF6A00)](https://www.aliyun.com/product/vod)
 
 ---
 
 ## 📖 简介
 
-**AliPlayerKit** 是阿里云播放器团队推出的 iOS 播放器 UI 组件库，基于 [AliPlayer SDK](https://help.aliyun.com/zh/vod/developer-reference/release-notes-for-apsaravideo-player-sdk-for-ios) 构建，提供开箱即用的播放器 UI 组件和标准化播放场景方案。
+**AliPlayerKit** 是阿里云视频点播团队推出的播放器 UI 组件库，基于 AliPlayer SDK 构建，提供开箱即用的播放器 UI 组件和标准化播放场景方案。
 
 开发者无需直接调用底层播放器 API，也无需自行实现复杂的播放器 UI，即可快速搭建完整的播放体验。
 
@@ -60,9 +58,9 @@ AliPlayerKit 采用分层架构设计，整体分为两层：
 
 ### 环境要求
 
-- iOS 9.0+
+- iOS 11.0+
 - Xcode 15.0+
-- CocoaPods
+- CocoaPods 1.13.0+
 
 ### CocoaPods
 
@@ -77,7 +75,7 @@ pod 'PlayerKitScenes'                      # 全部场景
 pod 'PlayerKitScenes/SceneLongVideo'       # 仅中长视频场景
 
 # 阿里云播放器 SDK（必选依赖）
-pod 'AliPlayerSDK_iOS', '7.13.0'
+pod 'AliPlayerSDK_iOS', '~> x.y.z'
 ```
 
 然后执行：
@@ -95,7 +93,7 @@ pod install
 在 `AppDelegate` 中初始化 AliPlayerKit：
 
 ```objectivec
-#import <AliPlayerKit.h>
+#import <AliPlayerKit/AliPlayerKit.h>
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     // 初始化 AliPlayerKit（仅需调用一次）
@@ -109,28 +107,25 @@ pod install
 只需 **4 步** 即可完成视频播放集成：
 
 ```objectivec
-#import <AliPlayerView.h>
-#import <AliPlayerController.h>
-#import <AliPlayerModel.h>
-#import <VideoSource.h>
+#import <AliPlayerKit/AliPlayerKit.h>
 
-// 1️⃣ 创建播放器视图
+// 1. 创建播放器视图
 AliPlayerView *playerView = [[AliPlayerView alloc] initWithFrame:self.view.bounds];
 [self.view addSubview:playerView];
 
-// 2️⃣ 创建播放器控制器
+// 2. 创建播放器控制器
 AliPlayerController *controller = [[AliPlayerController alloc] init];
 
-// 3️⃣ 配置播放模型（推荐使用 VidAuth 方式）
+// 3. 配置播放模型（推荐使用 VidAuth 方式）
 VideoSource *source = [VideoSource vidAuthSourceWithVid:@"your_video_id"
                                               playAuth:@"your_play_auth"];
 AliPlayerModel *model = [[AliPlayerModel alloc] initWithVideoSource:source];
 model.videoTitle = @"示例视频";
 model.autoPlay = YES;
 
-// 4️⃣ 绑定控制器到视图
+// 4. 配置数据并绑定控制器到视图
 [controller configure:model];
-[playerView attachController:controller];
+[playerView attach:controller];
 ```
 
 ### 3. VID 播放（阿里云点播）
@@ -162,8 +157,7 @@ VideoSource *source = [VideoSource vidStsSourceWithVid:@"your_video_id"
 
 | 插槽类型 | 说明 | Z-Order |
 |---------|------|---------|
-| `SlotTypePlayerSurface` | 播放器渲染层 | 0 |
-| `SlotTypeFullscreen` | 全屏控制层 | 10 |
+| `SlotTypePlayerSurface` | 播放器渲染层 | 10 |
 | `SlotTypeGestureControl` | 手势控制层 | 20 |
 | `SlotTypeCover` | 封面图层 | 40 |
 | `SlotTypeCenterDisplay` | 中心显示层（加载指示器等） | 50 |
@@ -175,8 +169,7 @@ VideoSource *source = [VideoSource vidStsSourceWithVid:@"your_video_id"
 **自定义 Slot 示例：**
 
 ```objectivec
-#import <BaseSlot.h>
-#import <SlotRegistry.h>
+#import <AliPlayerKit/AliPlayerKit.h>
 
 // 1. 创建自定义 Slot
 @interface MyCustomSlot : BaseSlot
@@ -185,26 +178,27 @@ VideoSource *source = [VideoSource vidStsSourceWithVid:@"your_video_id"
 @implementation MyCustomSlot
 
 - (void)setupContentView {
-    // 添加自定义 UI 元素
     UILabel *label = [[UILabel alloc] initWithFrame:self.bounds];
     label.text = @"自定义组件";
     [self addSubview:label];
 }
 
 - (void)onBindData:(AliPlayerModel *)model {
+    [super onBindData:model];
     // 根据播放数据更新 UI
 }
 
 @end
 
-// 2. 注册到 SlotRegistry
-SlotRegistry *registry = [[SlotRegistry alloc] init];
-[registry registerSlotType:SlotTypeTopBar provider:^UIView<SlotProtocol> *(UIView *parentView) {
+// 2. 通过 SlotManager 注册自定义插槽
+SlotManager *slotManager = playerView.slotManager;
+[slotManager registerSlotType:SlotTypeTopBar provider:^UIView<SlotProtocol> *(UIView *parentView) {
     return [[MyCustomSlot alloc] initWithFrame:parentView.bounds];
 }];
 
-// 3. 使用自定义 Registry 初始化播放器视图
-[playerView attachController:controller registry:registry];
+// 3. 配置并绑定
+[controller configure:model];
+[playerView attach:controller];
 ```
 
 ### 通知系统（Notification System）
@@ -215,19 +209,18 @@ SlotRegistry *registry = [[SlotRegistry alloc] init];
 // 添加通知代理
 [controller addNotificationDelegate:self];
 
-// 实现回调方法
-- (void)playerController:(AliPlayerController *)controller didChangeState:(PlayerState)state {
+// 实现 PlayerNotificationDelegate 回调方法
+- (void)playerDidChangeState:(PlayerState)state {
     NSLog(@"播放状态变化: %ld", (long)state);
 }
 
-- (void)playerController:(AliPlayerController *)controller
-didUpdateCurrentPosition:(NSInteger)position
-                duration:(NSInteger)duration
-        bufferedPosition:(NSInteger)bufferedPosition {
+- (void)playerDidUpdateCurrentPosition:(NSInteger)position
+                              duration:(NSInteger)duration
+                      bufferedPosition:(NSInteger)bufferedPosition {
     // 更新进度条
 }
 
-- (void)playerController:(AliPlayerController *)controller didEncounterError:(NSError *)error {
+- (void)playerDidEncounterError:(NSError *)error {
     NSLog(@"播放错误: %@", error.localizedDescription);
 }
 ```
@@ -373,69 +366,24 @@ PlayerKit-iOS/
 
 ---
 
-## 🛠️ 本地开发
-
-### 运行示例工程
-
-```bash
-# 1. 克隆代码
-git clone https://github.com/aliyun/PlayerKit-iOS.git
-cd PlayerKit-iOS
-
-# 2. 安装依赖
-cd Example
-pod install
-
-# 3. 生成 Xcode 工程（使用 XcodeGen）
-xcodegen generate
-
-# 4. 打开工程
-open Example.xcworkspace
-```
-
-### 工程生成
-
-本项目使用 [XcodeGen](https://github.com/yonaskolb/XcodeGen) 管理 Xcode 工程文件，通过 `project.yml` 描述工程配置：
-
-```yaml
-name: Example
-options:
-  bundleIdPrefix: com.aliyun.playerkit
-  deploymentTarget:
-    iOS: "11.0"
-```
-
----
-
 ## 📋 版本兼容
 
 | 组件 | 最低版本 |
 |------|---------|
-| iOS Deployment Target | 9.0 |
-| Xcode | 15.0 |
+| iOS Deployment Target | 11.0 |
+| Xcode | 15.0+ |
+| CocoaPods | 1.13.0+ |
 | Swift (混合开发) | 5.0 |
-| AliPlayerSDK_iOS | 7.13.0 |
+| AliPlayerSDK_iOS | 7.15.0 |
 
 ---
 
-## 🔗 相关链接
+## **☎️ 联系我们**
 
-- 📘 [阿里云播放器 SDK 文档](https://help.aliyun.com/zh/vod/developer-reference/release-notes-for-apsaravideo-player-sdk-for-ios)
-- 🏠 [阿里云视频云官网](https://www.aliyun.com/solution/media/short-drama)
-- 📧 技术支持：videosdk@service.aliyun.com
+- 📘 **官方文档**：[播放器帮助中心](https://help.aliyun.com/zh/vod/)
+- 🔍 **控制台**：[视频点播控制台](https://vod.console.aliyun.com)
+- 📝 **提交工单**：[阿里云官方技术支持](https://smartservice.console.aliyun.com/service/create-ticket)
+- 💬 **GitHub Issues**：[欢迎提交反馈与建议](https://github.com/aliyun/PlayerKit-iOS/issues)
 
----
+更多关于使用阿里云播放器 SDK 的常见问题及修复建议，请参见[播放器常见问题](https://help.aliyun.com/zh/vod/support/faq-about-apsaravideo-player/)。
 
-## 📄 许可证
-
-本项目基于 [MIT License](./LICENSE) 开源。
-
-```
-Copyright (c) 2019-present Alibaba Inc.
-```
-
----
-
-<p align="center">
-  <sub>Made with ❤️ by Alibaba Cloud Video Team</sub>
-</p>

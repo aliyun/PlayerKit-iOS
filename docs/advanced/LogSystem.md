@@ -1,6 +1,6 @@
 # **日志系统 (Log System)**
 
-**日志系统 (Log System)** 是 AliPlayerKit 的基础支撑模块。它通过统一的日志中心 `LogHub`，提供日志输出、级别控制、监听器机制等核心能力，实现播放器运行时信息的可视化与可追溯。
+**日志系统 (Log System)** 是 AliPlayerKit 的基础支撑模块。它通过统一的日志中心 `LogHub`，提供日志输出、级别过滤、观察者机制等核心能力，实现播放器运行时信息的可视化与可追溯。
 
 ---
 
@@ -8,22 +8,34 @@
 
 ### **1.1 什么是 LogHub？**
 
-**LogHub** 是 AliPlayerKit 框架中所有日志输出的统一入口，采用单例模式设计。它封装了 iOS 原生日志 API（`os_log` / `NSLog`），在保留原有功能的基础上，增加了以下核心能力：
+**LogHub** 是 AliPlayerKit 中所有日志输出的统一入口，采用单例模式设计。它封装了 iOS 原生日志 API（`NSLog`），在保留原有功能的基础上，增加了以下核心能力：
 
 | 能力 | 说明 |
 |-----|------|
 | 日志开关 | 控制日志输出是否启用（总开关） |
 | 控制台开关 | 控制日志是否输出到 Xcode Console |
 | 级别过滤 | 只输出指定级别及以上的日志 |
-| 监听器机制 | 支持外部监听日志输出，实现自定义处理（如写入文件） |
+| 观察者机制 | 支持外部观察者接收日志输出，实现自定义处理（如写入文件） |
 
-### **1.2 什么是日志监听器？**
+### **1.2 什么是日志观察者？**
 
-**日志监听器 (LogListener)** 是用于接收 LogHub 输出日志的回调协议。通过实现该协议，可以自定义日志的处理方式，例如：
+**日志观察者 (LogObserver)** 是用于接收 `LogHub` 输出日志的回调协议。通过实现该协议，可以自定义日志的处理方式，例如：
 
 - 将日志写入文件，便于问题排查时提供给技术支持团队
 - 将日志上传到远程服务器，实现远程日志收集
 - 在 UI 上展示日志，用于调试面板
+
+### **1.3 混合线程模型**
+
+`LogHub` 采用混合线程模型：
+
+| 操作 | 线程 |
+|------|------|
+| 线程名和时间戳捕获 | 调用线程同步执行 |
+| 控制台输出（NSLog） | 调用线程同步执行 |
+| 观察者通知 | 后台串行队列异步分派 |
+
+> **注意**：`LogObserver.onLog:` 回调在**后台串行队列**执行，如需更新 UI 请切换到主线程。
 
 ---
 
@@ -33,178 +45,210 @@
 
 | 能力 | 说明 |
 |-----|------|
-| 多级别日志 | 支持 Verbose、Debug、Info、Warning、Error 五个级别 |
+| 多级别日志 | 支持 Verbose、Debug、Info、Warn、Error 五个级别 |
 | 三重控制 | 全局开关 + 级别过滤 + 控制台开关，精确控制输出范围 |
-| 监听器机制 | 支持注册自定义监听器，实现日志持久化、远程上报等 |
-| 便捷宏 | 提供 `APKLogV/D/I/W/E` 宏简化日志调用 |
-| 性能日志 | 提供性能时间日志输出，便于性能分析 |
-| SDK 日志集成 | 通过 `AliPlayerLoggerProtocol` 统一管理播放器 SDK 日志 |
+| 观察者机制 | 支持注册自定义观察者，实现日志持久化、远程上报等 |
+| 便捷宏 | 提供 `SLOGV/D/I/W/E` 宏，自动捕获源码位置 |
+| 日志面板 | 通过 `LogPanelSlot` 在播放器视图中实时展示日志（调试专用） |
+| 全局快捷 API | 通过 `AliPlayerKit` 类方法快速配置日志级别和控制台输出 |
 
-### **2.2 内置组件**
+### **2.2 核心组件**
 
 | 组件 | 类型 | 说明 |
 |------|------|------|
 | `LogHub` | 单例 | 日志中心，统一日志输出入口 |
-| `AliPlayerLogLevel` | 枚举 | 日志级别定义 |
-| `AliPlayerLogInfo` | 数据类 | 日志信息模型，封装单条日志完整信息 |
-| `AliPlayerLogListenerProtocol` | 协议 | 日志监听器接口 |
-| `AliPlayerLoggerProtocol` | 协议 | 播放器 SDK 日志接口 |
-| `AliPlayerDefaultLogger` | 实现类 | 默认播放器日志实现 |
+| `LogLevel` | 枚举 | 日志级别定义 |
+| `LogInfo` | 数据类 | 日志信息模型，封装单条日志的完整信息 |
+| `LogObserver` | 协议 | 日志观察者接口 |
+| `LogPanelSlot` | 插槽 | 播放器内嵌日志面板，实时展示关键日志 |
 
 ---
 
 ## **3. 使用方式**
 
-### **3.1 基本用法 — 输出日志**
+### **3.1 基本用法 — 全局快捷配置**
 
-使用便捷宏输出各级别日志：
+通过 `AliPlayerKit` 类方法快速配置日志系统（推荐方式）：
 
 ```objc
-#import <AliPlayerKit/LogHub.h>
+// 在 AppDelegate 中，setup 之后配置
+[AliPlayerKit setup];
 
-// 输出各级别日志
-APKLogV(@"PlayerVC", @"viewDidLoad");
-APKLogD(@"PlayerVC", @"配置播放器: videoId=%@", videoId);
-APKLogI(@"PlayerVC", @"开始播放视频: %@", videoTitle);
-APKLogW(@"PlayerVC", @"缓冲中，当前进度: %.1f%%", progress * 100);
-APKLogE(@"PlayerVC", @"播放失败，错误码: %ld", (long)errorCode);
+// 设置日志级别
+[AliPlayerKit setLogLevel:LogLevelVerbose];
 
-// 性能时间日志
-NSTimeInterval startTime = CACurrentMediaTime();
-// ... 耗时操作 ...
-NSTimeInterval costTime = (CACurrentMediaTime() - startTime) * 1000;
-APKLogT(@"loadVideoSource", costTime);
+// 启用/禁用控制台日志
+[AliPlayerKit enableConsoleLog:YES];
+```
+
+| AliPlayerKit 方法 | 说明 |
+|-------------------|------|
+| `setLogLevel:` | 设置日志级别，低于该级别的日志被忽略（默认 `LogLevelInfo`） |
+| `logLevel` | 获取当前日志级别 |
+| `enableConsoleLog:` | 启用/禁用控制台输出（默认启用） |
+| `isConsoleLogEnabled` | 查询控制台日志是否启用 |
+| `setDebugModeEnabled:` | 开启/关闭调试模式 |
+| `isDebugModeEnabled` | 查询调试模式是否开启 |
+| `setLogPanelEnabled:` | 启用/禁用日志面板插槽（默认禁用） |
+| `isLogPanelEnabled` | 查询日志面板是否启用 |
+
+### **3.2 基本用法 — 输出日志**
+
+使用 `SLOG` 系列便捷宏输出各级别日志，宏会自动捕获源文件名和行号：
+
+```objc
+#import <AliPlayerKit/LogMacros.h>
+
+// 输出各级别日志（自动捕获 __FILE_NAME__ 和 __LINE__）
+SLOGV(@"viewDidLoad called");
+SLOGD(@"配置播放器: videoId=%@", videoId);
+SLOGI(@"开始播放视频: %@", videoTitle);
+SLOGW(@"缓冲中，当前进度: %.1f%%", progress * 100);
+SLOGE(@"播放失败，错误码: %ld", (long)errorCode);
 ```
 
 **便捷宏列表**：
 
 | 宏 | 级别 | 说明 |
 |----|------|------|
-| `APKLogV(tag, fmt, ...)` | Verbose | 最详细级别日志 |
-| `APKLogD(tag, fmt, ...)` | Debug | 调试信息 |
-| `APKLogI(tag, fmt, ...)` | Info | 一般信息（默认级别） |
-| `APKLogW(tag, fmt, ...)` | Warning | 潜在问题 |
-| `APKLogE(tag, fmt, ...)` | Error | 错误信息 |
-| `APKLogT(method, costTime)` | — | 性能时间日志 |
+| `SLOGV(fmt, ...)` | Verbose | 最详细级别日志 |
+| `SLOGD(fmt, ...)` | Debug | 调试信息 |
+| `SLOGI(fmt, ...)` | Info | 一般信息 |
+| `SLOGW(fmt, ...)` | Warn | 潜在问题 |
+| `SLOGE(fmt, ...)` | Error | 错误信息 |
 
-### **3.2 基本用法 — 配置日志级别**
+> **说明**：`SLOG` 宏内部调用 `LogHub` 的 `logLevel:file:line:message:error:` 方法，自动通过 `__FILE_NAME__` 和 `__LINE__` 捕获源码位置，无需手动传入 tag。
 
-根据运行环境配置不同的日志级别：
+也可以直接调用 `LogHub` 实例方法，手动指定 tag：
 
 ```objc
-// 在 AppDelegate 中配置
-- (BOOL)application:(UIApplication *)application
-    didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
+// 使用 tag 标识日志来源
+[[LogHub sharedHub] i:@"PlayerVC" msg:@"开始播放"];
+[[LogHub sharedHub] e:@"MediaPlayer" msg:@"播放失败" error:error];
+```
 
-    [AliPlayerKit setup];
+### **3.3 基本用法 — 配置日志级别**
 
-    // 配置日志系统
-    LogHub *logHub = [LogHub sharedHub];
+通过 `LogHub` 直接配置日志属性：
+
+```objc
+LogHub *logHub = [LogHub sharedHub];
 
 #ifdef DEBUG
     // 开发环境：详细日志 + 控制台输出
-    logHub.enableLog = YES;
-    logHub.enableConsoleOutput = YES;
-    logHub.logLevel = AliPlayerLogLevelVerbose;
+    logHub.logEnabled = YES;
+    logHub.consoleLogEnabled = YES;
+    logHub.logLevel = LogLevelVerbose;
 #else
     // 生产环境：精简日志 + 关闭控制台
-    logHub.enableLog = YES;
-    logHub.enableConsoleOutput = NO;
-    logHub.logLevel = AliPlayerLogLevelInfo;
+    logHub.logEnabled = YES;
+    logHub.consoleLogEnabled = NO;
+    logHub.logLevel = LogLevelInfo;
 #endif
-
-    return YES;
-}
 ```
 
 **三重控制机制**：
 
 | 控制层 | 属性 | 说明 |
 |--------|------|------|
-| 总开关 | `enableLog` | 关闭后所有日志静默（包括监听器） |
-| 级别过滤 | `logLevel` | 低于该级别的日志被忽略 |
-| 控制台开关 | `enableConsoleOutput` | 控制是否输出到 Xcode Console |
+| 总开关 | `logEnabled` | 关闭后所有日志静默（包括观察者通知） |
+| 级别过滤 | `logLevel` | 低于该级别的日志被忽略（默认 `LogLevelInfo`） |
+| 控制台开关 | `consoleLogEnabled` | 控制是否通过 NSLog 输出到 Xcode Console |
 
-### **3.3 高级用法 — 注册日志监听器**
+> **说明**：关闭 `consoleLogEnabled` 后，日志仍会通过观察者通知分发，仅抑制控制台输出。关闭 `logEnabled` 后，所有日志请求被完全忽略，观察者也不会收到通知。
 
-通过实现 `AliPlayerLogListenerProtocol` 协议自定义日志处理：
+### **3.4 高级用法 — 注册日志观察者**
 
-```objc
-// 创建并注册文件日志监听器
-APKFileLogListener *fileListener =
-    [[APKFileLogListener alloc] initWithLogDirectory:logDir];
-[[LogHub sharedHub] addListener:fileListener];
-
-// 移除监听器（不再需要时）
-[[LogHub sharedHub] removeListener:fileListener];
-```
-
-> **注意**：`LogHub` 使用 `NSHashTable weakObjectsHashTable` 弱引用持有监听器，对象释放后自动移除。但建议在 `dealloc` 中主动调用 `removeListener:` 确保及时清理。
-
-### **3.4 高级用法 — 集成播放器 SDK 日志**
-
-通过 `AliPlayerLoggerProtocol` 统一管理播放器 SDK 的日志输出：
+通过实现 `LogObserver` 协议自定义日志处理：
 
 ```objc
-// 配置 SDK 日志级别
-[AliPlayerKit setLogLevel:LogLevelInfo];
-[AliPlayerKit enableConsoleLog:NO];
+// 创建并注册文件日志观察者
+FileLogObserver *fileObserver = [[FileLogObserver alloc] init];
+[[LogHub sharedHub] addObserver:fileObserver];
+
+// 移除观察者（不再需要时）
+[[LogHub sharedHub] removeObserver:fileObserver];
 ```
+
+> **注意**：`LogHub` 以**强引用**方式持有观察者，直到通过 `removeObserver:` 显式移除。因此必须在适当时机（如 `dealloc` 或 `viewWillDisappear:`）调用 `removeObserver:` 以避免循环引用。
+
+### **3.5 高级用法 — 日志面板**
+
+`LogPanelSlot` 是一个内置的调试插槽，可在播放器视图中实时展示关键日志信息：
+
+```objc
+// 启用日志面板（建议仅在调试场景中启用）
+[AliPlayerKit setLogPanelEnabled:YES];
+```
+
+| 交互 | 说明 |
+|------|------|
+| 点击标题栏 | 展开/折叠日志内容区 |
+| 点击"清除"按钮 | 清空已展示的日志 |
+| 长按日志区域 | 将日志内容拷贝到剪贴板 |
+
+> **说明**：日志面板仅显示 Debug 及以上级别的日志。需要在 `rebuildSlots` 之前设置 `setLogPanelEnabled:`。在 Minimal 场景中不可见。
 
 ---
 
 ## **4. 自定义开发**
 
-### **4.1 日志监听器协议**
+### **4.1 日志观察者协议 (LogObserver)**
 
 ```objc
-@protocol AliPlayerLogListenerProtocol <NSObject>
+@protocol LogObserver <NSObject>
 
 @required
 
-/// 当日志输出时被调用
-/// @param logInfo 日志信息对象
-/// @note 回调发生在日志输出的调用线程，如需更新 UI 请切换到主线程
-- (void)onLog:(AliPlayerLogInfo *)logInfo;
+/// 日志输出回调
+/// @param logInfo 日志信息对象，包含级别、标签、消息和时间戳
+/// @warning 回调在后台串行队列执行，如需更新 UI 请 dispatch 到主线程
+- (void)onLog:(LogInfo *)logInfo;
 
 @end
 ```
 
-### **4.2 AliPlayerLogInfo 数据模型**
+### **4.2 LogInfo 数据模型**
 
 | 属性 | 类型 | 说明 |
 |------|------|------|
-| `level` | `AliPlayerLogLevel` | 日志级别 |
-| `tag` | `NSString *` | 日志标签 |
-| `message` | `NSString *` | 日志消息内容 |
-| `error` | `NSError *` | 异常信息（如有） |
-| `threadName` | `NSString *` | 线程名称 |
-| `timestamp` | `NSDate *` | 时间戳 |
-| `formattedMessage` | 方法 | 获取格式化的日志字符串 |
+| `level` | `LogLevel` | 日志级别（readonly） |
+| `tag` | `NSString *` | 日志标签（readonly） |
+| `message` | `NSString *` | 日志消息内容（readonly） |
+| `timestamp` | `NSDate *` | 日志生成时间戳（readonly） |
+| `threadName` | `NSString *` | 生成日志的线程名称（readonly） |
+| `fileName` | `NSString *` | 源文件名，如 `@"MyClass.m"`（readonly） |
+| `line` | `NSInteger` | 源代码行号（readonly） |
+| `error` | `NSError *` | 关联的错误对象，可为 nil（readonly） |
 
-**日志格式**：
+| 方法 | 说明 |
+|------|------|
+| `formattedString` | 获取格式化的日志字符串 |
+| `initWithLevel:fileName:line:message:error:threadName:timestamp:` | 指定初始化方法 |
+| `initWithLevel:tag:message:` | 便捷初始化方法（自动捕获时间戳和线程名） |
+
+**格式化输出格式**：
 
 ```text
-yyyy-MM-dd HH:mm:ss.SSS [LEVEL] [TAG] [THREAD] message
+2024-04-22 10:30:00.123 I/AliPlayerKit [version] [FileName:line] [threadName] : message
 ```
 
-**控制台输出格式**：
+如果存在错误，将附加额外一行：
 
 ```text
-[AliPlayerKit][INFO][AliPlayerController] configureWithModel: videoSource=url, autoPlay=YES
-[AliPlayerKit][ERROR][MediaPlayer] onError: errorCode=4001, description=Network timeout
+Error: domain=xxx code=xxx userInfo=xxx
 ```
 
-### **4.3 自定义文件日志监听器示例**
+### **4.3 自定义文件日志观察者示例**
 
-以下是完整的文件日志监听器实现：
+以下是一个文件日志观察者的完整实现：
 
 ```objc
-@interface APKFileLogListener : NSObject <AliPlayerLogListenerProtocol>
+@interface MyFileLogObserver : NSObject <LogObserver>
 - (instancetype)initWithLogDirectory:(NSString *)directory;
 @end
 
-@implementation APKFileLogListener {
+@implementation MyFileLogObserver {
     NSString *_logFilePath;
     dispatch_queue_t _writeQueue;
     NSFileHandle *_fileHandle;
@@ -213,7 +257,7 @@ yyyy-MM-dd HH:mm:ss.SSS [LEVEL] [TAG] [THREAD] message
 - (instancetype)initWithLogDirectory:(NSString *)directory {
     self = [super init];
     if (self) {
-        _writeQueue = dispatch_queue_create("com.aliyun.playerkit.filelog",
+        _writeQueue = dispatch_queue_create("com.example.filelog",
                                             DISPATCH_QUEUE_SERIAL);
         [self setupLogFileAtDirectory:directory];
     }
@@ -242,12 +286,11 @@ yyyy-MM-dd HH:mm:ss.SSS [LEVEL] [TAG] [THREAD] message
     [_fileHandle seekToEndOfFile];
 }
 
-#pragma mark - AliPlayerLogListenerProtocol
+#pragma mark - LogObserver
 
-- (void)onLog:(AliPlayerLogInfo *)logInfo {
-    NSString *formatted = [logInfo formattedMessage];
+- (void)onLog:(LogInfo *)logInfo {
+    NSString *formatted = [logInfo formattedString];
 
-    // 异步写入文件，避免阻塞调用线程
     dispatch_async(_writeQueue, ^{
         NSString *line = [formatted stringByAppendingString:@"\n"];
         NSData *data = [line dataUsingEncoding:NSUTF8StringEncoding];
@@ -266,14 +309,16 @@ yyyy-MM-dd HH:mm:ss.SSS [LEVEL] [TAG] [THREAD] message
 @end
 ```
 
+> **说明**：`onLog:` 回调已在后台串行队列执行，但文件 I/O 仍建议使用独立的写入队列，避免阻塞日志分发队列影响其他观察者。
+
 ### **4.4 完整集成示例**
 
 ```objc
 // AppDelegate.m
-#import <AliPlayerKit/LogHub.h>
+#import <AliPlayerKit/AliPlayerKit.h>
 
 @interface AppDelegate ()
-@property (nonatomic, strong) APKFileLogListener *fileLogListener;
+@property (nonatomic, strong) MyFileLogObserver *fileLogObserver;
 @end
 
 @implementation AppDelegate
@@ -285,28 +330,22 @@ yyyy-MM-dd HH:mm:ss.SSS [LEVEL] [TAG] [THREAD] message
     [AliPlayerKit setup];
 
     // 2. 配置日志系统
-    LogHub *logHub = [LogHub sharedHub];
-
 #ifdef DEBUG
-    logHub.enableLog = YES;
-    logHub.enableConsoleOutput = YES;
-    logHub.logLevel = AliPlayerLogLevelVerbose;
+    [AliPlayerKit setLogLevel:LogLevelVerbose];
+    [AliPlayerKit enableConsoleLog:YES];
+    // 可选：启用日志面板
+    [AliPlayerKit setLogPanelEnabled:YES];
 #else
-    logHub.enableLog = YES;
-    logHub.enableConsoleOutput = NO;
-    logHub.logLevel = AliPlayerLogLevelInfo;
+    [AliPlayerKit setLogLevel:LogLevelInfo];
+    [AliPlayerKit enableConsoleLog:NO];
 
-    // 3. 注册文件日志监听器（仅生产环境）
+    // 3. 注册文件日志观察者（仅生产环境）
     NSString *logDir = [NSSearchPathForDirectoriesInDomains(
         NSDocumentDirectory, NSUserDomainMask, YES).firstObject
         stringByAppendingPathComponent:@"PlayerLogs"];
-    self.fileLogListener = [[APKFileLogListener alloc] initWithLogDirectory:logDir];
-    [logHub addListener:self.fileLogListener];
+    self.fileLogObserver = [[MyFileLogObserver alloc] initWithLogDirectory:logDir];
+    [[LogHub sharedHub] addObserver:self.fileLogObserver];
 #endif
-
-    // 4. 配置播放器 SDK 日志
-    [AliPlayerKit setLogLevel:LogLevelInfo];
-    [AliPlayerKit enableConsoleLog:NO];
 
     return YES;
 }
@@ -314,110 +353,153 @@ yyyy-MM-dd HH:mm:ss.SSS [LEVEL] [TAG] [THREAD] message
 @end
 ```
 
+> **参考**：`PlayerKitUsages/UsageLogSystem` 模块提供了完整的日志系统使用示例，包含 `FileLogObserver` 文件日志观察者和 UI 日志展示。
+
 ---
 
 ## **5. 最佳实践**
 
 ### **5.1 环境配置建议**
 
-| 环境 | 总开关 | 控制台 | 级别 | 监听器 |
-|------|--------|--------|------|--------|
-| 开发调试 | YES | YES | Verbose | 可选（UI 面板） |
-| 内部测试 | YES | YES | Debug | 文件日志 |
-| 生产环境 | YES | NO | Info | 文件日志 + 远程上报 |
-| 敏感场景 | NO | — | — | — |
+| 环境 | 总开关 | 控制台 | 级别 | 观察者 | 日志面板 |
+|------|--------|--------|------|--------|---------|
+| 开发调试 | YES | YES | Verbose | 可选（UI 面板） | 可选 |
+| 内部测试 | YES | YES | Debug | 文件日志 | NO |
+| 生产环境 | YES | NO | Info | 文件日志 + 远程上报 | NO |
+| 敏感场景 | NO | — | — | — | NO |
 
-### **5.2 Release 模式优化**
+### **5.2 常见错误**
 
-通过条件编译在 Release 模式下关闭低级别日志宏，实现零开销：
+#### **错误 1：观察者回调中直接更新 UI**
 
 ```objc
-#ifdef DEBUG
-    #define APKLogV(tag, fmt, ...) \
-        [[LogHub sharedHub] verbose:tag message:fmt, ##__VA_ARGS__]
-    #define APKLogD(tag, fmt, ...) \
-        [[LogHub sharedHub] debug:tag message:fmt, ##__VA_ARGS__]
-#else
-    #define APKLogV(tag, fmt, ...) ((void)0)
-    #define APKLogD(tag, fmt, ...) ((void)0)
-#endif
+// ✗ 错误：onLog: 在后台串行队列执行，直接更新 UI 会崩溃
+- (void)onLog:(LogInfo *)logInfo {
+    self.logLabel.text = [logInfo formattedString];  // 崩溃！
+}
+
+// ✓ 正确：切换到主线程更新 UI
+- (void)onLog:(LogInfo *)logInfo {
+    NSString *formatted = [logInfo formattedString];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        self.logLabel.text = formatted;
+    });
+}
 ```
 
-### **5.3 常见错误**
-
-#### **错误 1：监听器中阻塞操作导致卡顿**
+#### **错误 2：观察者中同步阻塞操作**
 
 ```objc
-// ❌ 错误：在回调中同步写文件
-- (void)onLog:(AliPlayerLogInfo *)logInfo {
-    NSString *log = [logInfo formattedMessage];
+// ✗ 错误：在回调中同步写文件，阻塞日志分发队列
+- (void)onLog:(LogInfo *)logInfo {
+    NSString *log = [logInfo formattedString];
     [log writeToFile:path atomically:YES encoding:NSUTF8StringEncoding error:nil];
 }
 
-// ✅ 正确：异步写入文件
-- (void)onLog:(AliPlayerLogInfo *)logInfo {
-    NSString *log = [logInfo formattedMessage];
+// ✓ 正确：异步写入文件
+- (void)onLog:(LogInfo *)logInfo {
+    NSString *log = [logInfo formattedString];
     dispatch_async(_writeQueue, ^{
         // 异步写入...
     });
 }
 ```
 
-#### **错误 2：忘记持有监听器引用**
+#### **错误 3：忘记移除观察者导致循环引用**
 
 ```objc
-// ❌ 错误：局部变量，方法结束后即释放（弱引用自动移除）
-- (void)setupLog {
-    APKFileLogListener *listener = [[APKFileLogListener alloc] init];
-    [[LogHub sharedHub] addListener:listener];
-    // listener 方法结束后释放，监听器自动失效
+// ✗ 错误：LogHub 强引用观察者，不移除会导致循环引用
+- (void)viewDidLoad {
+    [[LogHub sharedHub] addObserver:self];
+    // 永远不会释放...
 }
 
-// ✅ 正确：使用属性持有强引用
-@property (nonatomic, strong) APKFileLogListener *fileLogListener;
+// ✓ 正确：在生命周期结束时移除
+- (void)viewWillDisappear:(BOOL)animated {
+    [super viewWillDisappear:animated];
+    [[LogHub sharedHub] removeObserver:self];
+}
 ```
+
+> **注意**：与通知系统的 Dispatcher 不同，`LogHub` 以**强引用**方式持有观察者。不调用 `removeObserver:` 将导致观察者无法释放。
 
 ---
 
 ## **6. API 速查**
 
-### **6.1 日志级别**
+### **6.1 日志级别 (LogLevel)**
 
 | 级别 | 枚举值 | 数值 | 说明 |
 |-----|--------|------|------|
-| Verbose | `AliPlayerLogLevelVerbose` | 0 | 最详细，开发调试 |
-| Debug | `AliPlayerLogLevelDebug` | 1 | 调试信息 |
-| Info | `AliPlayerLogLevelInfo` | 2 | **默认级别**，生产推荐 |
-| Warning | `AliPlayerLogLevelWarning` | 3 | 潜在问题 |
-| Error | `AliPlayerLogLevelError` | 4 | 错误信息 |
-| None | `AliPlayerLogLevelNone` | 100 | 禁用所有日志 |
+| Verbose | `LogLevelVerbose` | 0 | 最详细，开发调试 |
+| Debug | `LogLevelDebug` | 1 | 调试信息 |
+| Info | `LogLevelInfo` | 2 | **默认级别**，生产推荐 |
+| Warn | `LogLevelWarn` | 3 | 潜在问题 |
+| Error | `LogLevelError` | 4 | 错误信息 |
+| None | `LogLevelNone` | 100 | 禁用所有日志 |
+
+> **说明**：`LogLevel.h` 同时提供了 `LogLevelToString()` 内联函数，将级别转为缩写字符串（V/D/I/W/E/N）。
 
 ### **6.2 LogHub 核心 API**
 
 | 属性 / 方法 | 类型 | 说明 |
 |-------------|------|------|
-| `sharedHub` | 类方法 | 获取单例 |
-| `enableLog` | `BOOL` | 日志总开关（默认 YES） |
-| `enableConsoleOutput` | `BOOL` | 控制台开关（默认 YES） |
-| `logLevel` | `AliPlayerLogLevel` | 日志级别（默认 Info） |
-| `verbose:message:` | 实例方法 | 输出 Verbose 日志 |
-| `debug:message:` | 实例方法 | 输出 Debug 日志 |
-| `info:message:` | 实例方法 | 输出 Info 日志 |
-| `warning:message:` | 实例方法 | 输出 Warning 日志 |
-| `error:message:` | 实例方法 | 输出 Error 日志 |
-| `log:tag:message:` | 实例方法 | 按指定级别输出 |
-| `timeProfile:costTime:` | 实例方法 | 性能时间日志 |
-| `addListener:` | 实例方法 | 添加监听器（弱引用） |
-| `removeListener:` | 实例方法 | 移除监听器 |
-| `levelToString:` | 类方法 | 级别转字符串 |
-| `stringToLevel:` | 类方法 | 字符串转级别 |
+| `+sharedHub` | 类方法 | 获取单例 |
+| `logEnabled` | `BOOL` | 日志总开关（默认 YES） |
+| `logLevel` | `LogLevel` | 日志级别（默认 `LogLevelInfo`） |
+| `consoleLogEnabled` | `BOOL` | 控制台开关（默认 YES） |
+| `v:msg:` | 实例方法 | 输出 Verbose 日志 |
+| `d:msg:` | 实例方法 | 输出 Debug 日志 |
+| `i:msg:` | 实例方法 | 输出 Info 日志 |
+| `w:msg:` | 实例方法 | 输出 Warn 日志 |
+| `e:msg:` | 实例方法 | 输出 Error 日志 |
+| `e:msg:error:` | 实例方法 | 输出 Error 日志，附带 `NSError` |
+| `log:tag:msg:` | 实例方法 | 按指定级别输出 |
+| `logLevel:file:line:message:error:` | 实例方法 | 核心日志方法（供 SLOG 宏使用） |
+| `addObserver:` | 实例方法 | 添加观察者（**强引用**，重复添加无效果） |
+| `removeObserver:` | 实例方法 | 移除观察者 |
+| `+levelToString:` | 类方法 | 级别转字符串（V/D/I/W/E/N） |
+| `+stringToLevel:` | 类方法 | 字符串转级别（不区分大小写，无法识别时返回 `LogLevelInfo`） |
 
-详细接口说明请参考 [API 参考文档](../ApiReference.md)。
+### **6.3 AliPlayerKit 日志快捷 API**
 
----
+| 方法 | 说明 |
+|------|------|
+| `+setLogLevel:` | 设置日志级别（需在 `setup` 之后调用） |
+| `+logLevel` | 获取当前日志级别 |
+| `+enableConsoleLog:` | 启用/禁用控制台日志输出 |
+| `+isConsoleLogEnabled` | 查询控制台日志是否启用 |
+| `+setDebugModeEnabled:` | 开启/关闭调试模式 |
+| `+isDebugModeEnabled` | 查询调试模式是否开启 |
+| `+setLogPanelEnabled:` | 启用/禁用日志面板插槽 |
+| `+isLogPanelEnabled` | 查询日志面板是否启用 |
 
-## **下一步**
+### **6.4 SLOG 便捷宏**
 
-- [播放器生命周期策略](./PlayerLifecycleStrategy.md) — 了解播放器实例管理
-- [视频源](./VideoSource.md) — 了解多视频源配置
-- [API 参考](../ApiReference.md) — 完整 API 文档
+| 宏 | 级别 | 展开形式 |
+|----|------|---------|
+| `SLOGV(fmt, ...)` | Verbose | `[[LogHub sharedHub] logLevel:LogLevelVerbose file:@(__FILE_NAME__) line:__LINE__ message:... error:nil]` |
+| `SLOGD(fmt, ...)` | Debug | 同上，级别为 Debug |
+| `SLOGI(fmt, ...)` | Info | 同上，级别为 Info |
+| `SLOGW(fmt, ...)` | Warn | 同上，级别为 Warn |
+| `SLOGE(fmt, ...)` | Error | 同上，级别为 Error |
+
+### **6.5 LogInfo 属性**
+
+| 属性 | 类型 | 说明 |
+|------|------|------|
+| `level` | `LogLevel` | 日志级别 |
+| `tag` | `NSString *` | 日志标签 |
+| `message` | `NSString *` | 日志消息内容 |
+| `timestamp` | `NSDate *` | 日志生成时间戳 |
+| `threadName` | `NSString *` | 线程名称 |
+| `fileName` | `NSString *` | 源文件名 |
+| `line` | `NSInteger` | 源代码行号 |
+| `error` | `NSError *` | 关联的错误对象（nullable） |
+| `formattedString` | 方法 | 获取格式化的日志字符串 |
+
+### **6.6 LogObserver 协议**
+
+| 方法 | 必选 | 说明 |
+|------|------|------|
+| `onLog:` | 是（`@required`） | 日志输出回调，在后台串行队列执行 |

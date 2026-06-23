@@ -1,17 +1,17 @@
-# **多语言（Locale）**
+# **本地化系统 (Locale)**
 
-**多语言 (Locale)** 是 AliPlayerKit 的国际化支撑模块。它通过统一的语言管理器，提供自动跟随系统语言、手动语言切换、自定义 Provider 注入等核心能力，使播放器 UI 文案能够灵活适配多语言场景。
+**本地化系统 (Locale)** 是 AliPlayerKit 的国际化支撑模块。它通过统一的语言管理器 `LocaleManager`，提供自动跟随系统语言、手动语言切换、自定义 Provider 注入等核心能力，使播放器 UI 文案能够灵活适配多语言场景。
 
 ---
 
 ## **1. 概念介绍**
 
-### **1.1 什么是 Locale 模块？**
+### **1.1 什么是 LocaleManager？**
 
-Locale 模块是 AliPlayerKit 的内置国际化方案，提供播放器所有 UI 文案（按钮文本、错误提示、设置项标题等）的本地化能力。它采用**解析链（Resolution Chain）**机制，按优先级逐级查找翻译：
+`LocaleManager` 是 AliPlayerKit 的内置国际化管理单例，负责播放器所有 UI 文案（按钮文本、错误提示、设置项标题等）的本地化查询。它采用**解析链（Resolution Chain）**机制，按优先级逐级查找翻译：
 
 ```text
-Custom Provider → 手动指定语言 Bundle → 跟随系统语言 Bundle → Key fallback
+Custom Provider → activeBundle（手动/系统） → sdkBundle fallback → Key 本身
 ```
 
 ### **1.2 核心价值**
@@ -21,7 +21,14 @@ Custom Provider → 手动指定语言 Bundle → 跟随系统语言 Bundle → 
 | 零配置可用 | 内置中/英两种语言，自动跟随系统语言，无需任何初始化 |
 | 灵活切换 | 支持跟随系统和手动指定两种模式，满足不同业务需求 |
 | 可扩展 | 通过 `LocaleProvider` 协议注入自定义翻译，优先级最高 |
-| 实时通知 | 语言切换后通过 `NSNotification` 通知所有 UI 刷新 |
+| 实时通知 | 语言切换后通过 `LocaleDidChangeNotification` 通知所有 UI 刷新 |
+
+### **1.3 语言模式**
+
+| 模式 | 枚举值 | 说明 |
+|------|--------|------|
+| 跟随系统（默认） | `LocaleModeSystem` | 自动使用系统首选语言 |
+| 手动指定 | `LocaleModeManual` | 使用开发者指定的语言代码 |
 
 ---
 
@@ -45,25 +52,21 @@ AliPlayerKit **开箱即用**，无需编写任何代码即可支持多语言：
 
 > 对于大多数只需要中英文支持的应用，**无需调用任何 API，集成 AliPlayerKit 即可**。
 
-### **2.3 语言模式**
+### **2.3 内置文案 Key 分类**
 
-| 模式 | 枚举值 | 说明 |
-|------|--------|------|
-| 跟随系统（默认） | `LocaleModeSystem` | 自动使用系统首选语言 |
-| 手动指定 | `LocaleModeManual` | 使用开发者指定的语言代码 |
+| 分类 | Key 常量前缀 | 示例 Key |
+|------|-------------|---------|
+| 播放状态 | `LocaleKeyPlayState*` | `LocaleKeyPlayStateLoading`、`LocaleKeyPlayStateErrorCodeLabel` |
+| 底部控制栏 | `LocaleKeyBottomBar*` | `LocaleKeyBottomBarSpeed`、`LocaleKeyBottomBarQuality` |
+| 倍速提示 | `LocaleKeySpeedPlayingHint` | 倍速播放中提示文案 |
+| 设置菜单 | `LocaleKeySetting*` | `LocaleKeySettingMenuTitle`、`LocaleKeySettingSpeed` |
+| 镜像模式 | `LocaleKeyMirror*` | `LocaleKeyMirrorNone`、`LocaleKeyMirrorHorizontal` |
+| 缩放模式 | `LocaleKeyScale*` | `LocaleKeyScaleFitXY`、`LocaleKeyScaleCenterCrop` |
+| 日志面板 | `LocaleKeyLogPanel*` | `LocaleKeyLogPanelTitleHide`、`LocaleKeyLogPanelClear` |
+| 横屏提示 | `LocaleKeyLandscapeHint*` | `LocaleKeyLandscapeHintFullscreen` |
+| 通用 | `LocaleKeyUnknown` | 通用"未知"文案 |
 
-### **2.4 内置文案 Key 分类**
-
-| 分类 | Key 前缀 | 示例 |
-|------|---------|------|
-| 播放状态 | `play_state.*` | 加载中、错误代码、截图完成 |
-| 底部控制栏 | `bottom_bar.*` | 时间格式、倍速、清晰度 |
-| 中心展示 | `center_display.*` | 倍速播放提示 |
-| 设置菜单 | `setting_menu.*` / `setting.*` | 标题、各设置项 |
-| 镜像模式 | `mirror.*` | 无、水平、垂直 |
-| 缩放模式 | `scale.*` | 拉伸填充、适应、裁剪填充 |
-| 日志面板 | `log_panel.*` | 展开/折叠标题、清除 |
-| 通用 | `common.*` | 未知 |
+> **说明**：所有 Key 常量定义在 `LocaleKeys.h` 中，使用类型化常量确保编译期检查和 IDE 自动补全。
 
 ---
 
@@ -92,14 +95,14 @@ AliPlayerModel *model = [[AliPlayerModel alloc] initWithVideoSource:source];
 [AliPlayerKit setLanguageCode:@"zh-Hans"];
 ```
 
-> 💡 调用 `setLanguageCode:` 后会发送 `LocaleDidChangeNotification` 通知，已绑定的插槽会自动刷新文案。
+> 调用 `setLanguageCode:` 后，`localeMode` 自动切换为 `LocaleModeManual`，并发送 `LocaleDidChangeNotification` 通知，已绑定的插槽会自动刷新文案。
 
 ### **3.3 恢复跟随系统**
 
 手动指定语言后，如需恢复为跟随系统：
 
 ```objc
-// 清除手动设定，恢复跟随系统首选语言
+// 清除手动设定，localeMode 恢复为 LocaleModeSystem
 [AliPlayerKit resetLocaleToSystemLanguage];
 ```
 
@@ -130,7 +133,7 @@ NSLog(@"当前语言: %@", currentLang); // 如 "zh-Hans" 或 "en"
     [self refreshCustomUI];
 }
 
-// 不再需要时移除（iOS 9+ 可自动移除，建议仍显式移除）
+// 不再需要时移除
 - (void)dealloc {
     [[NSNotificationCenter defaultCenter] removeObserver:self
                                                     name:LocaleDidChangeNotification
@@ -142,7 +145,25 @@ NSLog(@"当前语言: %@", currentLang); // 如 "zh-Hans" 或 "en"
 
 ## **4. 自定义开发**
 
-### **4.1 注入自定义 Provider**
+### **4.1 LocaleProvider 协议**
+
+`LocaleProvider` 定义了自定义翻译的注入接口：
+
+```objc
+@protocol LocaleProvider <NSObject>
+
+@optional
+
+/// 为指定 key 返回本地化字符串。
+/// 返回 nil 表示不处理此 key，由 SDK 内部 fallback 继续解析。
+- (nullable NSString *)localizedStringForKey:(NSString *)key;
+
+@end
+```
+
+> **注意**：`localizedStringForKey:` 是 `@optional` 方法。`LocaleManager` 在调用前会通过 `respondsToSelector:` 检查。
+
+### **4.2 注入自定义 Provider**
 
 通过实现 `LocaleProvider` 协议，可以在不修改资源文件的情况下自定义任何翻译：
 
@@ -172,11 +193,11 @@ MyLocaleProvider *provider = [[MyLocaleProvider alloc] init];
 [AliPlayerKit setLocaleProvider:provider];
 ```
 
-> 💡 Provider 以 **弱引用** 持有，需确保其生命周期不短于播放器。
+> **注意**：`LocaleManager` 以**弱引用**持有 Provider，调用方需自行保持 Provider 实例的生命周期。
 
-### **4.2 新增语言支持**
+### **4.3 新增语言支持**
 
-当需要新增 AliPlayerKit 尚未内置的语言（如日语、韩语）时，通过自定义 Provider 实现全量翻译：
+当需要新增 AliPlayerKit 尚未内置的语言（如日语）时，通过自定义 Provider 实现全量翻译：
 
 ```objc
 @interface JapaneseLocaleProvider : NSObject <LocaleProvider>
@@ -199,7 +220,7 @@ MyLocaleProvider *provider = [[MyLocaleProvider alloc] init];
             LocaleKeySettingLoop: @"ループ再生",
             LocaleKeySettingMute: @"ミュート",
             LocaleKeySettingQuality: @"画質",
-            // ... 全量翻译所有 LocaleKey
+            // ... 全量翻译所有 LocaleKeys.h 中的 key
         };
     }
     return self;
@@ -211,12 +232,12 @@ MyLocaleProvider *provider = [[MyLocaleProvider alloc] init];
 
 @end
 
-// 注入日语 Provider
-JapaneseLocaleProvider *jaProvider = [[JapaneseLocaleProvider alloc] init];
-[AliPlayerKit setLocaleProvider:jaProvider];
+// 注入日语 Provider（需自行持有实例）
+self.jaProvider = [[JapaneseLocaleProvider alloc] init];
+[AliPlayerKit setLocaleProvider:self.jaProvider];
 ```
 
-### **4.3 覆盖已有翻译**
+### **4.4 覆盖已有翻译**
 
 仅需覆盖部分翻译时，Provider 只返回需要修改的 key，其余返回 nil 由 SDK 处理：
 
@@ -230,7 +251,7 @@ JapaneseLocaleProvider *jaProvider = [[JapaneseLocaleProvider alloc] init];
 }
 ```
 
-### **4.4 移除自定义 Provider**
+### **4.5 移除自定义 Provider**
 
 ```objc
 // 移除 Provider，恢复使用 SDK 内置翻译
@@ -247,18 +268,21 @@ JapaneseLocaleProvider *jaProvider = [[JapaneseLocaleProvider alloc] init];
 
 | 优先级 | 来源 | 说明 |
 |--------|------|------|
-| 1（最高） | Custom Provider | 实现 `LocaleProvider` 协议的对象 |
-| 2 | Manual Bundle | 手动指定语言对应的 `.lproj` |
-| 3 | System Bundle | 跟随系统语言对应的 `.lproj` |
+| 1（最高） | Custom Provider | 实现 `LocaleProvider` 协议的对象，通过 `respondsToSelector:` 检查后调用 |
+| 2 | activeBundle | 当前激活的语言 Bundle（Manual 模式为手动指定语言，System 模式为系统语言） |
+| 3 | sdkBundle fallback | 当 activeBundle 与 sdkBundle 不同时，回退到 SDK Bundle 查询 |
 | 4（最低） | Key fallback | 直接返回 key 本身 |
 
 ### **5.2 线程安全**
 
+`LocaleManager` 内部使用串行队列（`dispatch_queue_t`）保护所有状态读写：
+
 | 操作 | 线程安全机制 |
 |------|------------|
-| 语言切换方法 | 可在任意线程调用 |
-| 通知发送 | 始终在主线程发送 |
-| Provider 访问 | 弱引用，无需加锁 |
+| 属性读取（`currentLanguageCode`、`localeMode`） | `dispatch_sync` 串行队列 |
+| 语言切换方法（`setLanguageCode:` 等） | `dispatch_sync` 串行队列 |
+| 通知发送 | `dispatch_async(dispatch_get_main_queue(), ...)` 始终在主线程 |
+| Provider 持有 | 弱引用（`weak`） |
 
 ### **5.3 通知机制**
 
@@ -279,9 +303,9 @@ JapaneseLocaleProvider *jaProvider = [[JapaneseLocaleProvider alloc] init];
 
 | 方法 | 说明 |
 |------|------|
-| `+setLanguageCode:` | 手动指定语言代码（如 `@"en"`、`@"zh-Hans"`） |
-| `+resetLocaleToSystemLanguage` | 恢复跟随系统语言 |
-| `+setLocaleProvider:` | 注入/移除自定义翻译 Provider |
+| `+setLanguageCode:` | 手动指定语言代码（如 `@"en"`、`@"zh-Hans"`），`localeMode` 切换为 `LocaleModeManual` |
+| `+resetLocaleToSystemLanguage` | 恢复跟随系统语言，`localeMode` 切换为 `LocaleModeSystem` |
+| `+setLocaleProvider:` | 注入/移除自定义翻译 Provider（弱引用持有），传 `nil` 移除 |
 | `+currentLanguageCode` | 获取当前生效的语言代码 |
 
 ### **6.2 LocaleManager 实例方法**
@@ -289,9 +313,9 @@ JapaneseLocaleProvider *jaProvider = [[JapaneseLocaleProvider alloc] init];
 | 方法/属性 | 说明 |
 |----------|------|
 | `+sharedManager` | 获取单例实例 |
-| `currentLanguageCode` | 当前语言代码（只读） |
-| `localeMode` | 当前语言模式（只读） |
-| `localeProvider` | 当前注入的 Provider（只读，弱引用） |
+| `currentLanguageCode` | 当前语言代码（`readonly`） |
+| `localeMode` | 当前语言模式（`readonly`，`LocaleModeSystem` / `LocaleModeManual`） |
+| `localeProvider` | 当前注入的 Provider（`readonly`，弱引用） |
 | `-setLanguageCode:` | 设置手动语言代码 |
 | `-setLocaleProvider:` | 注入自定义 Provider |
 | `-resetToSystemLanguage` | 重置为跟随系统 |
@@ -299,9 +323,9 @@ JapaneseLocaleProvider *jaProvider = [[JapaneseLocaleProvider alloc] init];
 
 ### **6.3 LocaleProvider 协议**
 
-| 方法 | 说明 |
-|------|------|
-| `-localizedStringForKey:` | 为指定 key 返回翻译，返回 nil 表示降级 |
+| 方法 | 必选 | 说明 |
+|------|------|------|
+| `-localizedStringForKey:` | `@optional` | 为指定 key 返回翻译，返回 nil 表示降级到 SDK 内置翻译 |
 
 ### **6.4 SDK 内部使用的宏**
 
@@ -310,7 +334,14 @@ JapaneseLocaleProvider *jaProvider = [[JapaneseLocaleProvider alloc] init];
 | `LocalizedString(key)` | `LocalizedString(LocaleKeyPlayStateLoading)` | 获取本地化字符串 |
 | `LocalizedFormat(key, ...)` | `LocalizedFormat(LocaleKeyBottomBarTimeFormat, min, sec, totalMin, totalSec)` | 获取格式化本地化字符串 |
 
-### **6.5 相关文件**
+### **6.5 通知常量**
+
+| 常量 | 类型 | 说明 |
+|------|------|------|
+| `LocaleDidChangeNotification` | `NSNotificationName` | 语言变更通知名 |
+| `LocaleLanguageCodeKey` | `NSString *` | 通知 userInfo 中的新语言代码 Key |
+
+### **6.6 相关文件**
 
 | 文件 | 说明 |
 |------|------|
@@ -343,34 +374,14 @@ JapaneseLocaleProvider *jaProvider = [[JapaneseLocaleProvider alloc] init];
 
 | 事项 | 说明 |
 |------|------|
-| Provider 生命周期 | Provider 以弱引用持有，需确保其在播放器使用期间不被释放 |
+| Provider 生命周期 | Provider 以弱引用持有，调用方需自行保持 Provider 实例不被释放 |
 | 全量翻译 | 新增语言时建议翻译所有 `LocaleKeys.h` 中的 key，避免混合语言显示 |
 | 语言代码规范 | 使用 Apple 标准 lproj 命名（如 `zh-Hans`、`en`、`ja`） |
-| 通知时机 | `LocaleDidChangeNotification` 始终在主线程发送，可安全更新 UI |
+| 通知线程 | `LocaleDidChangeNotification` 始终在主线程发送，可安全更新 UI |
 | 插槽自动刷新 | 内置插槽监听语言变更通知并自动刷新文案，自定义插槽需自行监听 |
 
 ---
 
 ## **8. 示例参考**
 
-项目提供了完整的多语言示例，位于 `PlayerKitUsages/UsageLocaleSystem`。
-
-### **8.1 示例功能**
-
-| 功能 | 说明 |
-|------|------|
-| 语言切换 | 演示中/英两种语言的手动切换 |
-| 自定义 Provider | 演示通过 Provider 覆盖内置翻译 |
-| 变更监听 | 演示语言变更通知的注册与响应 |
-
-### **8.2 运行示例**
-
-在 Demo App 中选择「Locale System」示例查看效果。
-
----
-
-## **9. 下一步**
-
-- 了解场景类型对 UI 的影响 → [场景类型](SceneType.md)
-- 了解全局与实例级配置 → [自定义配置](CustomConfig.md)
-- 查看完整 API 文档 → [API 参考](../ApiReference.md)
+> **参考**：`PlayerKitUsages/UsageLocaleSystem` 模块提供了完整的本地化系统使用示例，包含语言切换、自定义 Provider 注入和变更通知监听。

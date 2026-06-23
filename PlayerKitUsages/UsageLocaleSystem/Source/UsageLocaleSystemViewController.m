@@ -164,7 +164,6 @@ static const CGFloat kButtonSpacing = 10.0;
 - (void)setupUI {
     // 播放器视图
     self.playerView = [[AliPlayerView alloc] init];
-    self.playerView.backgroundColor = [UIColor blackColor];
     [self.view addSubview:self.playerView];
 
     // 主滚动视图

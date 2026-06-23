@@ -2,7 +2,7 @@
 
 **策略系统 (Strategy System)** 是 AliPlayerKit 的核心架构设计。它通过事件驱动的策略机制，将播放器监控、分析和优化逻辑封装为独立的策略组件，实现播放器业务逻辑的解耦、复用与灵活扩展。
 
----
+------
 
 ## **1. 概念介绍**
 
@@ -13,8 +13,8 @@
 **核心特征**：
 
 - **单一职责**：每个策略围绕一个明确的功能目标
-- **事件驱动**：通过事件系统订阅播放器事件，响应式执行
-- **独立隔离**：策略之间相互独立、互不干扰
+- **事件驱动**：通过 `PlayerNotificationDelegate` 协议订阅播放器事件，响应式执行
+- **独立隔离**：策略之间相互独立、互不干扰，每个策略的执行通过 `@try/@catch` 隔离
 
 ### **1.2 什么是策略系统？**
 
@@ -26,70 +26,141 @@
 
 ### **1.3 核心价值**
 
-| 使用方式 | 说明 | 优势 |
-|---------|------|------|
+| 使用方式     | 说明                       | 优势                   |
+| ------------ | -------------------------- | ---------------------- |
 | 使用默认策略 | 播放器组件使用官方默认策略 | 简化接入流程，开箱即用 |
-| 自定义策略 | 实现特定业务需求的策略 | 满足各类定制化业务需求 |
-| 不使用策略 | 仅使用播放能力 | 纯播放场景，无逻辑依赖 |
+| 自定义策略   | 实现特定业务需求的策略     | 满足各类定制化业务需求 |
+| 不使用策略   | 仅使用播放能力             | 纯播放场景，无逻辑依赖 |
 
 **架构优势**：
 
 - **解耦**：策略与播放器核心逻辑分离，职责清晰
 - **复用**：策略可在不同播放器实例间复用
 - **可扩展**：无需修改框架即可自定义策略
-- **隔离**：策略间相互独立，互不影响
+- **隔离**：策略间相互独立，单个策略异常不影响其他策略
 
----
+------
 
 ## **2. 功能特性**
 
 ### **2.1 核心能力**
 
-| 能力 | 说明 |
-|-----|------|
-| 事件驱动 | 策略通过实现 PlayerNotificationDelegate 协议订阅播放器事件，响应式执行 |
-| 生命周期管理 | 统一管理策略的启动、停止、重置、销毁 |
-| 上下文注入 | 策略可通过上下文访问播放器状态和数据 |
-| 工厂模式 | 支持全局注册策略工厂，自动应用于所有播放器实例 |
+| 能力         | 说明                                                         |
+| ------------ | ------------------------------------------------------------ |
+| 事件驱动     | 策略通过实现 `PlayerNotificationDelegate` 协议订阅播放器事件，响应式执行 |
+| 生命周期管理 | 统一管理策略的启动、停止、重置、销毁                         |
+| 上下文注入   | 策略可通过 `StrategyContext` 访问播放器控制器、播放模型和状态存储 |
+| 工厂模式     | 通过 `StrategyRegistry` 注册全局策略工厂，自动应用于所有新创建的播放器实例 |
+| 错误隔离     | 每个策略的生命周期调用通过 `@try/@catch` 隔离，单个策略异常不影响其他策略 |
 
 ### **2.2 内置策略**
 
-| 策略 | 类名 | 说明 | 触发条件 |
-|------|------|------|---------|
-| 首帧耗时 | `FirstFrameStrategy` | 统计从 PREPARING 到首帧渲染的耗时 | 播放器准备时自动启动 |
-| 卡顿检测 | `StutterDetectStrategy` | 检测播放过程中的卡顿次数和时长 | 首帧渲染后开始监测 |
-| 流量保护 | `TrafficProtectionStrategy` | WiFi 切换到蜂窝网络时提醒用户 | 网络状态变化时触发 |
+| 策略     | 类名                        | 说明                              | 触发条件             |
+| -------- | --------------------------- | --------------------------------- | -------------------- |
+| 首帧耗时 | `FirstFrameStrategy`        | 测量从 PREPARING 到首帧渲染的耗时 | 播放器准备时自动启动 |
+| 卡顿检测 | `StutterDetectStrategy`     | 检测播放过程中的卡顿次数和时长    | 首帧渲染后开始监测   |
+| 流量保护 | `TrafficProtectionStrategy` | 蜂窝网络状态检测和变化通知        | 网络状态变化时触发   |
 
-#### 首帧耗时策略详情
+> **说明**：内置策略在 `StrategyRegistry` 首次访问时自动注册。每当新的 `AliPlayerController` 创建时，通过 `applyToManager:` 将所有已注册的工厂实例化并注入到控制器的 `StrategyManager` 中，确保每个控制器拥有独立的策略实例。
 
-统计播放器首帧渲染耗时，细分三个阶段：
+#### **2.2.1 首帧耗时策略 (FirstFrameStrategy)**
 
-| 阶段 | 说明 | 事件区间 |
-|-----|------|---------|
-| 准备阶段 | 视频解析、网络请求 | `PREPARING` → `Prepared` |
-| 渲染阶段 | 解码、渲染首帧 | `Prepared` → `FirstFrameRendered` |
-| 总耗时 | 完整首帧耗时 | `PREPARING` → `FirstFrameRendered` |
+测量播放器首帧渲染耗时，分为三个阶段：
 
-#### 卡顿检测策略详情
+| 阶段     | 说明               | 事件区间                           |
+| -------- | ------------------ | ---------------------------------- |
+| 准备阶段 | 视频解析、网络请求 | `PREPARING` → `Prepared`           |
+| 渲染阶段 | 解码、渲染首帧     | `Prepared` → `FirstFrameRendered`  |
+| 总耗时   | 完整首帧耗时       | `PREPARING` → `FirstFrameRendered` |
 
-监控播放过程中的 Loading 状态，统计卡顿情况：
+通过 `FirstFrameStrategyDelegate` 获取耗时数据：
 
-| 指标 | 说明 |
-|-----|------|
-| 卡顿次数 | Loading 发生的次数（首帧后计算） |
-| 单次卡顿时长 | 每次 LoadingBegin → LoadingEnd 的时长 |
-| 卡顿总时长 | 整个播放会话的卡顿时长总和 |
-| 有效播放时长 | 实际观看时间（不含暂停和卡顿） |
+```objc
+@protocol FirstFrameStrategyDelegate <NSObject>
+@optional
 
-#### 流量保护策略详情
+- (void)firstFrameStrategy:(FirstFrameStrategy *)strategy
+       didRenderFirstFrameWithPrepareTime:(NSInteger)prepareTimeMs
+                               renderTime:(NSInteger)renderTimeMs
+                                totalTime:(NSInteger)totalTimeMs;
+@end
+```
 
-| 场景 | 行为 |
-|-----|------|
-| WiFi → 蜂窝网络 | 提示用户正在使用流量播放 |
-| 起播时为蜂窝网络 | 提示用户当前使用流量 |
-| 蜂窝网络 → WiFi | 重置提示标记 |
+```objc
+FirstFrameStrategy *strategy = [[FirstFrameStrategy alloc] init];
+strategy.delegate = self;
+[controller.strategyManager registerStrategy:strategy];
+```
 
----
+#### **2.2.2 卡顿检测策略 (StutterDetectStrategy)**
+
+监控播放过程中的 Loading 状态，统计卡顿情况。首帧渲染前的 Loading 不计入卡顿统计。
+
+| 指标       | 属性                     | 说明                               |
+| ---------- | ------------------------ | ---------------------------------- |
+| 卡顿次数   | `stutterCount`           | Loading 发生的次数（首帧后计算）   |
+| 卡顿总时长 | `totalStutterDurationMs` | 整个播放会话的卡顿时长总和（毫秒） |
+| 卡顿阈值   | `stutterThresholdMs`     | 超过该时长才视为卡顿（默认 0）     |
+
+通过 `StutterDetectStrategyDelegate` 获取回调：
+
+```objc
+@protocol StutterDetectStrategyDelegate <NSObject>
+@optional
+
+/// 检测到一次卡顿
+- (void)stutterDetectStrategy:(StutterDetectStrategy *)strategy
+                   didStutter:(NSInteger)durationMs;
+
+/// 播放会话结束分析
+- (void)stutterDetectStrategy:(StutterDetectStrategy *)strategy
+            didAnalyzeSession:(NSInteger)stayDurationMs
+            validPlayDuration:(NSInteger)validPlayDurationMs
+         totalStutterDuration:(NSInteger)totalStutterDurationMs
+                 stutterCount:(NSInteger)stutterCount;
+@end
+```
+
+```objc
+// 创建卡顿检测策略（可选指定阈值）
+StutterDetectStrategy *strategy = [[StutterDetectStrategy alloc] initWithThreshold:500];
+strategy.delegate = self;
+[controller.strategyManager registerStrategy:strategy];
+```
+
+#### **2.2.3 流量保护策略 (TrafficProtectionStrategy)**
+
+监控网络状态变化，当检测到设备使用蜂窝网络播放视频时发出通知。此策略仅进行检测和日志记录，不会自动暂停播放。
+
+| 场景             | 行为                             |
+| ---------------- | -------------------------------- |
+| WiFi → 蜂窝网络  | 通过 delegate 通知               |
+| 起播时为蜂窝网络 | 通过 delegate 通知               |
+| 蜂窝网络 → WiFi  | 通过 delegate 通知，重置提示标记 |
+
+```objc
+@protocol TrafficProtectionStrategyDelegate <NSObject>
+@optional
+
+/// 检测到蜂窝网络
+- (void)trafficProtectionStrategyDidDetectCellularNetwork:(TrafficProtectionStrategy *)strategy;
+
+/// 检测到切换回 Wi-Fi
+- (void)trafficProtectionStrategyDidDetectWifiNetwork:(TrafficProtectionStrategy *)strategy;
+@end
+```
+
+应用层可通过 `isOnCellularNetwork` 属性查询当前网络状态：
+
+```objc
+TrafficProtectionStrategy *strategy = (TrafficProtectionStrategy *)
+    [controller.strategyManager strategyWithName:@"TrafficProtectionStrategy"];
+if (strategy.isOnCellularNetwork) {
+    // 展示流量提示
+}
+```
+
+------
 
 ## **3. 使用方式**
 
@@ -117,18 +188,15 @@ AliPlayerModel *model = [[AliPlayerModel alloc] initWithVideoSource:source];
 ```objc
 AliPlayerController *controller = [[AliPlayerController alloc] init];
 
-// 注册自定义策略
-[controller.strategyManager registerStrategy:
-    [[TrafficProtectionStrategy alloc] initWithCallback:^(NSTimeInterval durationMs) {
-        NSLog(@"播放时长: %.0fms", durationMs);
-    }]];
+// 注册带 delegate 回调的首帧策略
+FirstFrameStrategy *firstFrame = [[FirstFrameStrategy alloc] init];
+firstFrame.delegate = self;
+[controller.strategyManager registerStrategy:firstFrame];
 
-// 注册带回调的内置策略
-[controller.strategyManager registerStrategy:
-    [[FirstFrameStrategy alloc] initWithCallback:
-        ^(NSTimeInterval prepareTime, NSTimeInterval renderTime, NSTimeInterval totalTime) {
-            NSLog(@"首帧耗时: %.0fms", totalTime);
-        }]];
+// 注册带阈值的卡顿检测策略
+StutterDetectStrategy *stutter = [[StutterDetectStrategy alloc] initWithThreshold:200];
+stutter.delegate = self;
+[controller.strategyManager registerStrategy:stutter];
 
 AliPlayerModel *model = [[AliPlayerModel alloc] initWithVideoSource:videoSource];
 [controller configure:model];
@@ -137,19 +205,18 @@ AliPlayerModel *model = [[AliPlayerModel alloc] initWithVideoSource:videoSource]
 
 ### **3.3 全局注册策略工厂**
 
-通过 `StrategyRegistry` 注册的策略将自动应用于所有新创建的 Controller：
+通过 `StrategyRegistry` 注册的策略工厂将自动应用于所有新创建的 Controller：
 
 ```objc
 // 在 AppDelegate 中注册全局策略
 - (BOOL)application:(UIApplication *)application
     didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
 
-    // 初始化 AliPlayerKit
     [AliPlayerKit setup];
 
-    // 注册全局自定义策略
+    // 注册全局自定义策略工厂
     [[StrategyRegistry sharedRegistry] addGlobalStrategyFactory:^id<StrategyProtocol>{
-        return [[MyAnalyticsStrategy alloc] initWithConfig:analyticsConfig];
+        return [[MyAnalyticsStrategy alloc] init];
     }];
 
     return YES;
@@ -158,10 +225,12 @@ AliPlayerModel *model = [[AliPlayerModel alloc] initWithVideoSource:videoSource]
 // 之后创建的所有 AliPlayerController 都会自动注册此策略
 ```
 
+> **说明**：`StrategyFactory` 每次调用创建一个新的策略实例，确保每个控制器拥有独立的策略对象，避免共享状态。
+
 ### **3.4 按需选择策略**
 
 ```objc
-// 清除默认策略，只注册需要的
+// 清除默认策略（包括内置策略），后续新建的 Controller 不会自动注册任何策略
 [[StrategyRegistry sharedRegistry] clearGlobalStrategies];
 
 // 只需要首帧统计
@@ -169,19 +238,19 @@ AliPlayerModel *model = [[AliPlayerModel alloc] initWithVideoSource:videoSource]
     return [[FirstFrameStrategy alloc] init];
 }];
 
-// 或完全不使用策略
-// 清除全局策略后，新建的 Controller 不会自动注册任何策略
+// 恢复默认内置策略配置
+[[StrategyRegistry sharedRegistry] resetToDefault];
 ```
 
 ### **3.5 全局注册 vs 局部注册**
 
-| 注册方式 | 说明 | 使用场景 |
-|---------|------|---------|
-| **全局注册** | 通过 `StrategyRegistry` 注册 | 首帧统计、卡顿检测等通用策略 |
-| **局部注册** | 直接调用 `strategyManager.registerStrategy:` | 特定场景下的业务策略 |
+| 注册方式     | 说明                                         | 使用场景                     |
+| ------------ | -------------------------------------------- | ---------------------------- |
+| **全局注册** | 通过 `StrategyRegistry` 注册工厂             | 首帧统计、卡顿检测等通用策略 |
+| **局部注册** | 直接调用 `strategyManager.registerStrategy:` | 特定场景下的业务策略         |
 
 ```objc
-// 全局注册：所有 Controller 自动加载
+// 全局注册：所有新建 Controller 自动加载
 [[StrategyRegistry sharedRegistry] addGlobalStrategyFactory:^id<StrategyProtocol>{
     return [[MyAnalyticsStrategy alloc] init];
 }];
@@ -191,103 +260,111 @@ AliPlayerController *controller = [[AliPlayerController alloc] init];
 [controller.strategyManager registerStrategy:[[MySpecialStrategy alloc] init]];
 ```
 
----
+> **说明**：全局注册仅影响注册后新创建的 Controller，已创建的 Controller 不受影响。同名策略注册时会替换已有实例。
+
+------
 
 ## **4. 自定义开发**
 
 ### **4.1 策略协议 (StrategyProtocol)**
 
-所有策略必须遵循 `StrategyProtocol`：
+所有策略必须遵循 `StrategyProtocol`，该协议定义了策略的生命周期契约：
 
 ```objc
 @protocol StrategyProtocol <NSObject>
 
 @required
 
-/// 策略名称（用于日志和调试，必须唯一）
+/// 策略的唯一标识名称（同名策略注册时会替换已有实例）
 - (NSString *)strategyName;
 
-/// 策略启动（订阅通知、初始化资源）
+/// 策略启动，绑定播放器上下文
 - (void)strategyDidStart:(StrategyContext *)context;
 
-/// 策略停止（取消订阅、清理资源）
+/// 策略停止，解绑播放器上下文
 - (void)strategyDidStop;
 
-@optional
-
-/// 策略重置（播放内容切换时调用）
+/// 策略重置，更新上下文并清除内部状态（视频源切换时调用）
 - (void)strategyDidReset:(StrategyContext *)context;
 
 @end
 ```
 
+> **说明**：`strategyDidReset:` 是 `@required` 方法。当同一控制器切换视频源时（重新 `configure:`），由 `StrategyManager` 调用。策略应重置内部计数器和临时状态，但保持事件订阅不变。
+
 ### **4.2 策略上下文 (StrategyContext)**
 
-策略上下文提供只读的播放器信息：
+`StrategyContext` 在策略启动时由 `StrategyManager` 创建并传入，为策略提供只读的播放器环境信息：
 
 ```objc
 @interface StrategyContext : NSObject
 
-/// 播放器唯一标识
-@property (nonatomic, copy, readonly) NSString *playerId;
+/// 关联的播放器控制器（弱引用）
+@property (nonatomic, weak, readonly) AliPlayerController *controller;
 
-/// 播放数据模型
-@property (nonatomic, strong, readonly, nullable) AliPlayerModel *model;
+/// 当前播放配置模型
+@property (nonatomic, strong, readonly) AliPlayerModel *playerModel;
 
-/// 播放器状态存储（只读）
-@property (nonatomic, strong, readonly) id<AliPlayerStateStoreProtocol> stateStore;
+/// 播放器状态存储，提供当前播放状态的只读快照
+@property (nonatomic, strong, readonly, nullable) PlayerStateStore *stateStore;
+
+- (instancetype)initWithController:(AliPlayerController *)controller
+                       playerModel:(AliPlayerModel *)playerModel;
 
 @end
 ```
 
+> **说明**：`StrategyContext` 在 `strategyDidStop` 后不再有效，不应继续使用。`strategyDidReset:` 会传入新的上下文（包含更新后的 `playerModel`），旧 context 不再有效。
+
 ### **4.3 继承 BaseStrategy（推荐）**
 
-`BaseStrategy` 封装了通知订阅管理和通用工具方法，子类只需关注业务逻辑：
+`BaseStrategy` 封装了通知订阅管理和通用生命周期逻辑，子类只需关注业务逻辑：
 
 ```objc
 @interface BaseStrategy : NSObject <StrategyProtocol, PlayerNotificationDelegate>
 
-/// 策略上下文（strategyDidStart: 后可用）
+/// 策略上下文（strategyDidStart: 后可用，strategyDidStop 后为 nil）
 @property (nonatomic, strong, readonly, nullable) StrategyContext *context;
 
-/// 子类重置内部状态的钩子方法
+/// 子类重置内部状态的钩子方法（在 strategyDidReset: 时由基类调用）
 - (void)resetInternalState;
-
-/// 子类直接实现 PlayerNotificationDelegate 的回调方法即可接收播放器事件，
-/// 例如：
-/// - (void)playerDidChangeState:(PlayerState)state;
-/// - (void)playerDidRenderFirstFrame;
-/// - (void)playerDidLoadingBegin;
-/// - (void)playerDidLoadingEnd;
 
 @end
 ```
+
+**生命周期流转**：
+
+| 阶段                | BaseStrategy 内部行为                                    |
+| ------------------- | -------------------------------------------------------- |
+| `strategyDidStart:` | 保存上下文 → 注册为控制器的 `PlayerNotificationDelegate` |
+| `strategyDidReset:` | 更新上下文 → 调用子类的 `resetInternalState`             |
+| `strategyDidStop`   | 注销 `PlayerNotificationDelegate` → 清空上下文           |
+
+> **说明**：子类必须覆写 `strategyName` 方法，否则会触发异常。如果覆写 `strategyDidStart:` / `strategyDidStop` / `strategyDidReset:`，必须调用 `super`。
 
 ### **4.4 自定义策略完整示例**
 
 以下是一个播放时长统计策略的完整实现：
 
 ```objc
-/// 播放时长统计策略
-@interface TrafficProtectionStrategy : BaseStrategy
+@interface PlayDurationStrategy : BaseStrategy
 
-typedef void(^TrafficProtectionCallback)(NSTimeInterval durationMs);
+@property (nonatomic, copy, readonly, nullable) void (^onSessionEnd)(NSTimeInterval durationMs);
 
-- (instancetype)initWithCallback:(nullable TrafficProtectionCallback)callback;
+- (instancetype)initWithCallback:(void (^)(NSTimeInterval durationMs))callback;
 
 @end
 
-@implementation TrafficProtectionStrategy {
-    TrafficProtectionCallback _callback;
+@implementation PlayDurationStrategy {
     CFAbsoluteTime _playStartTime;
     NSTimeInterval _totalPlayDuration;
     BOOL _isPlaying;
 }
 
-- (instancetype)initWithCallback:(TrafficProtectionCallback)callback {
+- (instancetype)initWithCallback:(void (^)(NSTimeInterval))callback {
     self = [super init];
     if (self) {
-        _callback = callback;
+        _onSessionEnd = [callback copy];
     }
     return self;
 }
@@ -296,35 +373,31 @@ typedef void(^TrafficProtectionCallback)(NSTimeInterval durationMs);
     return @"PlayDurationStrategy";
 }
 
+- (void)resetInternalState {
+    _playStartTime = 0;
+    _totalPlayDuration = 0;
+    _isPlaying = NO;
+}
+
 #pragma mark - PlayerNotificationDelegate
 
 - (void)playerDidChangeState:(PlayerState)state {
-    [self handleStateChanged:state];
-}
-
-- (void)strategyDidReset:(StrategyContext *)context {
-    [super strategyDidReset:context];
-}
-
-#pragma mark - Private
-
-- (void)handleStateChanged:(AliPlayerState)newState {
-    switch (newState) {
-        case AliPlayerStatePlaying:
+    switch (state) {
+        case PlayerStatePlaying:
             if (!_isPlaying) {
                 _isPlaying = YES;
                 _playStartTime = CFAbsoluteTimeGetCurrent();
             }
             break;
 
-        case AliPlayerStatePaused:
-            [self stopTimer];
+        case PlayerStatePaused:
+            [self accumulateDuration];
             break;
 
-        case AliPlayerStateCompleted:
-        case AliPlayerStateStopped:
-        case AliPlayerStateError:
-            [self stopTimer];
+        case PlayerStateCompleted:
+        case PlayerStateStopped:
+        case PlayerStateError:
+            [self accumulateDuration];
             [self reportDuration];
             break;
 
@@ -333,7 +406,9 @@ typedef void(^TrafficProtectionCallback)(NSTimeInterval durationMs);
     }
 }
 
-- (void)stopTimer {
+#pragma mark - Private
+
+- (void)accumulateDuration {
     if (_isPlaying && _playStartTime > 0) {
         NSTimeInterval delta = (CFAbsoluteTimeGetCurrent() - _playStartTime) * 1000;
         _totalPlayDuration += delta;
@@ -343,9 +418,8 @@ typedef void(^TrafficProtectionCallback)(NSTimeInterval durationMs);
 }
 
 - (void)reportDuration {
-    NSLog(@"[PlayDurationStrategy] 播放时长: %.0fms", _totalPlayDuration);
-    if (_callback && _totalPlayDuration > 0) {
-        _callback(_totalPlayDuration);
+    if (_onSessionEnd && _totalPlayDuration > 0) {
+        _onSessionEnd(_totalPlayDuration);
     }
     _totalPlayDuration = 0;
 }
@@ -353,36 +427,26 @@ typedef void(^TrafficProtectionCallback)(NSTimeInterval durationMs);
 @end
 ```
 
-### **4.5 带 Delegate 回调的策略**
-
-对于需要多方法回调的策略，推荐使用 Delegate 模式：
+注册并使用：
 
 ```objc
-/// 卡顿检测回调协议
-@protocol StutterDetectStrategyDelegate <NSObject>
-@optional
-/// 发生卡顿
-- (void)onStutter:(NSTimeInterval)durationMs;
+AliPlayerController *controller = [[AliPlayerController alloc] init];
 
-/// 播放会话结束统计
-- (void)onSessionAnalysisWithStayDuration:(NSTimeInterval)stayDurationMs
-                        validPlayDuration:(NSTimeInterval)validPlayDurationMs
-                      totalStutterDuration:(NSTimeInterval)totalStutterDurationMs
-                             stutterCount:(NSInteger)stutterCount;
-@end
+[controller.strategyManager registerStrategy:
+    [[PlayDurationStrategy alloc] initWithCallback:^(NSTimeInterval durationMs) {
+        NSLog(@"播放时长: %.0fms", durationMs);
+    }]];
 
-/// 使用带 Delegate 的策略
-StutterDetectStrategy *strategy =
-    [[StutterDetectStrategy alloc] initWithDelegate:self];
-[controller.strategyManager registerStrategy:strategy];
+[controller configure:model];
+[self.playerView attach:controller];
 ```
 
-### **4.6 实现 StrategyProtocol（高级）**
+### **4.5 直接实现 StrategyProtocol（高级）**
 
 直接遵循协议可获得更高灵活性，但需自行管理事件订阅：
 
 ```objc
-@interface MyCustomStrategy : NSObject <StrategyProtocol>
+@interface MyCustomStrategy : NSObject <StrategyProtocol, PlayerNotificationDelegate>
 @end
 
 @implementation MyCustomStrategy {
@@ -395,44 +459,43 @@ StutterDetectStrategy *strategy =
 
 - (void)strategyDidStart:(StrategyContext *)context {
     _context = context;
-    // 通过 PlayerNotificationDelegate 订阅播放器事件
     [context.controller addNotificationDelegate:self];
 }
 
 - (void)strategyDidStop {
-    // 取消订阅
     [_context.controller removeNotificationDelegate:self];
     _context = nil;
 }
 
 - (void)strategyDidReset:(StrategyContext *)context {
     _context = context;
-    // 重置内部状态
 }
 
 #pragma mark - PlayerNotificationDelegate
 
 - (void)playerDidChangeState:(PlayerState)state {
-    [self handleEvent:state];
+    // 处理状态变化
 }
 
 @end
 ```
 
----
+> **说明**：直接实现协议时，必须在 `strategyDidStop` 中手动取消所有事件订阅，否则会导致内存泄漏。继承 `BaseStrategy` 可自动处理这一问题。
+
+------
 
 ## **5. 策略生命周期**
 
 ### **5.1 生命周期阶段**
 
-| 生命周期方法 | 触发时机 | 说明 |
-|------------|---------|------|
-| `registerStrategy:` | 手动注册或全局工厂自动注册 | 策略加入管理器，等待启动 |
-| `strategyDidStart:` | `playerView attach:` | 策略启动，订阅通知，初始化资源 |
-| `PlayerNotificationDelegate` | 控制器分发通知 | 策略处理接收到的播放器事件 |
-| `strategyDidReset:` | 播放内容切换 | 重置内部状态，准备处理新视频 |
-| `strategyDidStop` | `playerView detach` 或 Controller 销毁 | 策略停止，取消订阅，清理资源 |
-| `destroy` | 管理器销毁 | 停止所有策略并清空策略列表 |
+| 生命周期方法                 | 触发时机                                           | 说明                                                       |
+| ---------------------------- | -------------------------------------------------- | ---------------------------------------------------------- |
+| `registerStrategy:`          | 手动注册或全局工厂自动注册                         | 策略加入管理器，等待启动。如果管理器已启动，新策略立即启动 |
+| `strategyDidStart:`          | `StrategyManager.startWithController:playerModel:` | 策略启动，订阅通知，初始化资源                             |
+| `PlayerNotificationDelegate` | 控制器分发通知                                     | 策略处理接收到的播放器事件                                 |
+| `strategyDidReset:`          | `StrategyManager.resetWithPlayerModel:`            | 重置内部状态，更新上下文（视频源切换时）                   |
+| `strategyDidStop`            | `StrategyManager.stop` 或策略被注销                | 策略停止，取消订阅，清理资源                               |
+| `destroy`                    | `StrategyManager.destroy`                          | 停止所有策略并清空策略列表                                 |
 
 ### **5.2 生命周期流程**
 
@@ -443,58 +506,64 @@ StutterDetectStrategy *strategy =
     ↓
 [playerView attach:controller]
     ↓
-[strategyManager startWithController:playerModel:] → 遍历策略调用 strategyDidStart:
-    ↓
-策略自动注册为 PlayerNotificationDelegate
+[strategyManager startWithController:playerModel:] → 创建 StrategyContext
+    ↓                                                 → 遍历策略调用 strategyDidStart:
+策略自动注册为 PlayerNotificationDelegate（BaseStrategy）
     ↓
 播放器通知通过 NotificationDispatcher 分发 → 策略响应回调方法
     ↓
-播放内容切换 → resetWithPlayerModel: → 遍历策略调用 strategyDidReset:
+播放内容切换 → [controller configure:newModel]
+    ↓           → [strategyManager resetWithPlayerModel:] → 更新 StrategyContext
+    ↓                                                      → 遍历策略调用 strategyDidReset:
+    ↓                                                      → BaseStrategy 调用 resetInternalState
     ↓
-[playerView detach] 或 Controller 销毁
+[playerView detach] 或 [controller destroy]
     ↓
-[strategyManager stop] → 遍历策略调用 strategyDidStop → 策略取消所有订阅
+[strategyManager stop] → 遍历策略调用 strategyDidStop
+                        → BaseStrategy 自动注销 NotificationDelegate
 ```
 
-### **5.3 策略管理器**
+### **5.3 策略管理器 (StrategyManager)**
 
-`StrategyManager` 负责统一管理所有策略的生命周期：
+`StrategyManager` 负责统一管理所有策略的生命周期。每个 `AliPlayerController` 拥有一个 `StrategyManager` 实例。
 
 ```objc
 @interface StrategyManager : NSObject
 
-/// 注册策略
+/// 注册策略（同名策略会被替换；管理器已启动时新策略立即启动）
 - (void)registerStrategy:(id<StrategyProtocol>)strategy;
 
-/// 注销指定名称的策略
+/// 按名称注销策略（管理器已启动时策略先停止再移除）
 - (void)unregisterStrategyWithName:(NSString *)name;
 
-/// 启动所有策略
+/// 按名称查找策略
+- (nullable id<StrategyProtocol>)strategyWithName:(NSString *)name;
+
+/// 启动所有策略（已启动时先停止再重新启动）
 - (void)startWithController:(AliPlayerController *)controller
                 playerModel:(AliPlayerModel *)playerModel;
 
-/// 停止所有策略
-- (void)stop;
-
-/// 重置所有策略（播放内容切换时）
+/// 重置所有策略（视频源切换时调用，未启动时无效果）
 - (void)resetWithPlayerModel:(AliPlayerModel *)playerModel;
 
-/// 销毁管理器
+/// 停止所有策略（策略实例保留，可再次 start）
+- (void)stop;
+
+/// 销毁管理器（停止并清空策略列表）
 - (void)destroy;
 
-/// 查询策略
-- (nullable id<StrategyProtocol>)strategyWithName:(NSString *)name;
+/// 当前已注册的策略数量
+@property (nonatomic, assign, readonly) NSUInteger strategyCount;
 
-/// 已注册策略数量
-@property (nonatomic, readonly) NSUInteger strategyCount;
-
-/// 是否已启动
-@property (nonatomic, readonly, getter=isStarted) BOOL started;
+/// 管理器是否已启动
+@property (nonatomic, assign, readonly, getter=isStarted) BOOL started;
 
 @end
 ```
 
----
+> **说明**：所有方法必须在主线程调用。管理器不提供内部线程同步。策略按注册顺序执行生命周期回调。
+
+------
 
 ## **6. 最佳实践**
 
@@ -504,17 +573,19 @@ StutterDetectStrategy *strategy =
 @implementation MyStrategy
 
 - (void)strategyDidStart:(StrategyContext *)context {
-    [super strategyDidStart:context];  // 必须调用
+    [super strategyDidStart:context];  // 必须调用 super
     // 初始化资源
 }
 
 - (void)strategyDidStop {
     // 清理资源（定时器、网络监听等）
-    [super strategyDidStop];  // 必须调用
+    [super strategyDidStop];  // 必须调用 super
 }
 
 - (void)resetInternalState {
     // 重置内部状态，准备处理新视频
+    _count = 0;
+    _duration = 0;
 }
 
 @end
@@ -522,7 +593,7 @@ StutterDetectStrategy *strategy =
 
 ### **6.2 事件响应**
 
-BaseStrategy 自动注册为 PlayerNotificationDelegate，子类直接实现回调方法：
+`BaseStrategy` 自动注册为 `PlayerNotificationDelegate`，子类直接实现回调方法：
 
 ```objc
 #pragma mark - PlayerNotificationDelegate
@@ -534,6 +605,14 @@ BaseStrategy 自动注册为 PlayerNotificationDelegate，子类直接实现回�
 - (void)playerDidRenderFirstFrame {
     // 处理首帧渲染
 }
+
+- (void)playerDidLoadingBegin {
+    // 处理 Loading 开始
+}
+
+- (void)playerDidLoadingEnd {
+    // 处理 Loading 结束
+}
 ```
 
 ### **6.3 访问播放器状态**
@@ -542,28 +621,30 @@ BaseStrategy 自动注册为 PlayerNotificationDelegate，子类直接实现回�
 
 ```objc
 - (void)playerDidChangeState:(PlayerState)state {
-    // 获取播放器 ID
-    NSString *playerId = self.context.playerId;
-
     // 获取播放数据模型
-    AliPlayerModel *model = self.context.model;
+    AliPlayerModel *model = self.context.playerModel;
     NSString *title = model.videoTitle;
 
     // 获取播放器状态
     PlayerStateStore *stateStore = self.context.stateStore;
     long position = stateStore.currentPosition;
     long duration = stateStore.duration;
+
+    // 通过控制器发送命令
+    [self.context.controller pause];
 }
 ```
 
 ### **6.4 注意事项**
 
-| 场景 | 推荐做法 | 原因 |
-|-----|---------|------|
-| 长时间运行任务 | 在 `strategyDidStop` 中取消任务 | 避免内存泄漏 |
-| 视频切换 | 在 `resetInternalState` 中重置状态 | 确保状态正确 |
-| 访问 Context | 在 `strategyDidStart:` 之后使用 | 确保上下文可用 |
-| 网络监听 | 在 `strategyDidStop` 中移除监听器 | 防止资源泄漏 |
+| 场景             | 推荐做法                           | 原因                                 |
+| ---------------- | ---------------------------------- | ------------------------------------ |
+| 覆写生命周期方法 | 必须调用 `super`                   | BaseStrategy 在 super 中管理通知订阅 |
+| 长时间运行任务   | 在 `strategyDidStop` 中取消任务    | 避免内存泄漏                         |
+| 视频切换         | 在 `resetInternalState` 中重置状态 | 确保状态正确，不在旧数据上累积       |
+| 访问 Context     | 在 `strategyDidStart:` 之后使用    | 确保上下文可用                       |
+| 网络监听         | 在 `strategyDidStop` 中移除监听器  | 防止资源泄漏                         |
+| 线程安全         | 所有操作在主线程执行               | `StrategyManager` 不提供内部线程同步 |
 
 ### **6.5 常见错误**
 
@@ -573,7 +654,7 @@ BaseStrategy 自动注册为 PlayerNotificationDelegate，子类直接实现回�
     self = [super init];
     if (self) {
         // context 此时为 nil！
-        NSString *playerId = self.context.playerId;  // nil
+        NSString *title = self.context.playerModel.videoTitle;  // nil
     }
     return self;
 }
@@ -581,14 +662,14 @@ BaseStrategy 自动注册为 PlayerNotificationDelegate，子类直接实现回�
 // ✓ 正确：在 strategyDidStart: 之后访问
 - (void)strategyDidStart:(StrategyContext *)context {
     [super strategyDidStart:context];
-    NSString *playerId = self.context.playerId;  // 正常获取
+    NSString *title = self.context.playerModel.videoTitle;  // 正常获取
 }
 ```
 
 ```objc
-// ✗ 错误：resetInternalState 未重置内部状态
+// ✗ 错误：resetInternalState 未重置所有内部状态
 - (void)resetInternalState {
-    // 忘记重置 _stutterCount，导致数据累积
+    // 忘记重置 _stutterCount，导致跨视频数据累积
 }
 
 // ✓ 正确：重置所有内部状态
@@ -599,70 +680,92 @@ BaseStrategy 自动注册为 PlayerNotificationDelegate，子类直接实现回�
 }
 ```
 
----
+```objc
+// ✗ 错误：覆写生命周期方法未调用 super
+- (void)strategyDidStart:(StrategyContext *)context {
+    // 未调用 [super strategyDidStart:context]
+    // 导致 context 未保存、通知未订阅
+}
+
+// ✓ 正确：始终调用 super
+- (void)strategyDidStart:(StrategyContext *)context {
+    [super strategyDidStart:context];
+    // 自定义初始化
+}
+```
+
+------
 
 ## **7. API 速查**
 
 ### **7.1 核心类**
 
-| 类/协议 | 说明 | 详见 |
-|--------|------|------|
-| `StrategyProtocol` | 策略协议，定义生命周期方法 | [ApiReference.md](../ApiReference.md) |
-| `BaseStrategy` | 策略基类，封装通知订阅管理 | [ApiReference.md](../ApiReference.md) |
-| `StrategyManager` | 策略管理器，管理策略生命周期 | [ApiReference.md](../ApiReference.md) |
-| `StrategyContext` | 策略上下文，提供只读播放器信息 | [ApiReference.md](../ApiReference.md) |
-| `StrategyRegistry` | 策略注册中心，管理全局策略 | [ApiReference.md](../ApiReference.md) |
+| 类/协议            | 说明                                         |
+| ------------------ | -------------------------------------------- |
+| `StrategyProtocol` | 策略协议，定义生命周期契约                   |
+| `BaseStrategy`     | 策略基类，封装通知订阅管理和生命周期流转     |
+| `StrategyManager`  | 策略管理器，管理策略注册、生命周期和错误隔离 |
+| `StrategyContext`  | 策略上下文，提供只读的播放器环境信息         |
+| `StrategyRegistry` | 全局策略注册表，管理默认策略工厂             |
 
 ### **7.2 StrategyProtocol 方法**
 
-| 方法 | 说明 |
-|-----|------|
-| `strategyName` | 返回策略名称（必须唯一） |
-| `strategyDidStart:` | 启动策略，订阅通知 |
-| `strategyDidStop` | 停止策略，取消订阅 |
-| `strategyDidReset:`（可选） | 重置内部状态 |
+| 方法                | 必选 | 说明                     |
+| ------------------- | ---- | ------------------------ |
+| `strategyName`      | 是   | 返回策略名称（必须唯一） |
+| `strategyDidStart:` | 是   | 启动策略，绑定上下文     |
+| `strategyDidStop`   | 是   | 停止策略，解绑上下文     |
+| `strategyDidReset:` | 是   | 重置策略，更新上下文     |
 
 ### **7.3 BaseStrategy 方法**
 
-| 方法 | 说明 |
-|-----|------|
-| `context` | 策略上下文（strategyDidStart: 后可用） |
-| `resetInternalState` | 子类重置内部状态的钩子方法 |
-| `PlayerNotificationDelegate` | 子类直接实现回调方法接收事件 |
+| 方法/属性            | 说明                                     |
+| -------------------- | ---------------------------------------- |
+| `context`            | 策略上下文（`strategyDidStart:` 后可用） |
+| `resetInternalState` | 子类重置内部状态的钩子方法               |
 
 ### **7.4 StrategyManager 方法**
 
-| 方法 | 说明 |
-|-----|------|
-| `registerStrategy:` | 注册策略 |
-| `unregisterStrategyWithName:` | 按名称注销策略 |
-| `startWithController:playerModel:` | 启动所有策略 |
-| `stop` | 停止所有策略 |
-| `resetWithPlayerModel:` | 重置所有策略 |
-| `destroy` | 销毁管理器 |
-| `strategyWithName:` | 按名称查询策略 |
+| 方法                               | 说明                                   |
+| ---------------------------------- | -------------------------------------- |
+| `registerStrategy:`                | 注册策略（同名替换，已启动时立即启动） |
+| `unregisterStrategyWithName:`      | 按名称注销策略                         |
+| `strategyWithName:`                | 按名称查询策略                         |
+| `startWithController:playerModel:` | 启动所有策略                           |
+| `resetWithPlayerModel:`            | 重置所有策略                           |
+| `stop`                             | 停止所有策略                           |
+| `destroy`                          | 销毁管理器                             |
+| `strategyCount`                    | 已注册策略数量                         |
+| `started`                          | 管理器是否已启动                       |
 
 ### **7.5 StrategyRegistry 方法**
 
-| 方法 | 说明 |
-|-----|------|
-| `-addGlobalStrategyFactory:` | 注册全局策略工厂 |
-| `-clearGlobalStrategies` | 清除所有全局策略 |
-| `-applyToManager:` | 将全局策略应用到指定管理器 |
-| `-resetToDefault` | 恢复默认配置 |
+| 方法                        | 说明                             |
+| --------------------------- | -------------------------------- |
+| `+sharedRegistry`           | 获取全局单例                     |
+| `addGlobalStrategyFactory:` | 注册全局策略工厂                 |
+| `clearGlobalStrategies`     | 清除所有全局策略（包括内置策略） |
+| `applyToManager:`           | 将全局策略应用到指定管理器       |
+| `resetToDefault`            | 恢复默认内置策略配置             |
 
 ### **7.6 StrategyContext 属性**
 
-| 属性 | 类型 | 说明 |
-|-----|------|------|
-| `playerId` | `NSString *` | 播放器 ID |
-| `model` | `AliPlayerModel *` | 播放数据模型 |
-| `stateStore` | `id<AliPlayerStateStoreProtocol>` | 播放器状态存储（只读） |
+| 属性          | 类型                            | 说明                   |
+| ------------- | ------------------------------- | ---------------------- |
+| `controller`  | `AliPlayerController *` (weak)  | 播放器控制器           |
+| `playerModel` | `AliPlayerModel *`              | 播放配置模型           |
+| `stateStore`  | `PlayerStateStore *` (nullable) | 播放器状态存储（只读） |
+
+### **7.7 内置策略**
+
+| 策略                        | Delegate 协议                       | 关键属性/方法                                                |
+| --------------------------- | ----------------------------------- | ------------------------------------------------------------ |
+| `FirstFrameStrategy`        | `FirstFrameStrategyDelegate`        | `delegate`                                                   |
+| `StutterDetectStrategy`     | `StutterDetectStrategyDelegate`     | `delegate`、`stutterCount`、`totalStutterDurationMs`、`stutterThresholdMs`、`initWithThreshold:` |
+| `TrafficProtectionStrategy` | `TrafficProtectionStrategyDelegate` | `delegate`、`isOnCellularNetwork`                            |
 
 ---
 
-## **8. 下一步**
+## **8. 示例参考**
 
-- 了解事件系统如何驱动策略：[事件系统](./EventSystem.md)
-- 了解插槽系统如何与策略协作：[插槽系统](./SlotSystem.md)
-- 查看完整 API 参考：[API 文档](../ApiReference.md)
+> **参考**：`PlayerKitUsages/UsageStrategySystem` 模块提供了完整的策略系统使用示例，演示了内置策略（首帧时机、卡顿检测、流量保护）的自动装载，以及自定义断点续播策略（`ResumePlayStrategy`）的注册、续播位置查询与清除。

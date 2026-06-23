@@ -33,7 +33,7 @@
 |------|------|
 | [插槽系统](./advanced/SlotSystem.md) | 自定义播放器界面组件 |
 | [策略系统](./advanced/StrategySystem.md) | 扩展播放器行为逻辑 |
-| [事件系统](./advanced/EventSystem.md) | 监听和处理播放事件 |
+| [通知系统](./advanced/NotificationSystem.md) | 监听和处理播放器通知 |
 | [自定义配置](./advanced/CustomConfig.md) | 实现全局和实例级别的播放器自定义配置 |
 | [播放器生命周期策略](./advanced/PlayerLifecycleStrategy.md) | 优化播放器资源管理 |
 | [日志系统](./advanced/LogSystem.md) | 调试和问题排查 |

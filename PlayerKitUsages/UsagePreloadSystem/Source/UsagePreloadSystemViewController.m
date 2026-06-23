@@ -163,7 +163,6 @@ static const CGFloat kButtonHeight = 44.0;
 - (void)setupUI {
     // Player view (16:9)
     self.playerView = [[AliPlayerView alloc] init];
-    self.playerView.backgroundColor = [UIColor blackColor];
     [self.view addSubview:self.playerView];
 
     // Preload switch row

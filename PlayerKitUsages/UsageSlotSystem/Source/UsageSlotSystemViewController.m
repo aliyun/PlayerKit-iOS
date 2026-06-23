@@ -49,7 +49,6 @@ static const CGFloat kSectionSpacing = 20.0;
 - (void)setupUI {
     // 播放器视图（16:9 比例，置于顶部）
     self.playerView = [[AliPlayerView alloc] init];
-    self.playerView.backgroundColor = [UIColor blackColor];
     [self.view addSubview:self.playerView];
 
     // 播放器视图下方的信息标签

@@ -1,6 +1,6 @@
-# **自定义配置（Custom Config）**
+# **自定义配置 (Custom Config)**
 
-AliPlayerKit 内置了最佳实践配置，大多数场景无需额外设置即可获得优质体验。当您需要的播放器能力未通过 AliPlayerKit 的接口直接提供时，可通过以下自定义配置机制，直接调用底层 AliPlayer SDK 的 API 来实现。
+**自定义配置 (Custom Config)** 是 AliPlayerKit 的扩展配置机制。AliPlayerKit 已内置最佳实践配置，大多数场景无需额外设置即可获得优质体验。当需要的播放器能力未通过 AliPlayerKit 接口直接提供时，可通过自定义配置机制直接调用底层 AliPlayer SDK 的 API 来实现。
 
 ---
 
@@ -10,16 +10,29 @@ AliPlayerKit 内置了最佳实践配置，大多数场景无需额外设置即�
 
 AliPlayerKit 在底层 AliPlayer SDK 之上提供了高层封装，已内置最佳实践配置。但底层 SDK 提供了更丰富的能力（如自定义缓冲策略、Referer 防盗链、HTTP Header 注入等），这些能力并非都通过 AliPlayerKit 直接透出。
 
-自定义配置机制提供了两个回调入口，让开发者在关键时机获取底层对象并直接调用原生 API。
-
-### **1.2 配置层级概览**
-
-AliPlayerKit 提供两个层级的自定义配置入口：
+自定义配置机制提供了两个回调入口，让开发者在关键时机获取底层对象并直接调用原生 API：
 
 | 层级 | 接口 | 调用时机 | 典型场景 |
 |------|------|----------|----------|
 | **全局配置** | `+setOnGlobalInitBlock:` | `+setup` 内部初始化完成后（仅一次） | 全局日志级别、HTTP/2 多路复用等全局行为 |
 | **实例配置** | `onPlayerConfigBlock` | 每次 `configure:` 时 `prepare` 前 | 缓冲策略、Referer、HTTP Header 等实例行为 |
+
+### **1.2 三层配置体系**
+
+AliPlayerKit 的完整配置体系包含三个层级：
+
+```text
+┌─────────────────────────────────────────────────────────┐
+│              1. 全局配置 (OnGlobalInitBlock)              │
+│         应用启动时执行一次，影响所有播放器实例                │
+├─────────────────────────────────────────────────────────┤
+│              2. 模型配置 (AliPlayerModel)                 │
+│         每次 configure: 时通过属性设置播放参数               │
+├─────────────────────────────────────────────────────────┤
+│           3. 实例配置 (onPlayerConfigBlock)               │
+│       每次 configure: 时在 prepare 前回调底层播放器          │
+└─────────────────────────────────────────────────────────┘
+```
 
 ---
 
@@ -65,7 +78,7 @@ AliPlayerKit 提供两个层级的自定义配置入口：
 
 ### **2.4 配置时序**
 
-```objc
+```text
 application:didFinishLaunchingWithOptions:
     │
     ├── [AliPlayerKit setOnGlobalInitBlock:block]   ← 注册回调
@@ -139,7 +152,7 @@ model.onPlayerConfigBlock = ^(id<MediaPlayer> player) {
 
 ### **3.4 配置时序**
 
-```objc
+```text
 [controller configure:model]
     │
     ├── lifecycleStrategy.acquire()             ← 获取播放器实例
@@ -148,7 +161,9 @@ model.onPlayerConfigBlock = ^(id<MediaPlayer> player) {
     │
     ├── model.onPlayerConfigBlock(mediaPlayer)  ← 触发实例配置回调
     │
-    └── [mediaPlayer prepare] / start()         ← 开始播放
+    ├── [strategyManager start/reset]           ← 策略系统启动
+    │
+    └── [mediaPlayer prepare]                   ← 开始准备播放
 ```
 
 ### **3.5 注意事项**
@@ -169,50 +184,64 @@ model.onPlayerConfigBlock = ^(id<MediaPlayer> player) {
 
 通过 `AliPlayerKit` 类方法直接设置的内置配置项：
 
-| 配置项 | 方法 | 类型 | 默认值 | 说明 |
-|--------|------|------|--------|------|
-| 初始化 | `+setup` | — | — | 初始化 SDK，`dispatch_once` 保证幂等 |
-| 调试模式 | `+setDebugModeEnabled:` | `BOOL` | `NO` | 开启/关闭调试模式 |
-| 日志面板 | `+setLogPanelEnabled:` | `BOOL` | `NO` | 是否在播放器视图中显示日志面板 |
-| 日志级别 | `+setLogLevel:` | `LogLevel` | `LogLevelInfo` | SDK 日志输出级别 |
-| 控制台日志 | `+enableConsoleLog:` | `BOOL` | `YES` | 是否输出日志到控制台 |
-| 播放器工厂 | `+setPlayerFactory:` | `id<PlayerFactory>` | 默认工厂 | 自定义播放器创建工厂 |
-| 预加载器 | `+setPreloader:` | `id<PlayerPreloader>` | 默认预加载器 | 自定义预加载器 |
-| 清除缓存 | `+clearCaches` | — | — | 清除播放器本地媒体缓存 |
+| 配置项 | 方法 | 说明 |
+|--------|------|------|
+| 初始化 | `+setup` | 初始化 SDK，`dispatch_once` 保证幂等 |
+| 初始化状态 | `+isInitialized` | 查询 SDK 是否已完成初始化 |
+| 全局配置回调 | `+setOnGlobalInitBlock:` | 注册全局初始化后的自定义配置回调 |
+| 调试模式 | `+setDebugModeEnabled:` / `+isDebugModeEnabled` | 开启/关闭调试模式（默认 `NO`） |
+| 日志面板 | `+setLogPanelEnabled:` / `+isLogPanelEnabled` | 是否在播放器视图中显示日志面板（默认 `NO`） |
+| 日志级别 | `+setLogLevel:` / `+logLevel` | SDK 日志输出级别（默认 `LogLevelInfo`） |
+| 控制台日志 | `+enableConsoleLog:` / `+isConsoleLogEnabled` | 是否输出日志到控制台（默认 `YES`） |
+| 播放器工厂 | `+setPlayerFactory:` / `+playerFactory` | 自定义播放器创建工厂，传 `nil` 恢复默认 |
+| 预加载器 | `+setPreloader:` / `+preloader` | 自定义预加载器，传 `nil` 恢复默认 |
+| 清除缓存 | `+clearCaches` | 清除播放器本地媒体缓存（需在 `setup` 之后调用） |
+| 语言设置 | `+setLanguageCode:` | 手动指定语言代码（`zh-Hans` / `en`） |
+| 自定义翻译 | `+setLocaleProvider:` | 注入自定义本地化 Provider |
+| 跟随系统语言 | `+resetLocaleToSystemLanguage` | 恢复跟随系统首选语言 |
+| 当前语言 | `+currentLanguageCode` | 获取当前生效的语言代码 |
+| 版本信息 | `+getPlayerKitVersion` / `+getSdkVersion` | 获取 AliPlayerKit / 底层 SDK 版本号 |
 
 ### **4.2 AliPlayerModel 实例配置**
 
 通过 `AliPlayerModel` 属性设置的实例级配置项：
 
-| 配置项 | 属性 | 类型 | 默认值 | 说明 |
-|--------|------|------|--------|------|
-| 视频源 | `videoSource` | `VideoSource *` | — | 必填，播放视频数据源 |
-| 场景类型 | `sceneType` | `SceneType` | `SceneTypeVOD` | 播放场景，影响 UI 和手势 |
-| 封面图 | `coverUrl` | `NSString *` | `nil` | 视频封面图 URL |
-| 视频标题 | `videoTitle` | `NSString *` | `nil` | 显示在 TopBar 的标题 |
-| 自动播放 | `autoPlay` | `BOOL` | `YES` | 配置完成后是否自动开始播放 |
-| 追踪 ID | `traceId` | `NSString *` | `nil` | 播放质量监控标识 |
-| 起始位置 | `startTime` | `NSInteger` | `0` | 播放起始位置（毫秒） |
-| 硬件解码 | `hardwareDecode` | `BOOL` | `YES` | 是否启用硬件解码 |
-| 允许屏幕休眠 | `allowScreenSleep` | `BOOL` | `NO` | 播放时是否允许屏幕休眠 |
-| 禁止截屏 | `disableScreenshot` | `BOOL` | `NO` | iOS 特有，禁止截屏/录屏 |
-| 实例配置回调 | `onPlayerConfigBlock` | `Block` | `nil` | 自定义底层播放器配置 |
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `videoSource` | `VideoSource *` | — | 必填，播放视频数据源（`readonly`，通过 `initWithVideoSource:` 设置） |
+| `sceneType` | `SceneType` | `SceneTypeVOD` | 播放场景，影响插槽 UI 和手势行为 |
+| `coverUrl` | `NSString *` | `nil` | 视频封面图 URL |
+| `videoTitle` | `NSString *` | `nil` | 显示在 TopBar 的标题 |
+| `autoPlay` | `BOOL` | `YES` | 配置完成后是否自动开始播放 |
+| `traceId` | `NSString *` | `nil` | 播放质量监控标识（业务方的唯一标识） |
+| `startTime` | `NSInteger` | `0` | 播放起始位置（毫秒），负数自动修正为 0 |
+| `hardwareDecode` | `BOOL` | `YES` | 是否启用硬件解码 |
+| `allowScreenSleep` | `BOOL` | `NO` | 播放时是否允许屏幕休眠 |
+| `disableScreenshot` | `BOOL` | `NO` | iOS 特有，禁止截屏/录屏 |
+| `onPlayerConfigBlock` | `void (^)(id<MediaPlayer>)` | `nil` | 实例级自定义配置回调 |
 
 ### **4.3 AliPlayerController 运行时配置**
 
 通过 `AliPlayerController` 方法在运行时动态调整的配置：
 
-| 配置项 | 方法 | 类型 | 说明 |
-|--------|------|------|------|
-| 播放速度 | `-setRate:` | `float` | 1.0 正常，0.5 半速，2.0 倍速 |
-| 循环播放 | `-setLoop:` | `BOOL` | 是否循环播放 |
-| 静音 | `-setMuted:` | `BOOL` | 是否静音 |
-| 镜像模式 | `-setMirrorMode:` | `MirrorMode` | 无/水平/垂直 |
-| 缩放模式 | `-setScaleMode:` | `ScaleMode` | 拉伸/适应/裁剪 |
-| 旋转模式 | `-setRotateMode:` | `RotateMode` | 旋转角度 |
-| 控制栏可见性 | `-setControlsVisible:` | `BOOL` | 显示/隐藏控制栏 |
-| 全屏 | `-setFullscreen:` | `BOOL` | 进入/退出全屏 |
-| 前后台生命周期 | `autoLifecycleManagement` | `BOOL` | 默认 YES，自动管理前后台暂停/恢复 |
+| 方法 / 属性 | 类型 | 说明 |
+|------------|------|------|
+| `-setRate:` | `float` | 播放速度（1.0 正常，0.5 半速，2.0 倍速） |
+| `-setLoop:` | `BOOL` | 是否循环播放 |
+| `-setMuted:` | `BOOL` | 是否静音 |
+| `-setMirrorMode:` | `MirrorMode` | 镜像模式（`None` / `Horizontal` / `Vertical`） |
+| `-setScaleMode:` | `ScaleMode` | 缩放模式（`FitXY` / `FitCenter` / `CenterCrop`） |
+| `-setRotateMode:` | `RotateMode` | 旋转角度（`0` / `90` / `180` / `270` 度） |
+| `-setControlsVisible:` | `BOOL` | 显示/隐藏控制栏 |
+| `controlsVisibilityLocked` | `BOOL` | 控制栏可见性锁定（`YES` 时 `setControlsVisible:NO` 被忽略） |
+| `-setFullscreen:` | `BOOL` | 进入/退出全屏（默认带动画） |
+| `-setFullscreen:animated:` | `BOOL, BOOL` | 进入/退出全屏（可控制动画） |
+| `-selectTrack:` | `TrackQuality *` | 切换清晰度 |
+| `-snapshot` | — | 截取当前视频画面 |
+| `-toggle` | — | 切换播放/暂停状态 |
+| `-replay` | — | 从头重新播放 |
+| `-stop` | — | 停止播放 |
+| `autoLifecycleManagement` | `BOOL` | 自动管理前后台暂停/恢复（默认 `YES`） |
 
 ---
 
@@ -252,12 +281,12 @@ model.onPlayerConfigBlock = ^(id<MediaPlayer> player) {
         [AliPlayerFactory setOption:ALLOW_H2_MULTIPLEX value:1];
     }];
 
-    // 全局内置配置
-    [AliPlayerKit setLogLevel:LogLevelWarning];
-    [AliPlayerKit enableConsoleLog:YES];
-
     // 初始化
     [AliPlayerKit setup];
+
+    // 全局内置配置（需在 setup 之后调用）
+    [AliPlayerKit setLogLevel:LogLevelWarn];
+    [AliPlayerKit enableConsoleLog:YES];
 
     return YES;
 }
@@ -289,23 +318,24 @@ model.onPlayerConfigBlock = ^(id<MediaPlayer> player) {
 }
 ```
 
+> **注意**：`setLogLevel:` 和 `enableConsoleLog:` 等日志配置需在 `setup` 之后调用，因为它们操作的是 `LogHub` 单例实例。
+
 ---
 
 ## **7. API 速查**
 
 ### **7.1 全局配置 API**
 
-| 类 | 方法 | 说明 |
-|----|------|------|
-| `AliPlayerKit` | `+setOnGlobalInitBlock:` | 注册全局配置回调，传 `nil` 取消 |
-| `AliPlayerKit` | `+setup` | 触发初始化，执行回调 |
+| 方法 | 说明 |
+|------|------|
+| `+[AliPlayerKit setOnGlobalInitBlock:]` | 注册全局配置回调，传 `nil` 取消 |
+| `+[AliPlayerKit setup]` | 触发初始化，执行回调 |
 
 ### **7.2 实例配置 API**
 
-| 类 | 属性/方法 | 说明 |
-|----|----------|------|
-| `AliPlayerModel` | `onPlayerConfigBlock` | 实例级配置回调 Block |
-| Block 参数 | `id<MediaPlayer> player` | 底层播放器实例 |
+| 类 | 属性 | 说明 |
+|----|------|------|
+| `AliPlayerModel` | `onPlayerConfigBlock` | 实例级配置回调（`void (^)(id<MediaPlayer>)`） |
 
 ### **7.3 相关文件**
 
@@ -313,7 +343,7 @@ model.onPlayerConfigBlock = ^(id<MediaPlayer> player) {
 |------|------|
 | `PlayerKit/Source/AliPlayerKit.h` | 全局配置 API（`OnGlobalInitBlock` typedef） |
 | `PlayerKit/Source/AliPlayerModel.h` | 实例配置入口（`onPlayerConfigBlock`） |
-| `PlayerKit/Source/AliPlayerController.h` | 运行时配置方法（rate/loop/muted 等） |
+| `PlayerKit/Source/AliPlayerController.h` | 运行时配置方法 |
 | `PlayerKit/Source/Player/MediaPlayer.h` | 底层播放器协议（回调参数类型） |
 
 > 完整 API 详见 [API 参考](../ApiReference.md)。
@@ -342,10 +372,6 @@ AliPlayerKit 已内置最佳实践配置，不设置任何自定义配置即可�
 
 不会生效。`+setup` 使用 `dispatch_once` 保证只执行一次，如果 Block 在 `+setup` 之后设置，将永远不会被触发。
 
----
+### **8.6 日志配置应该在 setup 之前还是之后？**
 
-## **9. 下一步**
-
-- 了解场景类型配置 → [场景类型](SceneType.md)
-- 了解多语言配置 → [多语言](Locale.md)
-- 查看完整 API 文档 → [API 参考](../ApiReference.md)
+`setLogLevel:` 和 `enableConsoleLog:` 需在 `+setup` **之后**调用，因为它们直接操作 `LogHub` 单例。而 `setOnGlobalInitBlock:` 必须在 `+setup` **之前**设置。

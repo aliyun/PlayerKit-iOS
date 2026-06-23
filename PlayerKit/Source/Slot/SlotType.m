@@ -12,8 +12,6 @@ NSString *SlotTypeName(SlotType type) {
     switch (type) {
         case SlotTypePlayerSurface:
             return @"PlayerSurface";
-        case SlotTypeFullscreen:
-            return @"Fullscreen";
         case SlotTypeGestureControl:
             return @"GestureControl";
         case SlotTypeLandscapeHint:
@@ -45,7 +43,6 @@ NSArray<NSNumber *> *SlotTypeAllBuiltinTypes(void) {
     dispatch_once(&onceToken, ^{
         builtinTypes = @[
             @(SlotTypePlayerSurface),
-            @(SlotTypeFullscreen),
             @(SlotTypeGestureControl),
             @(SlotTypeLandscapeHint),
             @(SlotTypeCover),

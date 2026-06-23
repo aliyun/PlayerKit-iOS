@@ -23,10 +23,7 @@ NS_ASSUME_NONNULL_BEGIN
  */
 typedef NS_ENUM(NSInteger, SlotType) {
     /** 播放器渲染视图层 */
-    SlotTypePlayerSurface = 0,
-
-    /** 全屏控制层 */
-    SlotTypeFullscreen = 10,
+    SlotTypePlayerSurface = 10,
 
     /** 手势识别和控制层 */
     SlotTypeGestureControl = 20,

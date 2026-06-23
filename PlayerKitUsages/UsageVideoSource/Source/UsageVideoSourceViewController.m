@@ -119,7 +119,6 @@ static const NSInteger kSourceOptionCount = 3;
 
 - (void)setupPlayerView {
     self.playerView = [[AliPlayerView alloc] initWithFrame:self.view.bounds];
-    self.playerView.backgroundColor = [UIColor blackColor];
     self.playerView.hidden = YES;
     [self.view addSubview:self.playerView];
 
