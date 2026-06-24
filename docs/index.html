@@ -3,20 +3,21 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>AliPlayerKit - iOS 播放器组件</title>
+    <title>AliPlayerKit - iOS Player Components</title>
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
-    <meta name="description" content="AliPlayerKit iOS 播放器组件文档 - 低代码播放器 UI 组件与场景化解决方案">
+    <meta name="description" content="AliPlayerKit iOS Player Components Documentation - Low-code Player UI Components & Scenario-based Solutions">
     <meta name="viewport"
         content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <link rel="icon" href="_media/logo.png" type="image/png">
     <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify@latest/lib/themes/vue.css">
     <style>
-        /* --- 1. 品牌色配置 (iOS System Blue) --- */
+        /* --- 1. Brand Color (iOS System Blue) --- */
         :root {
             --theme-color: #007AFF;
             --theme-color-dark: #0056CC;
         }
 
-        /* --- 2. 暗黑模式样式 --- */
+        /* --- 2. Dark Mode --- */
         :root {
             --dark-bg: #1c1c1e;
             --dark-text: #e5e5e7;
@@ -30,7 +31,6 @@
             color: var(--dark-text);
         }
 
-        /* 侧边栏适配 */
         body.dark-mode .sidebar {
             background-color: var(--dark-sidebar);
             border-right: 1px solid var(--dark-border);
@@ -47,7 +47,6 @@
             border-right: 2px solid var(--theme-color);
         }
 
-        /* 代码块适配 */
         body.dark-mode pre {
             background-color: var(--dark-code-bg) !important;
         }
@@ -60,7 +59,6 @@
             background-color: rgba(100, 210, 255, 0.1);
         }
 
-        /* 代码高亮 token */
         body.dark-mode .token.keyword,
         body.dark-mode .token.tag,
         body.dark-mode .token.selector {
@@ -81,7 +79,6 @@
             color: #6c7986 !important;
         }
 
-        /* 标题和引用适配 */
         body.dark-mode h1, body.dark-mode h2, body.dark-mode h3, body.dark-mode h4 {
             color: #f5f5f7;
         }
@@ -94,7 +91,6 @@
             color: #0a84ff;
         }
 
-        /* 表格适配 */
         body.dark-mode .markdown-section tr:nth-child(2n) {
             background-color: rgba(255,255,255,0.03);
         }
@@ -107,12 +103,10 @@
             color: #f5f5f7;
         }
 
-        /* Mermaid 图表适配 */
         body.dark-mode .mermaid {
             filter: invert(1) hue-rotate(180deg);
         }
 
-        /* 分页导航适配 */
         body.dark-mode .docsify-pagination-container {
             border-top-color: var(--dark-border);
         }
@@ -120,7 +114,7 @@
             color: #98989d;
         }
 
-        /* --- 3. 侧边栏开关按钮样式 --- */
+        /* --- 3. Sidebar Toggle Buttons --- */
         .sidebar-toggle-btn {
             cursor: pointer;
             display: block;
@@ -149,15 +143,15 @@
 </head>
 
 <body>
-    <div id="app">加载中...</div>
+    <div id="app">Loading...</div>
     <script>
-        // 初始化暗黑模式
+        // Initialize dark mode
         if (localStorage.getItem('theme-mode') === 'dark') {
             document.body.classList.add('dark-mode');
         }
 
         window.$docsify = {
-            name: 'AliPlayerKit',
+            name: '<img src="_media/logo.png" alt="AliPlayerKit" width="28" style="vertical-align:middle;margin-right:6px;border-radius:4px;"> AliPlayerKit',
             nameLink: {
                 '/': '#/'
             },
@@ -166,8 +160,8 @@
             auto2top: true,
             subMaxLevel: 3,
             pagination: {
-                previousText: '上一章节',
-                nextText: '下一章节',
+                previousText: 'Previous',
+                nextText: 'Next',
             },
             count: {
                 countable: true,
@@ -178,60 +172,177 @@
             search: {
                 maxAge: 86400000,
                 paths: 'auto',
-                placeholder: '搜索',
-                noData: '没有结果',
+                placeholder: 'Search',
+                noData: 'No results',
                 depth: 6
             },
             plugins: [
+                // Dark mode toggle plugin
                 function(hook, vm) {
                     hook.doneEach(function() {
                         const sidebar = document.querySelector('.sidebar-nav');
-                        if (!sidebar || document.querySelector('.sidebar-toggle-btn')) return;
+                        if (!sidebar || document.querySelector('.sidebar-toggle-btn-theme')) return;
 
                         const btn = document.createElement('div');
-                        btn.className = 'sidebar-toggle-btn';
+                        btn.className = 'sidebar-toggle-btn sidebar-toggle-btn-theme';
 
                         const savedTheme = localStorage.getItem('theme-mode');
                         if (savedTheme === 'dark') {
                             document.body.classList.add('dark-mode');
-                            btn.textContent = '🌙 切换亮色';
+                            btn.textContent = '🌙 Light Mode';
                         } else {
-                            btn.textContent = '☀️ 切换暗色';
+                            btn.textContent = '☀️ Dark Mode';
                         }
 
                         btn.onclick = function() {
                             document.body.classList.toggle('dark-mode');
                             const isDark = document.body.classList.contains('dark-mode');
                             localStorage.setItem('theme-mode', isDark ? 'dark' : 'light');
-                            btn.textContent = isDark ? '🌙 切换亮色' : '☀️ 切换暗色';
+                            const isEnglish = isEnglishPath(getCurrentPath());
+                            if (isEnglish) {
+                                btn.textContent = isDark ? '🌙 Light Mode' : '☀️ Dark Mode';
+                            } else {
+                                btn.textContent = isDark ? '🌙 切换亮色' : '☀️ 切换暗色';
+                            }
                         };
 
                         sidebar.insertBefore(btn, sidebar.firstChild);
+                    });
+                },
+                // Language toggle plugin (with dynamic sidebar loading)
+                function(hook, vm) {
+                    function getCurrentPath() {
+                        const path = window.location.hash.replace(/^#\//, '');
+                        if (!path || path === './' || path === '.') return '';
+                        return path;
+                    }
+                    function isEnglishPath(path) {
+                        return path.toUpperCase().includes('-EN');
+                    }
+                    // Expose for dark mode button
+                    window.getCurrentPath = getCurrentPath;
+                    window.isEnglishPath = isEnglishPath;
+
+                    function switchLang() {
+                        const currentPath = getCurrentPath();
+                        let newPath;
+                        if (isEnglishPath(currentPath)) {
+                            // English → Chinese
+                            if (currentPath.toUpperCase().startsWith('README-EN')) {
+                                newPath = '';
+                            } else {
+                                newPath = currentPath.replace(/-EN\.md$/i, '.md').replace(/-EN$/, '');
+                            }
+                        } else {
+                            // Chinese → English
+                            if (currentPath.toUpperCase() === 'README.MD' || currentPath.toUpperCase() === 'README' || currentPath === '') {
+                                newPath = 'README-EN';
+                            } else if (currentPath.toUpperCase() === 'CHANGELOG.MD' || currentPath.toUpperCase() === 'CHANGELOG') {
+                                newPath = 'CHANGELOG-EN';
+                            } else if (currentPath.endsWith('.md')) {
+                                newPath = currentPath.slice(0, -3) + '-EN.md';
+                            } else {
+                                newPath = currentPath + '-EN';
+                            }
+                        }
+                        window.location.hash = '#/' + newPath;
+                    }
+
+                    function loadSidebar(isEnglish) {
+                        const sidebarFile = isEnglish ? '_sidebar-EN.md' : '_sidebar.md';
+                        fetch(sidebarFile).then(function(res) {
+                            return res.text();
+                        }).then(function(md) {
+                            const sidebarNav = document.querySelector('.sidebar-nav');
+                            if (!sidebarNav) return;
+                            const themeBtn = document.querySelector('.sidebar-toggle-btn-theme');
+                            const langBtn = document.querySelector('.sidebar-toggle-btn-lang');
+                            const html = vm.compiler ? vm.compiler.sidebar(md) : marked(md);
+                            sidebarNav.innerHTML = html;
+                            if (langBtn) sidebarNav.insertBefore(langBtn, sidebarNav.firstChild);
+                            if (themeBtn) sidebarNav.insertBefore(themeBtn, sidebarNav.firstChild);
+                            highlightActive();
+                        });
+                    }
+
+                    function highlightActive() {
+                        const currentPath = getCurrentPath();
+                        const links = document.querySelectorAll('.sidebar-nav a');
+                        links.forEach(function(link) {
+                            const href = link.getAttribute('href') || '';
+                            const linkPath = href.replace(/^#\//, '').replace(/^\.\//,'');
+                            link.parentElement.classList.remove('active');
+                            if (linkPath && currentPath.includes(linkPath.replace('./', ''))) {
+                                link.parentElement.classList.add('active');
+                            }
+                        });
+                    }
+
+                    hook.doneEach(function() {
+                        const sidebar = document.querySelector('.sidebar-nav');
+                        if (!sidebar) return;
+
+                        let langBtn = document.querySelector('.sidebar-toggle-btn-lang');
+                        if (!langBtn) {
+                            langBtn = document.createElement('div');
+                            langBtn.className = 'sidebar-toggle-btn sidebar-toggle-btn-lang';
+                            langBtn.onclick = switchLang;
+                            const themeBtn = document.querySelector('.sidebar-toggle-btn-theme');
+                            if (themeBtn && themeBtn.nextSibling) {
+                                sidebar.insertBefore(langBtn, themeBtn.nextSibling);
+                            } else {
+                                sidebar.insertBefore(langBtn, sidebar.firstChild);
+                            }
+                        }
+
+                        const path = getCurrentPath();
+                        const isEnglish = isEnglishPath(path);
+                        langBtn.textContent = isEnglish ? '🌐 中文' : '🌐 English';
+
+                        // Update dark mode button text based on language
+                        const themeBtn = document.querySelector('.sidebar-toggle-btn-theme');
+                        if (themeBtn) {
+                            const isDark = document.body.classList.contains('dark-mode');
+                            if (isEnglish) {
+                                themeBtn.textContent = isDark ? '🌙 Light Mode' : '☀️ Dark Mode';
+                            } else {
+                                themeBtn.textContent = isDark ? '🌙 切换亮色' : '☀️ 切换暗色';
+                            }
+                        }
+
+                        // Update pagination text based on language
+                        if (window.$docsify && window.$docsify.pagination) {
+                            window.$docsify.pagination.previousText = isEnglish ? 'Previous' : '上一章节';
+                            window.$docsify.pagination.nextText = isEnglish ? 'Next' : '下一章节';
+                        }
+
+                        loadSidebar(isEnglish);
                     });
                 }
             ]
         }
     </script>
-    <!-- Docsify 核心 -->
+    <!-- Docsify Core -->
     <script src="//cdn.jsdelivr.net/npm/docsify@latest/lib/docsify.min.js"></script>
-    <!-- Mermaid 支持 -->
+    <!-- Mermaid -->
     <script src="//cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
     <script src="//cdn.jsdelivr.net/npm/docsify-mermaid@latest/dist/docsify-mermaid.min.js"></script>
-    <!-- 代码高亮 -->
+    <!-- Code Highlighting -->
     <script src="//cdn.jsdelivr.net/npm/prismjs@latest/components/prism-bash.js"></script>
     <script src="//cdn.jsdelivr.net/npm/prismjs@latest/components/prism-swift.js"></script>
     <script src="//cdn.jsdelivr.net/npm/prismjs@latest/components/prism-objectivec.js"></script>
-    <!-- 分页导航 -->
+    <script src="//cdn.jsdelivr.net/npm/prismjs@latest/components/prism-ruby.js"></script>
+    <!-- Pagination -->
     <script src="//cdn.jsdelivr.net/npm/docsify-pagination@latest/dist/docsify-pagination.min.js"></script>
-    <!-- 代码复制 -->
+    <!-- Copy Code -->
     <script src="//cdn.jsdelivr.net/npm/docsify-copy-code"></script>
-    <!-- 图片放大 -->
+    <!-- Image Zoom -->
     <script src="//cdn.jsdelivr.net/npm/docsify/lib/plugins/zoom-image.min.js"></script>
-    <!-- 外部链接 -->
+    <!-- External Script -->
     <script src="//cdn.jsdelivr.net/npm/docsify/lib/plugins/external-script.min.js"></script>
-    <!-- 字数统计 -->
+    <!-- Word Count -->
     <script src="//unpkg.com/docsify-count/dist/countable.js"></script>
-    <!-- 搜索 -->
+    <!-- Search -->
     <script src="//cdn.jsdelivr.net/npm/docsify/lib/plugins/search.min.js"></script>
 </body>
 
