@@ -368,6 +368,8 @@ Defines the core player operation interface; instances are created via `PlayerFa
 | `scaleMode` | `ScaleMode` (readonly) | Current scale mode |
 | `rotateMode` | `RotateMode` (readonly) | Current rotation angle |
 | `stateStore` | `PlayerStateStore *` (readonly) | State store |
+| `playerView` | `UIView *` (nullable) | Player rendering view, injected by the lifecycle strategy on create/recycle |
+| `notificationDispatcher` | `PlayerNotificationDispatcher *` (nullable) | Event notification dispatcher |
 
 **Playback Control**
 
@@ -481,6 +483,8 @@ Abstract base class for all built-in slots (`UIView` subclass), implementing `Sl
 | `- isRegistered:` | `SlotType` type | Check whether a slot is registered |
 | `- registerCustomSlotType:provider:` | `CustomSlotType *` type, provider | Register a custom slot |
 | `- unregisterCustomSlotType:` | `CustomSlotType *` type | Unregister a custom slot |
+| `- isCustomSlotRegistered:` | `CustomSlotType *` type | Check whether a custom slot is registered |
+| `- customSlotTypes` | - | Get all registered custom slot types |
 
 **Slot Visibility**
 
@@ -490,6 +494,14 @@ Abstract base class for all built-in slots (`UIView` subclass), implementing `Sl
 | `- showSlot:` | `SlotType` type | Show a previously hidden slot |
 | `- isSlotHidden:` | `SlotType` type | Check whether a slot is hidden |
 
+**Scene-based Visibility Configuration**
+
+| Method | Parameters | Return Value | Description |
+|--------|------------|--------------|-------------|
+| `- registerSlotConfig:` | `SlotConfig *` config | `void` | Register a scene-based visibility configuration for a slot type (replaces any existing configuration for the same type) |
+| `- unregisterSlotConfigForType:` | `SlotType` slotType | `void` | Remove the scene-based visibility configuration for a slot type; once removed, the slot is visible by default in all scenes (controlled only by `hideSlot:`) |
+| `- slotConfigForType:` | `SlotType` type | `nullable SlotConfig *` | Get the scene-based visibility configuration for a slot type; returns nil if not configured |
+
 **Element-Level Visibility**
 
 | Method | Parameters | Description |
@@ -497,6 +509,8 @@ Abstract base class for all built-in slots (`UIView` subclass), implementing `Sl
 | `- hideElements:forSlot:` | `NSUInteger` mask, `SlotType` type | Hide specific elements within a slot (bitmask) |
 | `- showElements:forSlot:` | `NSUInteger` mask, `SlotType` type | Show previously hidden elements |
 | `- setHiddenElementMask:forSlot:` | `NSUInteger` mask, `SlotType` type | Replace the hidden element mask (override mode) |
+| `- hiddenElementMaskForSlot:` | `SlotType` type | Get the hidden element bitmask for a slot; returns 0 if not configured |
+| `- shownElementMaskForSlot:` | `SlotType` type | Get the shown element bitmask for a slot; returns 0 if not configured |
 | `- setAllHiddenElementMasks:` | `NSDictionary *` config | Batch set all hidden elements |
 | `- clearAllElementMasks` | - | Clear all element visibility configurations |
 
@@ -821,7 +835,7 @@ Log management hub (singleton) that provides unified management of log output an
 | Method | Parameters | Description |
 |--------|------------|-------------|
 | `+ sharedHub` | - | Get the shared LogHub singleton |
-| `- addObserver:` | `id<LogObserver>` observer | Add a log observer (held with strong reference) |
+| `- addObserver:` | `id<LogObserver>` observer | Add a log observer (held with weak reference) |
 | `- removeObserver:` | `id<LogObserver>` observer | Remove a log observer |
 
 **Log Output**
@@ -1044,6 +1058,21 @@ When the language mode or language code changes, a `LocaleDidChangeNotification`
 | `TrackTypeAudio` | 2 | Audio track |
 | `TrackTypeSubtitle` | 3 | Subtitle track |
 | `TrackTypeVOD` | 4 | VOD track |
+
+### **15.8 TrackQuality (Track Quality)**
+
+`TrackQuality` describes a selectable track (resolution/audio track, etc.), used by APIs such as `selectTrack:`, `trackQualityList`, and `selectedTrackQuality`.
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `index` | `NSInteger` (readonly) | Track index |
+| `type` | `TrackType` (readonly) | Track type |
+| `width` | `NSInteger` (readonly) | Track width (pixels) |
+| `height` | `NSInteger` (readonly) | Track height (pixels) |
+
+| Method | Parameters | Description |
+|--------|------------|-------------|
+| `- initWithIndex:type:width:height:` | `NSInteger` index, `TrackType` type, `NSInteger` width, `NSInteger` height | Constructor |
 
 ---
 

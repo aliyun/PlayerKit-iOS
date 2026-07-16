@@ -368,6 +368,8 @@ iOS 端通过三组独立的通知协议实现分类事件分发：
 | `scaleMode` | `ScaleMode`（readonly） | 当前缩放模式 |
 | `rotateMode` | `RotateMode`（readonly） | 当前旋转角度 |
 | `stateStore` | `PlayerStateStore *`（readonly） | 状态存储 |
+| `playerView` | `UIView *`（nullable） | 播放器渲染视图，由生命周期策略在创建/回收时注入 |
+| `notificationDispatcher` | `PlayerNotificationDispatcher *`（nullable） | 事件通知分发器 |
 
 **播放控制**
 
@@ -481,6 +483,8 @@ iOS 端通过三组独立的通知协议实现分类事件分发：
 | `- isRegistered:` | `SlotType` type | 检查是否已注册 |
 | `- registerCustomSlotType:provider:` | `CustomSlotType *` type, provider | 注册自定义插槽 |
 | `- unregisterCustomSlotType:` | `CustomSlotType *` type | 注销自定义插槽 |
+| `- isCustomSlotRegistered:` | `CustomSlotType *` type | 检查自定义插槽是否已注册 |
+| `- customSlotTypes` | - | 获取所有已注册的自定义插槽类型 |
 
 **插槽可见性**
 
@@ -490,6 +494,14 @@ iOS 端通过三组独立的通知协议实现分类事件分发：
 | `- showSlot:` | `SlotType` type | 显示已隐藏的插槽 |
 | `- isSlotHidden:` | `SlotType` type | 检查插槽是否隐藏 |
 
+**场景可见性配置**
+
+| 方法 | 参数 | 返回值 | 说明 |
+|------|------|--------|------|
+| `- registerSlotConfig:` | `SlotConfig *` config | `void` | 为插槽类型注册场景可见性配置（同类型已存在配置会被替换） |
+| `- unregisterSlotConfigForType:` | `SlotType` slotType | `void` | 移除指定插槽类型的场景可见性配置，移除后该插槽在所有场景下默认可见（仅受 `hideSlot:` 控制） |
+| `- slotConfigForType:` | `SlotType` type | `nullable SlotConfig *` | 获取指定插槽类型的场景可见性配置，未配置返回 nil |
+
 **元素级可见性**
 
 | 方法 | 参数 | 说明 |
@@ -497,6 +509,8 @@ iOS 端通过三组独立的通知协议实现分类事件分发：
 | `- hideElements:forSlot:` | `NSUInteger` mask, `SlotType` type | 隐藏插槽内特定元素（位掩码） |
 | `- showElements:forSlot:` | `NSUInteger` mask, `SlotType` type | 显示之前隐藏的元素 |
 | `- setHiddenElementMask:forSlot:` | `NSUInteger` mask, `SlotType` type | 替换隐藏元素掩码（覆盖式） |
+| `- hiddenElementMaskForSlot:` | `SlotType` type | 获取指定插槽的隐藏元素位掩码，无配置返回 0 |
+| `- shownElementMaskForSlot:` | `SlotType` type | 获取指定插槽的显示元素位掩码，无配置返回 0 |
 | `- setAllHiddenElementMasks:` | `NSDictionary *` config | 批量设置所有隐藏元素 |
 | `- clearAllElementMasks` | - | 清空所有元素可见性配置 |
 
@@ -821,7 +835,7 @@ CustomSlotType *type = [CustomSlotType typeWithKey:@"myCustomSlot" order:85];
 | 方法 | 参数 | 说明 |
 |------|------|------|
 | `+ sharedHub` | - | 获取 LogHub 共享单例 |
-| `- addObserver:` | `id<LogObserver>` observer | 添加日志观察者（强引用持有） |
+| `- addObserver:` | `id<LogObserver>` observer | 添加日志观察者（弱引用持有） |
 | `- removeObserver:` | `id<LogObserver>` observer | 移除日志观察者 |
 
 **日志输出**
@@ -1044,6 +1058,21 @@ CustomSlotType *type = [CustomSlotType typeWithKey:@"myCustomSlot" order:85];
 | `TrackTypeAudio` | 2 | 音频轨道 |
 | `TrackTypeSubtitle` | 3 | 字幕轨道 |
 | `TrackTypeVOD` | 4 | VOD 轨道 |
+
+### **15.8 TrackQuality（轨道清晰度）**
+
+`TrackQuality` 描述一条可选的轨道（清晰度/音轨等），用于 `selectTrack:`、`trackQualityList`、`selectedTrackQuality` 等 API。
+
+| 属性 | 类型 | 说明 |
+|------|------|------|
+| `index` | `NSInteger`（readonly） | 轨道索引 |
+| `type` | `TrackType`（readonly） | 轨道类型 |
+| `width` | `NSInteger`（readonly） | 轨道宽度（像素） |
+| `height` | `NSInteger`（readonly） | 轨道高度（像素） |
+
+| 方法 | 参数 | 说明 |
+|------|------|------|
+| `- initWithIndex:type:width:height:` | `NSInteger` index, `TrackType` type, `NSInteger` width, `NSInteger` height | 构造方法 |
 
 ---
 

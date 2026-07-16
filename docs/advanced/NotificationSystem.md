@@ -512,7 +512,7 @@ MyAnalyticsObserver *observer = [[MyAnalyticsObserver alloc] init];
 | 特性 | 说明 |
 |------|------|
 | 观察者存储 | `NSHashTable weakObjectsHashTable` 弱引用存储 |
-| 列表访问 | 串行分派队列（`dispatch_queue_t`）保护，线程安全 |
+| 列表访问 | `PlayerNotificationDispatcher` 使用 `os_unfair_lock` 保护；`GestureNotificationDispatcher`/`SlotActionNotificationDispatcher` 使用串行分派队列（`dispatch_queue_t`）保护，均线程安全 |
 | 回调线程 | 通知始终在**主线程**分派（`SlotActionNotificationDispatcher` 为异步主线程） |
 | 异常隔离 | 每次观察者调用通过 `@try/@catch` 包裹，单个观察者异常不影响其他观察者 |
 | 重复添加 | 重复添加同一观察者不会产生效果 |

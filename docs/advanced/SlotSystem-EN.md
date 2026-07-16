@@ -287,11 +287,11 @@ SlotConfig *coverConfig = [SlotConfig configWithSlotType:SlotTypeCover
                                          excludedScenes:[NSSet setWithObjects:@(SceneTypeLive), @(SceneTypeRestricted), nil]];
 [slotManager registerSlotConfig:coverConfig];
 
-// Use visibilityCondition for dynamic visibility control
+// Use visibilityCondition for dynamic visibility control (LogPanel's default creation is also gated by this switch, see DefaultSlotFactory)
 SlotConfig *logConfig = [SlotConfig configWithSlotType:SlotTypeLogPanel
                                        excludedScenes:[NSSet setWithObject:@(SceneTypeMinimal)]
                                   visibilityCondition:^BOOL{
-    return [AliPlayerKit isDebugModeEnabled];
+    return [AliPlayerKit isLogPanelEnabled];
 }];
 [slotManager registerSlotConfig:logConfig];
 

@@ -170,7 +170,7 @@ FileLogObserver *fileObserver = [[FileLogObserver alloc] init];
 [[LogHub sharedHub] removeObserver:fileObserver];
 ```
 
-> **Note**: `LogHub` holds observers with a **strong reference** until explicitly removed via `removeObserver:`. You must call `removeObserver:` at the appropriate time (e.g., in `dealloc` or `viewWillDisappear:`) to avoid retain cycles.
+> **Note**: `LogHub` holds observers with a **weak reference** (backed by `NSHashTable weakObjectsHashTable`). An observer is automatically removed from the list once it is deallocated, so there is no risk of a retain cycle. It is still recommended to call `removeObserver:` proactively at the appropriate time (e.g., in `viewWillDisappear:`) to avoid receiving log callbacks during the window right before the object is deallocated.
 
 ### **3.5 Advanced Usage - Log Panel**
 
@@ -405,23 +405,23 @@ The following is a complete implementation of a file log observer:
 }
 ```
 
-#### **Mistake 3: Forgetting to remove observers, causing retain cycles**
+#### **Recommendation: Remove observers promptly to avoid pointless callbacks**
 
 ```objc
-// ✗ Wrong: LogHub holds a strong reference to the observer; not removing it causes a retain cycle
+// LogHub holds a weak reference to the observer; not removing it does not cause a retain cycle,
+// but the object may still receive log callbacks after it has disappeared from screen.
 - (void)viewDidLoad {
     [[LogHub sharedHub] addObserver:self];
-    // Will never be released...
 }
 
-// ✓ Correct: Remove at the end of the lifecycle
+// ✓ Recommended: remove proactively at the end of the lifecycle
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
     [[LogHub sharedHub] removeObserver:self];
 }
 ```
 
-> **Note**: Unlike the notification system's Dispatcher, `LogHub` holds observers with a **strong reference**. Failing to call `removeObserver:` will prevent the observer from being deallocated.
+> **Note**: Like the notification system's Dispatcher, `LogHub` holds observers with a **weak reference**, so there is no memory leak risk. Calling `removeObserver:` is mainly to avoid receiving pointless log callbacks after the observer's lifecycle has ended.
 
 ---
 
@@ -456,7 +456,7 @@ The following is a complete implementation of a file log observer:
 | `e:msg:error:` | Instance method | Output an Error log with an `NSError` |
 | `log:tag:msg:` | Instance method | Output at a specified level |
 | `logLevel:file:line:message:error:` | Instance method | Core log method (used by SLOG macros) |
-| `addObserver:` | Instance method | Add an observer (**strong reference**, duplicate additions have no effect) |
+| `addObserver:` | Instance method | Add an observer (**weak reference**, duplicate additions have no effect) |
 | `removeObserver:` | Instance method | Remove an observer |
 | `+levelToString:` | Class method | Convert level to string (V/D/I/W/E/N) |
 | `+stringToLevel:` | Class method | Convert string to level (case-insensitive, returns `LogLevelInfo` if unrecognized) |

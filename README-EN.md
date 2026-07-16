@@ -4,7 +4,7 @@ Language: [中文简体](README.md) | English
 
 # **AliPlayerKit iOS**
 
-[![Platform](https://img.shields.io/badge/Platform-iOS%2011.0%2B-blue.svg)](https://developer.apple.com/ios/) [![Language](https://img.shields.io/badge/Language-Objective--C-orange.svg)](https://developer.apple.com/documentation/objectivec) [![CocoaPods](https://img.shields.io/badge/CocoaPods-compatible-green.svg)](https://cocoapods.org/) [![website](https://img.shields.io/badge/Product-VOD-FF6A00)](https://www.alibabacloud.com/en/product/apsaravideo-for-vod)
+[![Platform](https://img.shields.io/badge/Platform-iOS%209.0%2B-blue.svg)](https://developer.apple.com/ios/) [![Language](https://img.shields.io/badge/Language-Objective--C-orange.svg)](https://developer.apple.com/documentation/objectivec) [![CocoaPods](https://img.shields.io/badge/CocoaPods-compatible-green.svg)](https://cocoapods.org/) [![website](https://img.shields.io/badge/Product-VOD-FF6A00)](https://www.alibabacloud.com/en/product/apsaravideo-for-vod)
 
 ---
 
@@ -109,7 +109,7 @@ Before running the project, ensure the following requirements are met:
 | Requirement | Description |
 |-----|------|
 | Xcode | 15.0+, latest stable version recommended |
-| iOS | Minimum 11.0, real device recommended |
+| iOS | Minimum 9.0, real device recommended |
 | CocoaPods | 1.13.0+ |
 | License | Player License certificate and License Key obtained. See [License Authorization and Management](https://www.alibabacloud.com/help/en/apsara-video-sdk/) |
 

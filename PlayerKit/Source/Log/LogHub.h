@@ -59,7 +59,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * @param observer 遵循 LogObserver 协议的观察者对象，不可为 nil。
  *
- * @discussion 观察者被强引用直到通过 removeObserver: 移除。
+ * @discussion 观察者被弱引用持有，销毁后自动从观察者列表中移除。
  *             重复添加同一观察者不会产生效果。
  *
  * @see removeObserver:

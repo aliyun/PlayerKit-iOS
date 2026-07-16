@@ -73,7 +73,7 @@ YourProject/
 在 `Podfile` 中通过本地路径引用 `PlayerKit`：
 
 ```ruby
-platform :ios, '11.0'
+platform :ios, '9.0'
 
 target 'YourApp' do
   use_frameworks!
@@ -114,7 +114,7 @@ open YourApp.xcworkspace
 * **Objective-C**：
 
 ```objc
-#import <AliPlayerKit/AliPlayerKit.h>
+#import <PlayerKit/AliPlayerKit.h>
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     // （可选）全局 SDK 配置，如 setOption 等
@@ -219,7 +219,7 @@ end
 | `SceneCommon` | `PlayerKitScenes/SceneCommon` | 场景公共模块（自动作为基础依赖引入） |
 | `SceneLongVideo` | `PlayerKitScenes/SceneLongVideo` | 中长视频场景 |
 | `SceneShortVideo` | `PlayerKitScenes/SceneShortVideo` | 短视频场景 |
-| `SceneLive` | `PlayerKitScenes/SceneLive` | 直播场景 |
+| `SceneLive` | `PlayerKitScenes/SceneLive` | 直播场景。**额外依赖 `DemoSettings` 模块**（Demo 级配置存储），单独集成时需一并拷贝 `DemoSettings/` 目录，否则 `pod install` 会失败 |
 | `ScenePlaylist` | `PlayerKitScenes/ScenePlaylist` | 列表播放场景 |
 
 > **跨平台对齐**：场景模块命名与 Android 端对齐（`scene-longvideo`、`scene-shortvideo`、`scene-live`、`scene-playlist`）。各场景的业务能力和 UI 交互在多端间保持一致。

@@ -44,7 +44,7 @@ AliPlayerKit 采用 **分层架构设计**。除组件层接入外，还提供 *
 * **Objective-C**：
 
 ```objc
-#import <AliPlayerKit/AliPlayerKit.h>
+#import <PlayerKit/AliPlayerKit.h>
 
 @implementation AppDelegate
 
@@ -116,7 +116,7 @@ view.addSubview(playerView)
 * **Objective-C**：
 
 ```objc
-#import <AliPlayerKit/AliPlayerKit.h>
+#import <PlayerKit/AliPlayerKit.h>
 
 @interface VideoPlayerViewController ()
 @property (nonatomic, strong) AliPlayerView *playerView;
@@ -268,7 +268,7 @@ model.onPlayerConfigBlock = { player in
 | `SceneCommon` | `PlayerKitScenes/SceneCommon` | 场景公共模块（必需，其他场景模块的基础依赖） |
 | `SceneLongVideo` | `PlayerKitScenes/SceneLongVideo` | **中长视频场景**：提供中长视频播放的完整解决方案 |
 | `SceneShortVideo` | `PlayerKitScenes/SceneShortVideo` | **短视频场景**：提供短视频滑动播放的完整解决方案 |
-| `SceneLive` | `PlayerKitScenes/SceneLive` | **直播场景**：提供直播播放的完整解决方案 |
+| `SceneLive` | `PlayerKitScenes/SceneLive` | **直播场景**：提供直播播放的完整解决方案。**额外依赖 `DemoSettings` 模块**，单独集成时需一并拷贝 |
 | `ScenePlaylist` | `PlayerKitScenes/ScenePlaylist` | **列表播放场景**：提供视频列表播放的完整解决方案 |
 
 > **跨平台对齐**：场景模块与 Android 端对齐（`scene-longvideo` / `scene-shortvideo` / `scene-live` / `scene-playlist`）。各场景的业务能力和 UI 交互在多端间保持一致。

@@ -512,7 +512,7 @@ MyAnalyticsObserver *observer = [[MyAnalyticsObserver alloc] init];
 | Feature | Description |
 |---------|-------------|
 | Observer Storage | `NSHashTable weakObjectsHashTable` weak reference storage |
-| List Access | Protected by a serial dispatch queue (`dispatch_queue_t`), thread-safe |
+| List Access | `PlayerNotificationDispatcher` is protected by `os_unfair_lock`; `GestureNotificationDispatcher`/`SlotActionNotificationDispatcher` are protected by a serial dispatch queue (`dispatch_queue_t`) — all thread-safe |
 | Callback Thread | Notifications are always dispatched on the **main thread** (`SlotActionNotificationDispatcher` uses asynchronous main thread) |
 | Exception Isolation | Each observer invocation is wrapped with `@try/@catch`, a single observer's exception does not affect other observers |
 | Duplicate Addition | Adding the same observer repeatedly has no effect |

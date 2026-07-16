@@ -20,7 +20,7 @@ NS_ASSUME_NONNULL_BEGIN
  *             适用于整个 App 仅需一个播放器实例的场景（如后台音频播放），
  *             可最大程度减少播放器初始化次数。
  *
- *             clear 为空操作（不销毁单例实例），需通过 recyclePlayer:force:YES 显式销毁。
+ *             clear 会销毁当前单例播放器实例并置空，之后再次 acquirePlayer 会重新创建。
  *
  *             本类采用 dispatch_once 真单例模式，通过 +sharedInstance 获取全局唯一实例。
  *

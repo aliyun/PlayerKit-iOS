@@ -73,7 +73,7 @@ YourProject/
 Reference `PlayerKit` via local path in your `Podfile`:
 
 ```ruby
-platform :ios, '11.0'
+platform :ios, '9.0'
 
 target 'YourApp' do
   use_frameworks!
@@ -114,7 +114,7 @@ Complete framework initialization in `AppDelegate` (only needs to be called once
 * **Objective-C**:
 
 ```objc
-#import <AliPlayerKit/AliPlayerKit.h>
+#import <PlayerKit/AliPlayerKit.h>
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     // (Optional) Global SDK configuration, such as setOption, etc.
@@ -219,7 +219,7 @@ end
 | `SceneCommon` | `PlayerKitScenes/SceneCommon` | Common scene module (automatically included as a base dependency) |
 | `SceneLongVideo` | `PlayerKitScenes/SceneLongVideo` | Long-form video scene |
 | `SceneShortVideo` | `PlayerKitScenes/SceneShortVideo` | Short video scene |
-| `SceneLive` | `PlayerKitScenes/SceneLive` | Live streaming scene |
+| `SceneLive` | `PlayerKitScenes/SceneLive` | Live streaming scene. **Additionally depends on the `DemoSettings` module** (demo-level config storage). If integrating this scene standalone, you must also copy the `DemoSettings/` directory, otherwise `pod install` will fail |
 | `ScenePlaylist` | `PlayerKitScenes/ScenePlaylist` | Playlist scene |
 
 > **Cross-platform Alignment**: Scene module naming is aligned with the Android counterpart (`scene-longvideo`, `scene-shortvideo`, `scene-live`, `scene-playlist`). Business capabilities and UI interactions for each scene are consistent across platforms.

@@ -4,7 +4,7 @@ Language: 中文简体 | [English](README-EN.md)
 
 # **AliPlayerKit iOS**
 
-[![Platform](https://img.shields.io/badge/Platform-iOS%2011.0%2B-blue.svg)](https://developer.apple.com/ios/) [![Language](https://img.shields.io/badge/Language-Objective--C-orange.svg)](https://developer.apple.com/documentation/objectivec) [![CocoaPods](https://img.shields.io/badge/CocoaPods-compatible-green.svg)](https://cocoapods.org/) [![website](https://img.shields.io/badge/Product-VOD-FF6A00)](https://www.aliyun.com/product/vod)
+[![Platform](https://img.shields.io/badge/Platform-iOS%209.0%2B-blue.svg)](https://developer.apple.com/ios/) [![Language](https://img.shields.io/badge/Language-Objective--C-orange.svg)](https://developer.apple.com/documentation/objectivec) [![CocoaPods](https://img.shields.io/badge/CocoaPods-compatible-green.svg)](https://cocoapods.org/) [![website](https://img.shields.io/badge/Product-VOD-FF6A00)](https://www.aliyun.com/product/vod)
 
 ---
 
@@ -109,7 +109,7 @@ AliPlayerKit 采用 **MVC「3 + 1」分层架构设计**，提供两种接入方
 | 条件 | 说明 |
 |-----|------|
 | Xcode | 15.0+，推荐最新稳定版 |
-| iOS | 最低 11.0，推荐真机运行 |
+| iOS | 最低 9.0，推荐真机运行 |
 | CocoaPods | 1.13.0+ |
 | License | 已获取播放器 License 授权证书和 License Key，详见 [管理 License](https://help.aliyun.com/zh/vod/developer-reference/license-authorization-and-management) |
 

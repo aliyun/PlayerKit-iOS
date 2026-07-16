@@ -44,7 +44,7 @@ Call `[AliPlayerKit setup]` in `AppDelegate`'s `application:didFinishLaunchingWi
 * **Objective-C**:
 
 ```objc
-#import <AliPlayerKit/AliPlayerKit.h>
+#import <PlayerKit/AliPlayerKit.h>
 
 @implementation AppDelegate
 
@@ -116,7 +116,7 @@ Create the controller, configure data, and attach the view in your ViewControlle
 * **Objective-C**:
 
 ```objc
-#import <AliPlayerKit/AliPlayerKit.h>
+#import <PlayerKit/AliPlayerKit.h>
 
 @interface VideoPlayerViewController ()
 @property (nonatomic, strong) AliPlayerView *playerView;
@@ -268,7 +268,7 @@ Scene modules are located in the `PlayerKitScenes` directory and imported via Co
 | `SceneCommon` | `PlayerKitScenes/SceneCommon` | Common scene module (required, base dependency for other scene modules) |
 | `SceneLongVideo` | `PlayerKitScenes/SceneLongVideo` | **Long Video Scene**: Complete solution for medium/long video playback |
 | `SceneShortVideo` | `PlayerKitScenes/SceneShortVideo` | **Short Video Scene**: Complete solution for short video swipe playback |
-| `SceneLive` | `PlayerKitScenes/SceneLive` | **Live Streaming Scene**: Complete solution for live stream playback |
+| `SceneLive` | `PlayerKitScenes/SceneLive` | **Live Streaming Scene**: Complete solution for live stream playback. **Additionally depends on the `DemoSettings` module**; must be copied together when integrating standalone |
 | `ScenePlaylist` | `PlayerKitScenes/ScenePlaylist` | **Playlist Scene**: Complete solution for video list playback |
 
 > **Cross-platform alignment**: Scene modules are aligned with the Android counterparts (`scene-longvideo` / `scene-shortvideo` / `scene-live` / `scene-playlist`). Business capabilities and UI interactions are consistent across platforms.

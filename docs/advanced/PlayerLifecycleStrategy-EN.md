@@ -308,7 +308,7 @@ Maintains an independent player instance for each `uniqueId`. The same `uniqueId
 | `acquirePlayerWithUniqueId:` (ID miss) | Takes from preload queue first, otherwise creates new instance and binds ID |
 | `recyclePlayer:uniqueId:force:NO` | Only stops playback, retains in mapping table (LRU handles eviction automatically) |
 | `recyclePlayer:uniqueId:force:YES` | Removes from mapping table and destroys immediately |
-| `clear` | Cleans up instances in both the preload queue and mapping table |
+| `clear` | Cleans up non-active instances in both the preload queue and mapping table; active instances are unaffected |
 | `preloadWithCount:` | Creates instances not bound to any ID; taken when acquiring a new ID for the first time |
 
 > **Note**: When a strategy implements the `acquirePlayerWithUniqueId:` method, `AliPlayerController` will call it preferentially over `acquirePlayer`, achieving ID binding through `VideoSource.uniqueId`. Similarly, `recyclePlayer:uniqueId:force:` takes priority over `recyclePlayer:force:`.
@@ -333,7 +333,7 @@ Globally maintains a single player instance. Implemented as a true singleton usi
 
 - Globally unique; all controllers using this strategy share the same player instance
 - Lowest memory footprint
-- `clear` is a no-op (does not destroy the singleton instance); use `recyclePlayer:force:YES` to explicitly destroy
+- `clear` destroys the current singleton player instance and sets it to nil; the next `acquirePlayer` call re-creates it
 - Not suitable for simultaneous multi-video playback scenarios
 - Multiple `AliPlayerController` instances must not hold the player simultaneously, as this causes state conflicts
 
@@ -344,7 +344,7 @@ Globally maintains a single player instance. Implemented as a true singleton usi
 | `acquirePlayer` | Returns the global instance if it exists, otherwise creates one |
 | `recyclePlayer:force:NO` | Only stops playback, retains instance |
 | `recyclePlayer:force:YES` | Destroys the global instance |
-| `clear` | No-op (does not destroy the singleton instance) |
+| `clear` | Destroys the singleton player instance and sets it to nil |
 
 ### **4.5 Strategy Comparison Table**
 
