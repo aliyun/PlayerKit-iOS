@@ -12,6 +12,18 @@ Language: [中文简体](README.md) | English
 
 **AliPlayerKit** is Alibaba Cloud's **player UI integration solution** for video applications, offering **low-code, extensible player UI components** and **scenario-based solutions**. 
 
+<p align="center">
+  <img
+    src="https://alivc-demo-cms.alicdn.com/versionProduct/installPackage/AliPlayerKit/playerkit-ui-preview.png"
+    alt="AliPlayerKit UI preview"
+    width="100%"
+  />
+</p>
+
+<p align="center">
+  <sub>Ready-to-use player UI components for multiple playback scenarios</sub>
+</p>
+
 By encapsulating player capabilities and UI interactions, it enables rapid development of app playback features with minimal integration effort — no need to call underlying player APIs directly or build complex player UIs from scratch.
 
 ---

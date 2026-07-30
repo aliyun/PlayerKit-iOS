@@ -12,6 +12,18 @@ Language: 中文简体 | [English](README-EN.md)
 
 **AliPlayerKit** 是阿里云面向视频业务推出的 **播放器含 UI 集成方案**，提供**低代码、可扩展的播放器 UI 组件**与**场景化解决方案**。
 
+<p align="center">
+  <img
+    src="https://alivc-demo-cms.alicdn.com/versionProduct/installPackage/AliPlayerKit/playerkit-ui-preview.png"
+    alt="AliPlayerKit UI 组件预览"
+    width="100%"
+  />
+</p>
+
+<p align="center">
+  <sub>开箱即用的播放器 UI，支持多种播放形态与交互配置</sub>
+</p>
+
 通过对播放器能力和 UI 交互的高度封装，帮助客户以极低的接入成本快速完成 App 播放能力建设，无需直接调用底层播放器 API，也无需自行实现复杂的播放器 UI。
 
 ---
