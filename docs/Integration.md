@@ -186,7 +186,8 @@ YourProject/
 │   ├── SceneLongVideo/
 │   ├── SceneShortVideo/
 │   ├── SceneLive/
-│   └── ScenePlaylist/
+│   ├── ScenePlaylist/
+│   └── SceneAiEducation/
 └── Podfile
 ```
 
@@ -203,12 +204,13 @@ target 'YourApp' do
   pod 'AliPlayerSDK_iOS', '~> 7.15.0'
 
   # 播放场景方案（通过本地路径引用，按需引入）
-  pod 'PlayerKitScenes', :path => './PlayerKitScenes'    # 全部场景（默认包含 LongVideo/ShortVideo/Live/Playlist）
+  pod 'PlayerKitScenes', :path => './PlayerKitScenes'    # 全部场景（默认包含 LongVideo/ShortVideo/Live/Playlist/AiEducation）
   # 或按需选择单个场景：
   # pod 'PlayerKitScenes/SceneLongVideo', :path => './PlayerKitScenes'   # 仅中长视频
   # pod 'PlayerKitScenes/SceneShortVideo', :path => './PlayerKitScenes'  # 仅短视频
   # pod 'PlayerKitScenes/SceneLive', :path => './PlayerKitScenes'        # 仅直播
   # pod 'PlayerKitScenes/ScenePlaylist', :path => './PlayerKitScenes'    # 仅列表播放
+  # pod 'PlayerKitScenes/SceneAiEducation', :path => './PlayerKitScenes' # 仅 AI 教育
 end
 ```
 
@@ -221,6 +223,14 @@ end
 | `SceneShortVideo` | `PlayerKitScenes/SceneShortVideo` | 短视频场景 |
 | `SceneLive` | `PlayerKitScenes/SceneLive` | 直播场景。**额外依赖 `DemoSettings` 模块**（Demo 级配置存储），单独集成时需一并拷贝 `DemoSettings/` 目录，否则 `pod install` 会失败 |
 | `ScenePlaylist` | `PlayerKitScenes/ScenePlaylist` | 列表播放场景 |
+| `SceneAiEducation` | `PlayerKitScenes/SceneAiEducation` | AI 教育场景。**额外依赖 `DemoSettings` 模块与第三方库 `Down (~> 0.11.0)`**（MIT 协议，内含 cmark），用于 Markdown 渲染，`pod install` 时自动拉取 |
+
+> **SceneAiEducation 依赖说明**：
+>
+> - 该场景包含 Swift 源码（`swift_version 5.1`），集成方需使用支持 Swift 的现代 Xcode，Podfile 需启用 `use_frameworks!`。
+> - iOS ≥ 12.2 系统内置 Swift runtime，无额外体积成本；更低版本由 Xcode 自动内嵌 runtime。
+> - 默认 subspec 集包含该场景，即默认集成会引入 `Down` 依赖。若不需要 AI 教育场景，可在 Podfile 中仅显式引用所需 subspec（不含 `SceneAiEducation`），即不会编译 Swift、也不会引入 `Down`。
+> - 其他 subspec 与 PlayerKit 核心库保持纯 Objective-C，不受影响。
 
 > **跨平台对齐**：场景模块命名与 Android 端对齐（`scene-longvideo`、`scene-shortvideo`、`scene-live`、`scene-playlist`）。各场景的业务能力和 UI 交互在多端间保持一致。
 

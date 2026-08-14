@@ -66,6 +66,12 @@ NSString *const LocaleKeyLogPanelClear     = @"log_panel.clear";
 
 NSString *const LocaleKeyLandscapeHintFullscreen = @"landscape_hint.fullscreen";
 
+#pragma mark - Chapter
+
+NSString *const LocaleKeyChapterCountFormat = @"chapter.count_format";
+NSString *const LocaleKeyChapterNextButton  = @"chapter.next_button";
+NSString *const LocaleKeyChapterNavFormat   = @"chapter.nav_format";
+
 #pragma mark - Common
 
 NSString *const LocaleKeyUnknown = @"common.unknown";

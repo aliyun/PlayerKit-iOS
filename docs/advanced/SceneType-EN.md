@@ -33,7 +33,7 @@ Developers only need to set a single enum value, and the framework automatically
 
 ### **2.1 Scene Overview**
 
-AliPlayerKit includes 5 built-in scene types that cover the vast majority of playback use cases:
+AliPlayerKit includes 6 built-in scene types that cover the vast majority of playback use cases:
 
 | Scene | Enum Value | Description | Applicable Use Cases | Differences from VOD |
 |-------|------------|-------------|---------------------|---------------------|
@@ -42,6 +42,7 @@ AliPlayerKit includes 5 built-in scene types that cover the vast majority of pla
 | Video List | `SceneTypeVideoList` | Disables vertical gestures to avoid conflicts with list scrolling | News feeds, short video lists | Disables volume/brightness vertical gestures; otherwise same as VOD |
 | Restricted | `SceneTypeRestricted` | Prevents skipping, ensures users watch content completely | Exam monitoring, training courses | Disables progress dragging/speed control; hides cover image |
 | Minimal | `SceneTypeMinimal` | Clean canvas; all controls must be implemented manually | Background playback, fully custom UI | Hides all control components and gestures |
+| AI VOD | `SceneTypeAIVod` | AI-enhanced VOD with chapter navigation and AI content understanding | AI courses, knowledge videos | Adds chapter data model and chapter navigation slot; otherwise same as VOD |
 
 ### **2.2 Enum Definition**
 
@@ -62,6 +63,9 @@ typedef NS_ENUM(NSInteger, SceneType) {
 
     /** Minimal player page scene */
     SceneTypeMinimal = 4,
+
+    /** AI video on demand scene */
+    SceneTypeAIVod = 5,
 };
 ```
 
@@ -73,38 +77,40 @@ typedef NS_ENUM(NSInteger, SceneType) {
 
 The slot system automatically controls component visibility based on scene type. The following matrix reflects the default rules from `DefaultSlotFactory.defaultConfigs`:
 
-| Slot | VOD | Live | VideoList | Restricted | Minimal |
-|------|-----|------|-----------|------------|---------|
-| `PlayerSurface` | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `GestureControl` | ✓ | ✓ | ✓ | ✓ | ✗ |
-| `LandscapeHint` | ✓ | ✓ | ✓ | ✓ | ✗ |
-| `Cover` | ✓ | ✗ | ✓ | ✗ | ✗ |
-| `CenterDisplay` | ✓ | ✓ | ✓ | ✓ | ✗ |
-| `PlayState` | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `LogPanel` | ✓ | ✓ | ✓ | ✓ | ✗ |
-| `TopBar` | ✓ | ✓ | ✓ | ✓ | ✗ |
-| `BottomBar` | ✓ | ✓ | ✓ | ✓ | ✗ |
-| `SettingMenu` | ✓ | ✓ | ✓ | ✓ | ✗ |
-| `OptionPanel` | ✓ | ✓ | ✓ | ✓ | ✗ |
+| Slot | VOD | Live | VideoList | Restricted | Minimal | AI_VOD |
+|------|-----|------|-----------|------------|---------|--------|
+| `PlayerSurface` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `GestureControl` | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| `LandscapeHint` | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| `Cover` | ✓ | ✗ | ✓ | ✗ | ✗ | ✓ |
+| `CenterDisplay` | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| `SeekThumbnail` | ✓ | ✗ | ✓ | ✗ | ✗ | ✓ |
+| `PlayState` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `LogPanel` | Configurable | Configurable | Configurable | Configurable | ✗ | Configurable |
+| `TopBar` | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| `BottomBar` | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| `SettingMenu` | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| `OptionPanel` | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| `ChapterPanel` | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
 
 **Visibility Rules**:
 
 - `PlayerSurface` and `PlayState`: Visible in all scenes (no `excludedScenes` configuration)
-- `Cover`: Not visible in `Live`, `Restricted`, and `Minimal` scenes
-- Other slots (`GestureControl`, `LandscapeHint`, `CenterDisplay`, `LogPanel`, `TopBar`, `BottomBar`, `SettingMenu`, `OptionPanel`): Only not visible in the `Minimal` scene
+- `Cover` and `SeekThumbnail`: Not visible in `Live`, `Restricted`, and `Minimal` scenes
+- Other slots (`GestureControl`, `LandscapeHint`, `CenterDisplay`, `LogPanel`, `TopBar`, `BottomBar`, `SettingMenu`, `OptionPanel`, `ChapterPanel`): Only not visible in the `Minimal` scene
 
 ### **3.2 Gesture Behavior Differences**
 
 `GestureControlSlot` internally performs scene filtering in each gesture handler method based on `currentSceneType`:
 
-| Gesture | VOD | Live | VideoList | Restricted | Minimal |
-|---------|-----|------|-----------|------------|---------|
-| Single tap (show/hide control bar) | ✓ | ✓ | ✓ | ✓ | ✗ |
-| Double tap (play/pause) | ✓ | ✓ | ✓ | ✓ | ✗ |
-| Long press (speed playback) | ✓ | ✗ | ✓ | ✗ | ✗ |
-| Horizontal drag (seek) | ✓ | ✗ | ✓ | ✗ | ✗ |
-| Left vertical drag (brightness) | ✓ | ✓ | ✗ | ✓ | ✗ |
-| Right vertical drag (volume) | ✓ | ✓ | ✗ | ✓ | ✗ |
+| Gesture | VOD | Live | VideoList | Restricted | Minimal | AI_VOD |
+|---------|-----|------|-----------|------------|---------|--------|
+| Single tap (show/hide control bar) | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| Double tap (play/pause) | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| Long press (speed playback) | ✓ | ✗ | ✓ | ✗ | ✗ | ✓ |
+| Horizontal drag (seek) | ✓ | ✗ | ✓ | ✗ | ✗ | ✓ |
+| Left vertical drag (brightness) | ✓ | ✓ | ✗ | ✓ | ✗ | ✓ |
+| Right vertical drag (volume) | ✓ | ✓ | ✗ | ✓ | ✗ | ✓ |
 
 **Filtering Logic**:
 
@@ -245,6 +251,25 @@ model.sceneType = SceneTypeMinimal;
 // For example: [controller play]; [controller pause]; [controller seekTo:position];
 ```
 
+#### **4.2.6 AI_VOD — AI Video on Demand**
+
+**Applicable scenarios**: Online education, knowledge videos, and other scenarios requiring AI chapter understanding and navigation.
+
+**Key differences from VOD**:
+- **Added**: `ChapterPanelSlot` chapter content panel for chapter navigation
+- **Added**: Chapter data model (`chapters`) with structured chapter data from AI services
+- **Retained**: All other slot visibility and gesture behavior identical to VOD
+
+```objc
+AliPlayerModel *model = [[AliPlayerModel alloc] initWithVideoSource:source];
+model.sceneType = SceneTypeAIVod;
+model.videoTitle = @"AI Course Video";
+model.chapters = chaptersFromServer;  // Chapter data from AI service
+model.autoPlay = YES;
+
+[controller configure:model];
+```
+
 ---
 
 ## **5. Custom Development**
@@ -347,7 +372,9 @@ Do you need player control UI?
                    ├── Yes → SceneTypeVideoList
                    └── No → Do you need to prevent users from skipping?
                              ├── Yes → SceneTypeRestricted
-                             └── No → SceneTypeVOD (default)
+                             └── No → Do you need AI chapter navigation?
+                                       ├── Yes → SceneTypeAIVod
+                                       └── No → SceneTypeVOD (default)
 ```
 
 ### **6.2 Scene Selection Summary**
@@ -360,6 +387,7 @@ Do you need player control UI?
 | Training/exam/copyright protection | `SceneTypeRestricted` | Automatically prevents skipping and speed control |
 | Fully custom UI | `SceneTypeMinimal` | Clean canvas with zero built-in UI interference |
 | Background/Picture-in-Picture playback | `SceneTypeMinimal` | No UI control components needed |
+| AI courses/knowledge videos | `SceneTypeAIVod` | Built-in chapter navigation with AI-enhanced content understanding |
 
 ---
 
@@ -374,6 +402,7 @@ Do you need player control UI?
 | `SceneTypeVideoList` | 2 | Video list / short video feed scene |
 | `SceneTypeRestricted` | 3 | Restricted playback scene |
 | `SceneTypeMinimal` | 4 | Minimal player page scene |
+| `SceneTypeAIVod` | 5 | AI video on demand scene |
 
 ### **7.2 SlotConfig**
 

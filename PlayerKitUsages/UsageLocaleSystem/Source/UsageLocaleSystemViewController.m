@@ -153,7 +153,6 @@ static const CGFloat kButtonSpacing = 10.0;
     VideoSource *source = [VideoSource vidAuthSourceWithVid:[SceneConstants landscapeSampleVid]
                                                   playAuth:[SceneConstants landscapeSamplePlayAuth]];
     AliPlayerModel *model = [[AliPlayerModel alloc] initWithVideoSource:source];
-    model.videoTitle = @"多语言示例演示";
 
     [self.controller configure:model];
     [self.playerView attach:self.controller];

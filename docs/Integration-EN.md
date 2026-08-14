@@ -186,7 +186,8 @@ YourProject/
 │   ├── SceneLongVideo/
 │   ├── SceneShortVideo/
 │   ├── SceneLive/
-│   └── ScenePlaylist/
+│   ├── ScenePlaylist/
+│   └── SceneAiEducation/
 └── Podfile
 ```
 
@@ -203,12 +204,13 @@ target 'YourApp' do
   pod 'AliPlayerSDK_iOS', '~> 7.15.0'
 
   # Playback scene solutions (referenced via local path, include as needed)
-  pod 'PlayerKitScenes', :path => './PlayerKitScenes'    # All scenes (includes LongVideo/ShortVideo/Live/Playlist by default)
+  pod 'PlayerKitScenes', :path => './PlayerKitScenes'    # All scenes (includes LongVideo/ShortVideo/Live/Playlist/AiEducation by default)
   # Or select individual scenes as needed:
   # pod 'PlayerKitScenes/SceneLongVideo', :path => './PlayerKitScenes'   # Long-form video only
   # pod 'PlayerKitScenes/SceneShortVideo', :path => './PlayerKitScenes'  # Short video only
   # pod 'PlayerKitScenes/SceneLive', :path => './PlayerKitScenes'        # Live streaming only
   # pod 'PlayerKitScenes/ScenePlaylist', :path => './PlayerKitScenes'    # Playlist only
+  # pod 'PlayerKitScenes/SceneAiEducation', :path => './PlayerKitScenes' # AI Education only
 end
 ```
 
@@ -221,6 +223,14 @@ end
 | `SceneShortVideo` | `PlayerKitScenes/SceneShortVideo` | Short video scene |
 | `SceneLive` | `PlayerKitScenes/SceneLive` | Live streaming scene. **Additionally depends on the `DemoSettings` module** (demo-level config storage). If integrating this scene standalone, you must also copy the `DemoSettings/` directory, otherwise `pod install` will fail |
 | `ScenePlaylist` | `PlayerKitScenes/ScenePlaylist` | Playlist scene |
+| `SceneAiEducation` | `PlayerKitScenes/SceneAiEducation` | AI Education scene. **Additionally depends on the `DemoSettings` module and the third-party library `Down (~> 0.11.0)`** (MIT license, includes cmark) for Markdown rendering, automatically fetched during `pod install` |
+
+> **SceneAiEducation Dependency Notes**:
+>
+> - This scene contains Swift source code (`swift_version 5.1`). Integrators must use a modern Xcode version with Swift support, and the Podfile must enable `use_frameworks!`.
+> - iOS ≥ 12.2 ships with the Swift runtime built-in, incurring no additional binary size cost; for lower versions, Xcode automatically embeds the runtime.
+> - The default subspec set includes this scene, meaning a default integration will pull in the `Down` dependency. If you do not need the AI Education scene, explicitly reference only the desired subspecs (excluding `SceneAiEducation`) in your Podfile — this avoids compiling Swift and pulling in `Down`.
+> - All other subspecs and the PlayerKit core library remain pure Objective-C and are unaffected.
 
 > **Cross-platform Alignment**: Scene module naming is aligned with the Android counterpart (`scene-longvideo`, `scene-shortvideo`, `scene-live`, `scene-playlist`). Business capabilities and UI interactions for each scene are consistent across platforms.
 

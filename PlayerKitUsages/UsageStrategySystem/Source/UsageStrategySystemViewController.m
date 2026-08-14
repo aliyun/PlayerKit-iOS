@@ -150,7 +150,6 @@ static const CGFloat kButtonSpacing = 10.0;
 
     // 6. 创建播放模型
     AliPlayerModel *model = [[AliPlayerModel alloc] initWithVideoSource:self.videoSource];
-    model.videoTitle = @"策略系统演示";
 
     // 7. 配置并启动播放
     [self.controller configure:model];

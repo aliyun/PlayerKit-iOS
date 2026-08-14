@@ -30,11 +30,12 @@ By encapsulating player capabilities and UI interactions, it enables rapid devel
 
 ## **2. Core Features**
 
-- **Low-code Integration** — Minimalist API design, complete player integration with just a few lines of code.
-- **Rich UI Components** — Out-of-the-box player UI with customizable themes and slot system.
-- **Scenario-based Solutions** — Built-in scenarios for mid/long video, short video, live streaming, playlists, etc.
-- **Highly Extensible** — Slot system for flexible UI composition, strategy system for business logic extension.
-- **Unified Cross-platform Architecture** — Shared design philosophy and API semantics across platforms, reducing multi-platform integration and maintenance costs.
+- **Low-Code Integration** — Minimalist API design; integrate the player in just a few lines of code.
+- **Ready-to-Use UI Components** — Configurable player UI components covering essential playback and common interactions, with support for on-demand customization.
+- **All-in-One Playback Experience** — Simply pass a video VID to automatically display cover images, video titles, seek thumbnails, and other complete playback information for a one-stop playback experience.
+- **Scenario-Based Solutions** — Built-in support for mid/long-form video, short video, live streaming, and playlists to quickly build complete playback experiences.
+- **Highly Extensible Architecture** — A slot system for flexible UI composition and a strategy system for extensible business logic.
+- **Cross-Platform Unified Architecture** — All platforms share the same design philosophy and API semantics, reducing multi-platform integration and maintenance costs.
 
 | Platform | Description | Source | Docs |
 |----------|-------------|--------|------|

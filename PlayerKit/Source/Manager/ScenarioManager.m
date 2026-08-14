@@ -25,7 +25,7 @@ static NSString * const kPlatformIOS = @"ios";
 static NSString * const kUnknownProtocolValue = @"unknown";
 
 // SceneType 协议值映射
-// 索引与 SceneType 枚举值严格一一对应（VOD=0, Live=1, VideoList=2, Restricted=3, Minimal=4）
+// 索引与 SceneType 枚举值严格一一对应（VOD=0, Live=1, VideoList=2, Restricted=3, Minimal=4, AIVod=5）
 // 维护约束：新增 SceneType 枚举值时，必须在此数组末尾同步追加协议值，且 int 值需从 0 开始连续递增
 static NSString * const kSceneProtocolValues[] = {
     @"vod",          // SceneTypeVOD
@@ -33,6 +33,7 @@ static NSString * const kSceneProtocolValues[] = {
     @"list-player",  // SceneTypeVideoList
     @"restricted",   // SceneTypeRestricted
     @"minimal",      // SceneTypeMinimal
+    @"ai-vod",       // SceneTypeAIVod
 };
 
 // VideoSourceType 协议值映射

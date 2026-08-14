@@ -10,6 +10,7 @@
 #import "SceneType.h"
 
 @class VideoSource;
+@class ChapterInfo;
 @protocol MediaPlayer;
 
 NS_ASSUME_NONNULL_BEGIN
@@ -44,18 +45,38 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, assign) SceneType sceneType;
 
 /**
- * @brief 封面图 URL。
+ * @brief 封面图 URL（可选）。
  *
  * @discussion 视频播放前的封面图片 URL，用于在视频加载时显示。
  *             设为 nil 表示不使用封面图。
+ *
+ * @note 推荐使用 Vid 播放方式，SDK 将在 prepared 后自动获取封面图，无需手动设置
+ *       （需要阿里云播放器 SDK 版本 ≥ 7.16.0）。
+ *       手动设置的 coverUrl 优先级高于 SDK 自动提取的值。
+ *       使用 URL 播放方式时无法自动提取，需手动设置。
  */
 @property (nonatomic, copy, nullable) NSString *coverUrl;
 
 /**
- * @brief 视频标题。
+ * @brief 缩略图 URL（可选）。
+ *
+ * @discussion 用于 Seek 时通过 ThumbnailHelper 获取实时缩略图预览。
+ *             推荐使用 Vid 播放方式，SDK 将在 prepared 后自动获取缩略图列表，无需手动设置
+ *             （需要阿里云播放器 SDK 版本 ≥ 7.16.0）。
+ *             当使用非 Vid 播放方式（如 URL 播放）时，可手动设置此属性以启用 Seek 缩略图功能。
+ */
+@property (nonatomic, copy, nullable) NSString *thumbnailUrl;
+
+/**
+ * @brief 视频标题（可选）。
  *
  * @discussion 视频的标题文本，用于在 UI 中显示。
  *             设为 nil 表示不显示标题。
+ *
+ * @note 推荐使用 Vid 播放方式，SDK 将在 prepared 后自动获取视频标题，无需手动设置
+ *       （需要阿里云播放器 SDK 版本 ≥ 7.16.0）。
+ *       手动设置的 videoTitle 优先级高于 SDK 自动提取的值。
+ *       使用 URL 播放方式时无法自动提取，需手动设置。
  */
 @property (nonatomic, copy, nullable) NSString *videoTitle;
 
@@ -119,6 +140,20 @@ NS_ASSUME_NONNULL_BEGIN
  * @see AliPlayerController
  */
 @property (nonatomic, copy, nullable) void (^onPlayerConfigBlock)(id<MediaPlayer> player);
+
+/**
+ * @brief 章节信息列表，默认为 nil。
+ *
+ * @discussion 仅在 SceneTypeAIVod 场景下使用，
+ *             由 AI 内容理解服务返回的章节划分结果注入，
+ *             供章节入口按钮与章节面板等 UI 组件按需读取。
+ *             其他场景下设置此属性不产生任何效果。
+ *
+ * @see ChapterInfo
+ * @see SceneType
+ */
+@property (nonatomic, copy, nullable) NSArray<ChapterInfo *> *chapters;
+
 
 /**
  * @brief 通过指定视频源创建播放器模型。

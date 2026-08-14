@@ -132,7 +132,6 @@ static const CGFloat kButtonSpacing = 10.0;
     VideoSource *source = [VideoSource vidAuthSourceWithVid:[SceneConstants landscapeSampleVid]
                                                    playAuth:[SceneConstants landscapeSamplePlayAuth]];
     AliPlayerModel *model = [[AliPlayerModel alloc] initWithVideoSource:source];
-    model.videoTitle = @"通知系统演示";
 
     // 4. 使用 model 配置 controller
     [self.controller configure:model];

@@ -6,35 +6,31 @@
 //  Copyright © 2024 Alibaba Cloud. All rights reserved.
 //
 
-#import "BaseSlot.h"
+#import "BasePanelSlot.h"
 #import "SlotActionNotificationDelegate.h"
 #import "SlotElements.h"
 
 @class SettingItem;
-@class SlotActionNotificationDispatcher;
 
 NS_ASSUME_NONNULL_BEGIN
 
 /**
  * @brief 设置菜单插槽。
  *
- * @discussion 提供倍速、循环播放、静音等设置项，以从右侧滑入的面板形式呈现。
- *             与播放器状态保持同步，根据场景类型自动过滤不适用的设置项。
- *             位于播放器视图 z-order 最顶层（order = 100）。
+ * @discussion 提供倍速、循环播放、静音等设置项，与播放器状态保持同步，
+ *             并根据场景类型自动过滤不适用的设置项。
  *
- * @see BaseSlot
+ *             呈现形态随横竖屏切换：横屏为从右侧滑入的抽屉面板，竖屏为从底部升起的弹窗。
+ *             由于竖屏下播放器仅占据屏幕顶部一小块区域，面板与蒙层承载在挂到窗口上的
+ *             临时容器内（重写 @c panelHostView ），而非插槽自身的视图层级。
+ *
+ *             插槽自身位于播放器视图 z-order 最顶层（order = 100）。
+ *
+ * @see BasePanelSlot
  * @see SettingItem
  * @see SettingConstants
  */
-@interface SettingMenuSlot : BaseSlot <SlotActionNotificationDelegate>
-
-/**
- * @brief Slot 操作事件分发器（由宿主注入）。
- *
- * @discussion 设置时自动从旧 dispatcher 移除观察者并向新 dispatcher 注册。
- *             由 SlotHostLayout.wireSlotActionNotifications 在所有插槽挂载后注入。
- */
-@property (nonatomic, weak, nullable) SlotActionNotificationDispatcher *slotActionDispatcher;
+@interface SettingMenuSlot : BasePanelSlot <SlotActionNotificationDelegate>
 
 /**
  * @brief 切换设置菜单的显示/隐藏状态。

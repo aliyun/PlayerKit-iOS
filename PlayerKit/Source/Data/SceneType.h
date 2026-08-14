@@ -37,6 +37,9 @@ typedef NS_ENUM(NSInteger, SceneType) {
 
     /** @brief 极简播放页场景。 */
     SceneTypeMinimal = 4,
+
+    /** @brief AI 视频点播场景。 */
+    SceneTypeAIVod = 5,
 };
 
 NS_ASSUME_NONNULL_END

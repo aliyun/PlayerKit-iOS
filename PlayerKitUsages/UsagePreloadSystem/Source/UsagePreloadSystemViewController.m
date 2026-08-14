@@ -126,7 +126,6 @@ static const CGFloat kButtonHeight = 44.0;
     VideoSource *source = [VideoSource vidAuthSourceWithVid:[SceneConstants landscapeSampleVid]
                                                    playAuth:[SceneConstants landscapeSamplePlayAuth]];
     AliPlayerModel *model = [[AliPlayerModel alloc] initWithVideoSource:source];
-    model.videoTitle = @"预加载示例演示";
     [self.playerController configure:model];
 
     // Subscribe to state changes

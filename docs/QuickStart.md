@@ -270,6 +270,7 @@ model.onPlayerConfigBlock = { player in
 | `SceneShortVideo` | `PlayerKitScenes/SceneShortVideo` | **短视频场景**：提供短视频滑动播放的完整解决方案 |
 | `SceneLive` | `PlayerKitScenes/SceneLive` | **直播场景**：提供直播播放的完整解决方案。**额外依赖 `DemoSettings` 模块**，单独集成时需一并拷贝 |
 | `ScenePlaylist` | `PlayerKitScenes/ScenePlaylist` | **列表播放场景**：提供视频列表播放的完整解决方案 |
+| `SceneAiEducation` | `PlayerKitScenes/SceneAiEducation` | **AI 教育场景**：含章节导航、AI 内容解析面板和 Markdown 渲染（依赖 Down ~> 0.11.0，需 Swift 5.1） |
 
 > **跨平台对齐**：场景模块与 Android 端对齐（`scene-longvideo` / `scene-shortvideo` / `scene-live` / `scene-playlist`）。各场景的业务能力和 UI 交互在多端间保持一致。
 
@@ -307,6 +308,7 @@ navigationController?.pushViewController(vc, animated: true)
 | 短视频 | `SceneShortVideoViewController` |
 | 直播 | `SceneLiveViewController` |
 | 列表播放 | `ScenePlaylistViewController` |
+| AI 教育 | `SceneAiEducationViewController` |
 
 #### **方式二：Schema 路由**
 
@@ -336,6 +338,7 @@ AppSchemaRouter.navigate(toSchema: "playerkit://scenes/longvideo", from: self)
 | 短视频 | `playerkit://scenes/shortvideo` |
 | 直播 | `playerkit://scenes/live` |
 | 列表播放 | `playerkit://scenes/playlist` |
+| AI 教育 | `playerkit://scenes/aieducation` |
 
 > **说明**：`AppSchemaRouter` 是 Demo 工程（`App` 模块）中提供的路由工具，基于 `AppModuleProtocol` 协议实现模块自动发现。场景模块通过 `*Module` 类（如 `SceneLongVideoModule`）注册自身的 Schema、标题和优先级。如需在您的应用中使用 Schema 路由，可参考此实现或对接您自己的路由框架。
 >

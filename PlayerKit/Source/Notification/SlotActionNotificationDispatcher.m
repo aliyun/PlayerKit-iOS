@@ -85,4 +85,12 @@
     return count;
 }
 
+- (void)dispatchShowChapterPanel {
+    [self notifyObservers:^(id<SlotActionNotificationDelegate> observer) {
+        if ([observer respondsToSelector:@selector(slotDidRequestShowChapterPanel)]) {
+            [observer slotDidRequestShowChapterPanel];
+        }
+    }];
+}
+
 @end

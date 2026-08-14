@@ -191,6 +191,66 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (void)playerDidChangeRotateMode:(RotateMode)rotateMode;
 
+#pragma mark - Thumbnail
+
+/**
+ * @brief 媒体缩略图 URL 就绪时调用。
+ *
+ * @param thumbnailUrl 从媒体信息中提取的缩略图 URL，非空字符串。
+ *
+ * @discussion 在 prepare 完成后从 SDK 媒体信息中读取并派发。
+ *             仅 Vid 播放方式下由控制台配置的雪碧图才会返回有效值。
+ *             每次 prepare 完成均会派发，观察者需自行做初始化去重。
+ *
+ * @note SDK 版本要求：通过 @c getMediaInfo.thumbnails 获取缩略图 URL
+ *      需要阿里云播放器 SDK 版本 ≥ 7.16.0，低版本 SDK 该接口可能返回 nil。
+ */
+- (void)playerDidReadyThumbnailUrl:(NSString *)thumbnailUrl;
+
+/**
+ * @brief 缩略图获取成功时调用。
+ *
+ * @param positionMs 请求的缩略图位置，单位为毫秒。
+ * @param image      获取到的缩略图图片。
+ *
+ * @discussion 由 AliPlayerController.requestThumbnailAtPosition: 触发，
+ *             SDK 异步回调后在主线程派发。
+ */
+- (void)playerDidRetrieveThumbnail:(int64_t)positionMs
+                             image:(UIImage *)image;
+
+#pragma mark - Cover URL
+
+/**
+ * @brief 封面图 URL 就绪时调用（从 MediaInfo 自动提取）。
+ *
+ * @param coverUrl 从媒体信息中提取的封面图 URL，非空字符串。
+ *
+ * @discussion 在 prepare 完成后从 SDK 媒体信息中读取并派发。
+ *             仅 Vid 播放方式下由服务端配置的封面才会返回有效值。
+ *             观察者需自行判断是否已有手动设置的封面 URL，避免重复加载。
+ *
+ * @note SDK 版本要求：通过 @c getMediaInfo.coverURL 获取封面图 URL
+ *      需要阿里云播放器 SDK 版本 ≥ 7.16.0，低版本 SDK 该接口可能返回 nil。
+ */
+- (void)playerDidReadyCoverUrl:(NSString *)coverUrl;
+
+#pragma mark - Video Title
+
+/**
+ * @brief 视频标题就绪时调用（从 MediaInfo 自动提取）。
+ *
+ * @param videoTitle 从媒体信息中提取的视频标题，非空字符串。
+ *
+ * @discussion 在 prepare 完成后从 SDK 媒体信息中读取并派发。
+ *             仅 Vid 播放方式下由服务端配置的标题才会返回有效值。
+ *             观察者需自行判断是否已有手动设置的标题，避免覆盖。
+ *
+ * @note SDK 版本要求：通过 @c getMediaInfo.title 获取视频标题
+ *      需要阿里云播放器 SDK 版本 ≥ 7.16.0，低版本 SDK 该接口可能返回 nil。
+ */
+- (void)playerDidReadyVideoTitle:(NSString *)videoTitle;
+
 #pragma mark - Track
 
 /**

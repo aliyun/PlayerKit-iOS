@@ -12,6 +12,8 @@
 #import "SlotType.h"
 #import "SceneType.h"
 
+@class SlotActionNotificationDispatcher;
+
 NS_ASSUME_NONNULL_BEGIN
 
 #pragma mark - Slot 通用时序常量
@@ -98,6 +100,22 @@ typedef NS_OPTIONS(NSUInteger, SlotSafeAreaEdge) {
  *             通常只有 GestureControlSlot 需要设为 NO。
  */
 @property (nonatomic, assign) BOOL touchPassthrough;
+
+/**
+ * @brief Slot 操作事件分发器（由宿主注入）。
+ *
+ * @discussion 由 SlotHostLayout.wireSlotActionNotifications 在所有插槽挂载后注入，
+ *             用于插槽之间的横向通信（如 BottomBar 请求打开章节面板）。
+ *
+ *             赋值时会自动从旧 dispatcher 注销观察者；若插槽自身遵循
+ *             @c SlotActionNotificationDelegate ，则同时向新 dispatcher 注册观察者。
+ *             仅作为事件生产者的插槽（如 TopBar、BottomBar）无需遵循该协议，
+ *             直接通过此属性发送事件即可。观察者会在 @c onDetach 中自动注销。
+ *
+ * @see SlotActionNotificationDispatcher
+ * @see SlotActionNotificationDelegate
+ */
+@property (nonatomic, weak, nullable) SlotActionNotificationDispatcher *slotActionDispatcher;
 
 /**
  * @brief 确保内容已创建。

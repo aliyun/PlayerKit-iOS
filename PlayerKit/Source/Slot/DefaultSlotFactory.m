@@ -16,12 +16,14 @@
 #import "LandscapeHintSlot.h"
 #import "CoverSlot.h"
 #import "CenterDisplaySlot.h"
+#import "SeekThumbnailSlot.h"
 #import "PlayStateSlot.h"
 #import "LogPanelSlot.h"
 #import "TopBarSlot.h"
 #import "BottomBarSlot.h"
 #import "SettingMenuSlot.h"
 #import "OptionPanelSlot.h"
+#import "ChapterPanelSlot.h"
 
 @implementation DefaultSlotFactory
 
@@ -32,6 +34,7 @@
         @(SlotTypeLandscapeHint):  ^UIView<SlotProtocol> *(UIView *parentView) { return [[LandscapeHintSlot alloc] initWithFrame:parentView.bounds]; },
         @(SlotTypeCover):          ^UIView<SlotProtocol> *(UIView *parentView) { return [[CoverSlot alloc] initWithFrame:parentView.bounds]; },
         @(SlotTypeCenterDisplay):  ^UIView<SlotProtocol> *(UIView *parentView) { return [[CenterDisplaySlot alloc] initWithFrame:parentView.bounds]; },
+        @(SlotTypeSeekThumbnail):  ^UIView<SlotProtocol> *(UIView *parentView) { return [[SeekThumbnailSlot alloc] initWithFrame:parentView.bounds]; },
         @(SlotTypePlayState):      ^UIView<SlotProtocol> *(UIView *parentView) { return [[PlayStateSlot alloc] initWithFrame:parentView.bounds]; },
         // LogPanel 仅在 logPanelEnabled 时创建，需在 rebuildSlots 前设置
         @(SlotTypeLogPanel):       ^UIView<SlotProtocol> * _Nullable (UIView *parentView) { return [AliPlayerKit isLogPanelEnabled] ? [[LogPanelSlot alloc] initWithFrame:parentView.bounds] : nil; },
@@ -39,6 +42,7 @@
         @(SlotTypeBottomBar):      ^UIView<SlotProtocol> *(UIView *parentView) { return [[BottomBarSlot alloc] initWithFrame:parentView.bounds]; },
         @(SlotTypeSettingMenu):    ^UIView<SlotProtocol> *(UIView *parentView) { return [[SettingMenuSlot alloc] initWithFrame:parentView.bounds]; },
         @(SlotTypeOptionPanel):    ^UIView<SlotProtocol> *(UIView *parentView) { return [[OptionPanelSlot alloc] initWithFrame:parentView.bounds]; },
+        @(SlotTypeChapterPanel):   ^UIView<SlotProtocol> *(UIView *parentView) { return [[ChapterPanelSlot alloc] initWithFrame:parentView.bounds]; },
     };
 }
 
@@ -50,11 +54,13 @@
         [SlotConfig configWithSlotType:SlotTypeGestureControl  excludedScenes:[NSSet setWithObject:@(SceneTypeMinimal)]],
         [SlotConfig configWithSlotType:SlotTypeLandscapeHint   excludedScenes:[NSSet setWithObject:@(SceneTypeMinimal)]],
         [SlotConfig configWithSlotType:SlotTypeCenterDisplay   excludedScenes:[NSSet setWithObject:@(SceneTypeMinimal)]],
+        [SlotConfig configWithSlotType:SlotTypeSeekThumbnail   excludedScenes:[NSSet setWithObjects:@(SceneTypeLive), @(SceneTypeRestricted), @(SceneTypeMinimal), nil]],
         [SlotConfig configWithSlotType:SlotTypeLogPanel        excludedScenes:[NSSet setWithObject:@(SceneTypeMinimal)]],
         [SlotConfig configWithSlotType:SlotTypeTopBar          excludedScenes:[NSSet setWithObject:@(SceneTypeMinimal)]],
         [SlotConfig configWithSlotType:SlotTypeBottomBar       excludedScenes:[NSSet setWithObject:@(SceneTypeMinimal)]],
         [SlotConfig configWithSlotType:SlotTypeSettingMenu     excludedScenes:[NSSet setWithObject:@(SceneTypeMinimal)]],
         [SlotConfig configWithSlotType:SlotTypeOptionPanel     excludedScenes:[NSSet setWithObject:@(SceneTypeMinimal)]],
+        [SlotConfig configWithSlotType:SlotTypeChapterPanel    excludedScenes:[NSSet setWithObject:@(SceneTypeMinimal)]],
 
         // Cover 在 live/restricted/minimal 场景下排除
         [SlotConfig configWithSlotType:SlotTypeCover excludedScenes:[NSSet setWithObjects:@(SceneTypeLive), @(SceneTypeRestricted), @(SceneTypeMinimal), nil]],

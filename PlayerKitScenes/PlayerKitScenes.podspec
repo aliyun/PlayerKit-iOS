@@ -26,8 +26,9 @@ Pod::Spec.new do |s|
 
   s.ios.deployment_target = '9.0'
   s.static_framework = true
+  s.swift_version = '5.1'
 
-  s.default_subspecs = ['SceneLongVideo', 'SceneShortVideo', 'SceneLive', 'ScenePlaylist']
+  s.default_subspecs = ['SceneLongVideo', 'SceneShortVideo', 'SceneLive', 'ScenePlaylist', 'SceneAiEducation']
 
   # SceneCommon: Shared constants, utilities and resources across all scene modules.
   s.subspec 'SceneCommon' do |ss|
@@ -65,5 +66,15 @@ Pod::Spec.new do |s|
     ss.public_header_files = 'ScenePlaylist/Source/**/*.h'
     ss.dependency 'PlayerKitScenes/SceneCommon'
     ss.dependency 'PlayerKit'
+  end
+
+  # SceneAiEducation: AI education scene with PlayAuth playback, AI chapters and analysis panel.
+  s.subspec 'SceneAiEducation' do |ss|
+    ss.source_files = 'SceneAiEducation/Source/**/*.{h,m,swift}'
+    ss.public_header_files = 'SceneAiEducation/Source/**/*.h'
+    ss.dependency 'PlayerKitScenes/SceneCommon'
+    ss.dependency 'PlayerKit'
+    ss.dependency 'DemoSettings'
+    ss.dependency 'Down'
   end
 end

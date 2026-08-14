@@ -176,6 +176,8 @@ AliPlayerKit 提供了丰富的 API 接口，方便开发者直接控制播放�
 | `- (void)setRotateMode:` | `RotateMode` rotateMode | `void` | 设置旋转角度 |
 | `- (void)selectTrack:` | `TrackQuality *` quality | `void` | 切换清晰度 |
 | `- (void)snapshot` | - | `void` | 截取当前视频画面 |
+| `- (void)setThumbnailUrl:` | `NSString *` url | `void` | 动态设置缩略图 URL（仅支持 VTT 雪碧图格式） |
+| `- (void)requestThumbnailAtPosition:` | `int64_t` positionMs（毫秒） | `void` | 请求指定位置的缩略图 |
 
 ### **4.4 UI 控制**
 
@@ -212,8 +214,9 @@ AliPlayerKit 提供了丰富的 API 接口，方便开发者直接控制播放�
 |------|------|--------|------|
 | `videoSource` | `VideoSource *`（readonly） | - | 视频数据源（必填） |
 | `sceneType` | `SceneType` | `SceneTypeVOD` | 播放场景类型 |
-| `coverUrl` | `NSString *`（nullable） | `nil` | 封面图 URL |
-| `videoTitle` | `NSString *`（nullable） | `nil` | 视频标题 |
+| `coverUrl` | `NSString *`（nullable） | `nil` | 封面图 URL。Vid 播放时可从 MediaInfo 自动获取 |
+| `thumbnailUrl` | `NSString *`（nullable） | `nil` | 缩略图 URL（Seek 预览用）。Vid 播放时 SDK 自动获取，URL 播放时需手动设置 |
+| `videoTitle` | `NSString *`（nullable） | `nil` | 视频标题。Vid 播放时可从 MediaInfo 自动获取 |
 | `autoPlay` | `BOOL` | `YES` | 是否自动播放 |
 | `traceId` | `NSString *`（nullable） | `nil` | 跟踪标识符（用于播放质量监控） |
 | `startTime` | `NSInteger` | `0` | 起播位置（毫秒） |
@@ -221,6 +224,7 @@ AliPlayerKit 提供了丰富的 API 接口，方便开发者直接控制播放�
 | `allowScreenSleep` | `BOOL` | `NO` | 是否允许屏幕休眠 |
 | `disableScreenshot` | `BOOL` | `NO` | 是否禁止截屏/录屏（iOS 特有） |
 | `onPlayerConfigBlock` | `void (^)(id<MediaPlayer>)` | `nil` | 实例级自定义配置回调 |
+| `chapters` | `NSArray<ChapterInfo *> *`（nullable） | `nil` | 章节信息列表（仅 SceneTypeAIVod 场景有效） |
 
 ### **5.2 创建方法**
 
@@ -304,6 +308,20 @@ iOS 端通过三组独立的通知协议实现分类事件分发：
 | `- playerDidTrackReady:` | `NSArray<TrackQuality *> *` tracks | 可用轨道信息就绪 |
 | `- playerDidTrackChanged:` | `TrackQuality *` quality | 轨道切换完成 |
 
+**VID 媒体信息就绪**
+
+| 方法 | 参数 | 说明 |
+|------|------|------|
+| `- playerDidReadyCoverUrl:` | `NSString *` coverUrl | 封面图 URL 就绪（Vid 播放时从 MediaInfo 自动提取） |
+| `- playerDidReadyVideoTitle:` | `NSString *` videoTitle | 视频标题就绪（Vid 播放时从 MediaInfo 自动提取） |
+| `- playerDidReadyThumbnailUrl:` | `NSString *` thumbnailUrl | 缩略图 URL 就绪（Vid 播放时从 MediaInfo 自动提取） |
+
+**缩略图**
+
+| 方法 | 参数 | 说明 |
+|------|------|------|
+| `- playerDidRetrieveThumbnail:image:` | `int64_t` positionMs, `UIImage *` image | 缩略图获取成功 |
+
 ### **6.2 GestureNotificationDelegate（手势通知代理）**
 
 手势交互事件回调协议，所有方法均为 `@optional`。由 `GestureNotificationDispatcher` 多播分发。
@@ -344,6 +362,10 @@ iOS 端通过三组独立的通知协议实现分类事件分发：
 | `- slotDidRequestToggleSettingMenu` | - | 请求切换设置菜单显隐（通常由 TopBarSlot 触发） |
 | `- slotDidRequestShowSpeedPanel` | - | 请求显示倍速选择面板（通常由 BottomBarSlot 触发） |
 | `- slotDidRequestShowQualityPanel` | - | 请求显示画质选择面板（通常由 BottomBarSlot 触发） |
+| `- slotDidBeginSeekPreview` | - | 用户开始拖动进度条（BottomBarSlot 触发） |
+| `- slotDidUpdateSeekPreview:duration:` | `int64_t` targetPositionMs, `int64_t` durationMs | 拖动期间目标位置变化 |
+| `- slotDidEndSeekPreview` | - | 用户结束拖动进度条 |
+| `- slotDidRequestShowChapterPanel` | - | 请求显示章节面板（BottomBarSlot 触发） |
 
 ---
 
@@ -534,9 +556,11 @@ iOS 端通过三组独立的通知协议实现分类事件分发：
 | `SlotTypePlayState` | 60 | 播放状态指示层（加载/错误/完成） |
 | `SlotTypeLogPanel` | 70 | 日志面板层 |
 | `SlotTypeTopBar` | 80 | 顶部导航栏层 |
+| `SlotTypeSeekThumbnail` | 85 | 拖动预览缩略图层 |
 | `SlotTypeBottomBar` | 90 | 底部控制栏层 |
 | `SlotTypeSettingMenu` | 100 | 设置菜单层 |
 | `SlotTypeOptionPanel` | 110 | 选项面板层（倍速/清晰度） |
+| `SlotTypeChapterPanel` | 115 | 章节面板层 |
 
 ### **8.5 CustomSlotType（自定义插槽类型）**
 
@@ -1012,6 +1036,7 @@ CustomSlotType *type = [CustomSlotType typeWithKey:@"myCustomSlot" order:85];
 | `SceneTypeVideoList` | 2 | 视频列表/短视频流场景 |
 | `SceneTypeRestricted` | 3 | 受限播放场景 |
 | `SceneTypeMinimal` | 4 | 极简播放页场景 |
+| `SceneTypeAIVod` | 5 | AI 视频点播场景 |
 
 ### **15.3 ScaleMode（缩放模式）**
 

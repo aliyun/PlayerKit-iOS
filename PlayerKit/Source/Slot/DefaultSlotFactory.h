@@ -42,7 +42,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * @discussion 各插槽类型的默认可见性规则：
  *             - PlayerSurface/PlayState：始终可见
- *             - GestureControl/LandscapeHint/CenterDisplay/LogPanel/TopBar/BottomBar/SettingMenu/OptionPanel：在 SceneTypeMinimal 中不可见
+ *             - GestureControl/LandscapeHint/CenterDisplay/SeekThumbnail/LogPanel/TopBar/BottomBar/SettingMenu/OptionPanel：在 SceneTypeMinimal 中不可见
  *             - Cover：在 Live/Restricted/Minimal 场景中不可见
  *
  * @return SlotConfig 数组。

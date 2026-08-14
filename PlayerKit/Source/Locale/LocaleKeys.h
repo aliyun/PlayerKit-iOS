@@ -110,6 +110,15 @@ FOUNDATION_EXPORT NSString *const LocaleKeyLogPanelClear;
 /** 横屏提示文本（如 "全屏观看"） */
 FOUNDATION_EXPORT NSString *const LocaleKeyLandscapeHintFullscreen;
 
+#pragma mark - Chapter
+
+/** 章节数量格式串（参数: %ld 章节总数） */
+FOUNDATION_EXPORT NSString *const LocaleKeyChapterCountFormat;
+/** 下一章按钮标题 */
+FOUNDATION_EXPORT NSString *const LocaleKeyChapterNextButton;
+/** 章节导航格式串（参数: %ld 章节序号, %@ 时间文本） */
+FOUNDATION_EXPORT NSString *const LocaleKeyChapterNavFormat;
+
 #pragma mark - Common
 
 /** 通用：未知 */

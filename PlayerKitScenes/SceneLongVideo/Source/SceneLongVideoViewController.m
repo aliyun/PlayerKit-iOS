@@ -79,7 +79,6 @@
     VideoSource *source = [VideoSource vidAuthSourceWithVid:[SceneConstants landscapeSampleVid]
                                                    playAuth:[SceneConstants landscapeSamplePlayAuth]];
     AliPlayerModel *model = [[AliPlayerModel alloc] initWithVideoSource:source];
-    model.videoTitle = @"Long Video";
 
     // 4. 配置播放源并将控制器挂载到视图（挂载后自动开始播放）
     [self.playerController configure:model];

@@ -92,13 +92,16 @@
             [self addSubview:self.slotHostLayout];
         }
 
+        // 先配置 sceneType（此时 slotManager 尚为 nil，setter 不触发 rebuild）
+        self.slotHostLayout.sceneType = model.sceneType;
+
         [self.slotHostLayout bindSlotManager:self.slotManager];
 
         // 如果外部已设置 onBackPressed，同步到 SlotHostLayout
         [self syncBackPressedHandler];
 
         [self.slotHostLayout bindController:controller];
-        self.slotHostLayout.sceneType = model.sceneType;
+
         [self.slotHostLayout rebuildSlots];
         [self.slotHostLayout bindData:model];
 

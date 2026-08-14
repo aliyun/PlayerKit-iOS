@@ -75,6 +75,11 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (NSUInteger)observerCount;
 
+/**
+ * @brief 向所有已注册的观察者异步分发显示章节内容面板通知。
+ */
+- (void)dispatchShowChapterPanel;
+
 @end
 
 NS_ASSUME_NONNULL_END

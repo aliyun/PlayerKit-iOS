@@ -27,7 +27,6 @@
 #import "GestureNotificationDelegate.h"
 #import "GestureNotificationDispatcher.h"
 #import "SlotActionNotificationDispatcher.h"
-#import "SettingMenuSlot.h"
 #import "Log.h"
 
 @interface SlotHostLayout ()
@@ -370,24 +369,23 @@
     }
 }
 
+/**
+ * @brief 把统一的 Slot 操作事件总线注入所有插槽。
+ *
+ * @discussion 事件生产者（TopBar、BottomBar 等）借此发送事件；
+ *             遵循 SlotActionNotificationDelegate 的插槽由 BaseSlot 的 setter
+ *             自动注册为观察者，无需在此逐个枚举。
+ *
+ * @see BaseSlot.slotActionDispatcher
+ */
 - (void)wireSlotActionNotifications {
-    UIView<SlotProtocol> *topBarSlotView = self.slotViews[@(SlotTypeTopBar)];
-    if ([topBarSlotView isKindOfClass:[TopBarSlot class]]) {
-        ((TopBarSlot *)topBarSlotView).slotActionDispatcher = self.slotActionDispatcher;
-        SLOGI(@"Wired TopBarSlot to slot action dispatcher");
+    for (NSNumber *key in self.slotViews) {
+        UIView<SlotProtocol> *slotView = self.slotViews[key];
+        if ([slotView isKindOfClass:[BaseSlot class]]) {
+            ((BaseSlot *)slotView).slotActionDispatcher = self.slotActionDispatcher;
+        }
     }
-
-    UIView<SlotProtocol> *bottomBarSlotView = self.slotViews[@(SlotTypeBottomBar)];
-    if ([bottomBarSlotView isKindOfClass:[BottomBarSlot class]]) {
-        ((BottomBarSlot *)bottomBarSlotView).slotActionDispatcher = self.slotActionDispatcher;
-        SLOGI(@"Wired BottomBarSlot to slot action dispatcher");
-    }
-
-    UIView<SlotProtocol> *settingMenuSlotView = self.slotViews[@(SlotTypeSettingMenu)];
-    if ([settingMenuSlotView isKindOfClass:[SettingMenuSlot class]]) {
-        ((SettingMenuSlot *)settingMenuSlotView).slotActionDispatcher = self.slotActionDispatcher;
-        SLOGI(@"Wired SettingMenuSlot as slot action notification observer");
-    }
+    SLOGI(@"Wired %lu slots to slot action dispatcher", (unsigned long)self.slotViews.count);
 }
 
 - (void)detachAllSlots {

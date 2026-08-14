@@ -270,6 +270,7 @@ Scene modules are located in the `PlayerKitScenes` directory and imported via Co
 | `SceneShortVideo` | `PlayerKitScenes/SceneShortVideo` | **Short Video Scene**: Complete solution for short video swipe playback |
 | `SceneLive` | `PlayerKitScenes/SceneLive` | **Live Streaming Scene**: Complete solution for live stream playback. **Additionally depends on the `DemoSettings` module**; must be copied together when integrating standalone |
 | `ScenePlaylist` | `PlayerKitScenes/ScenePlaylist` | **Playlist Scene**: Complete solution for video list playback |
+| `SceneAiEducation` | `PlayerKitScenes/SceneAiEducation` | **AI Education Scene**: AI Education scene with chapter navigation, AI content analysis panel, and Markdown rendering (requires Down ~> 0.11.0, Swift 5.1) |
 
 > **Cross-platform alignment**: Scene modules are aligned with the Android counterparts (`scene-longvideo` / `scene-shortvideo` / `scene-live` / `scene-playlist`). Business capabilities and UI interactions are consistent across platforms.
 
@@ -307,6 +308,7 @@ ViewControllers for each scene:
 | Short Video | `SceneShortVideoViewController` |
 | Live Streaming | `SceneLiveViewController` |
 | Playlist | `ScenePlaylistViewController` |
+| AI Education | `SceneAiEducationViewController` |
 
 #### **Method 2: Schema Routing**
 
@@ -336,6 +338,7 @@ Schema addresses for each scene:
 | Short Video | `playerkit://scenes/shortvideo` |
 | Live Streaming | `playerkit://scenes/live` |
 | Playlist | `playerkit://scenes/playlist` |
+| AI Education | `playerkit://scenes/aieducation` |
 
 > **Note**: `AppSchemaRouter` is a routing utility provided in the Demo project (`App` module), implementing automatic module discovery based on the `AppModuleProtocol` protocol. Scene modules register their Schema, title, and priority through `*Module` classes (e.g., `SceneLongVideoModule`). To use Schema routing in your app, you can reference this implementation or integrate with your own routing framework.
 >

@@ -264,6 +264,16 @@
     [self.mediaPlayer snapshot];
 }
 
+- (void)setThumbnailUrl:(NSString *)url {
+    if (!self.mediaPlayer) return;
+    [self.mediaPlayer setThumbnailUrl:url];
+}
+
+- (void)requestThumbnailAtPosition:(int64_t)positionMs {
+    if (!self.mediaPlayer) return;
+    [self.mediaPlayer requestThumbnailAtPosition:positionMs];
+}
+
 - (void)toggle {
     if (!self.mediaPlayer) return;
     [self.mediaPlayer toggle];
