@@ -8,10 +8,11 @@
 
 #import "ChapterContentView.h"
 #import "FormatUtil.h"
-#import "AiVideoContent.h"
+#import "AiContentViewModel.h"
+#import "KnowledgeInfo.h"
+#import "SummaryInfo.h"
+#import "AiAnalysisResponse.h"
 #import "AiContentType.h"
-#import "AiSummary.h"
-#import "AiSegment.h"
 #import "AiEducationMarkdownRenderer.h"
 #import "AiEducationColorConstants.h"
 #import "ChapterInfo.h"
@@ -20,7 +21,7 @@
 #import <SDWebImage/UIImageView+WebCache.h>
 
 static NSString * const kChapterCellIdentifier = @"AiEducationChapterCell";
-static NSString * const kSegmentCellIdentifier = @"AiEducationSegmentCell";
+static NSString * const kTextAnalysisCellIdentifier = @"AiEducationTextAnalysisCell";
 
 #pragma mark - Chapter Cell
 
@@ -91,22 +92,19 @@ static NSString * const kSegmentCellIdentifier = @"AiEducationSegmentCell";
 
 @end
 
-#pragma mark - Segment Cell
+#pragma mark - Text Analysis Cell
 
-// AI 解析分段卡片 cell：标题 + 时间徽标 + 文字摘要或 Markdown 富文本
-@interface AiEducationSegmentCell : UITableViewCell
+// 文字解析 cell：章节标题 + 时间徽标 + 知识点/摘要 markdown 渲染
+@interface AiEducationTextAnalysisCell : UITableViewCell
 
-@property (nonatomic, strong) UIView *cardView;
-@property (nonatomic, strong) UILabel *titleLabel;
-@property (nonatomic, strong) UILabel *timeLabel;
+@property (nonatomic, strong) UILabel *chapterTitleLabel;
+@property (nonatomic, strong) UILabel *timeBadgeLabel;
 @property (nonatomic, strong) UILabel *contentLabel;
-
-// 时间徽标点击回调（由面板在 cell 绑定时注入）
-@property (nonatomic, copy, nullable) void (^onTimeTapped)(void);
+@property (nonatomic, strong) UIView *cardContainer;
 
 @end
 
-@implementation AiEducationSegmentCell
+@implementation AiEducationTextAnalysisCell
 
 - (instancetype)initWithStyle:(UITableViewCellStyle)style
               reuseIdentifier:(NSString *)reuseIdentifier {
@@ -115,80 +113,63 @@ static NSString * const kSegmentCellIdentifier = @"AiEducationSegmentCell";
         self.selectionStyle = UITableViewCellSelectionStyleNone;
         self.backgroundColor = [UIColor clearColor];
 
-        _cardView = [[UIView alloc] init];
-        _cardView.backgroundColor = AiEducationCardBgNormalColor();
-        _cardView.layer.cornerRadius = 8;
-        _cardView.translatesAutoresizingMaskIntoConstraints = NO;
-        [self.contentView addSubview:_cardView];
+        _cardContainer = [[UIView alloc] init];
+        _cardContainer.backgroundColor = AiEducationSummaryBgColor();
+        _cardContainer.layer.cornerRadius = 8;
+        _cardContainer.translatesAutoresizingMaskIntoConstraints = NO;
+        [self.contentView addSubview:_cardContainer];
 
-        _titleLabel = [[UILabel alloc] init];
-        _titleLabel.font = [UIFont boldSystemFontOfSize:14];
-        _titleLabel.textColor = AiEducationTextPrimaryColor();
-        _titleLabel.numberOfLines = 0;
-        _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-        [_cardView addSubview:_titleLabel];
+        _chapterTitleLabel = [[UILabel alloc] init];
+        _chapterTitleLabel.font = [UIFont boldSystemFontOfSize:15];
+        _chapterTitleLabel.textColor = AiEducationTextPrimaryColor();
+        _chapterTitleLabel.numberOfLines = 2;
+        _chapterTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+        [_cardContainer addSubview:_chapterTitleLabel];
 
-        // 时间徽标：仅时间戳可点击触发 seek
-        _timeLabel = [[UILabel alloc] init];
-        _timeLabel.font = [UIFont systemFontOfSize:12];
-        _timeLabel.textColor = AiEducationTextSecondaryColor();
-        _timeLabel.userInteractionEnabled = YES;
-        _timeLabel.translatesAutoresizingMaskIntoConstraints = NO;
-        [_timeLabel setContentHuggingPriority:UILayoutPriorityRequired
-                                      forAxis:UILayoutConstraintAxisHorizontal];
-        [_timeLabel setContentCompressionResistancePriority:UILayoutPriorityRequired
-                                                    forAxis:UILayoutConstraintAxisHorizontal];
-        UITapGestureRecognizer *timeTap =
-            [[UITapGestureRecognizer alloc] initWithTarget:self
-                                                    action:@selector(onTimeLabelTapped:)];
-        [_timeLabel addGestureRecognizer:timeTap];
-        [_cardView addSubview:_timeLabel];
+        _timeBadgeLabel = [[UILabel alloc] init];
+        _timeBadgeLabel.font = [UIFont systemFontOfSize:11];
+        _timeBadgeLabel.textColor = AiEducationTagTextColor();
+        _timeBadgeLabel.backgroundColor = AiEducationTagBgColor();
+        _timeBadgeLabel.textAlignment = NSTextAlignmentCenter;
+        _timeBadgeLabel.layer.cornerRadius = 10;
+        _timeBadgeLabel.clipsToBounds = YES;
+        _timeBadgeLabel.translatesAutoresizingMaskIntoConstraints = NO;
+        [_cardContainer addSubview:_timeBadgeLabel];
 
         _contentLabel = [[UILabel alloc] init];
-        _contentLabel.font = [UIFont systemFontOfSize:13];
-        _contentLabel.textColor = AiEducationBodyTextColor();
         _contentLabel.numberOfLines = 0;
         _contentLabel.translatesAutoresizingMaskIntoConstraints = NO;
-        [_cardView addSubview:_contentLabel];
+        [_cardContainer addSubview:_contentLabel];
 
         [NSLayoutConstraint activateConstraints:@[
-            [_cardView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:16],
-            [_cardView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-16],
-            [_cardView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:6],
-            [_cardView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-6],
+            [_cardContainer.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:16],
+            [_cardContainer.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-16],
+            [_cardContainer.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:6],
+            [_cardContainer.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-6],
 
-            [_titleLabel.leadingAnchor constraintEqualToAnchor:_cardView.leadingAnchor constant:12],
-            [_titleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_timeLabel.leadingAnchor constant:-8],
-            [_titleLabel.topAnchor constraintEqualToAnchor:_cardView.topAnchor constant:12],
+            [_chapterTitleLabel.leadingAnchor constraintEqualToAnchor:_cardContainer.leadingAnchor constant:12],
+            [_chapterTitleLabel.topAnchor constraintEqualToAnchor:_cardContainer.topAnchor constant:12],
+            [_chapterTitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_timeBadgeLabel.leadingAnchor constant:-8],
 
-            [_timeLabel.trailingAnchor constraintEqualToAnchor:_cardView.trailingAnchor constant:-12],
-            [_timeLabel.firstBaselineAnchor constraintEqualToAnchor:_titleLabel.firstBaselineAnchor],
+            [_timeBadgeLabel.trailingAnchor constraintEqualToAnchor:_cardContainer.trailingAnchor constant:-12],
+            [_timeBadgeLabel.centerYAnchor constraintEqualToAnchor:_chapterTitleLabel.centerYAnchor],
+            [_timeBadgeLabel.widthAnchor constraintGreaterThanOrEqualToConstant:48],
+            [_timeBadgeLabel.heightAnchor constraintEqualToConstant:20],
 
-            [_contentLabel.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
-            [_contentLabel.trailingAnchor constraintEqualToAnchor:_cardView.trailingAnchor constant:-12],
-            [_contentLabel.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:8],
-            [_contentLabel.bottomAnchor constraintEqualToAnchor:_cardView.bottomAnchor constant:-12],
+            [_contentLabel.leadingAnchor constraintEqualToAnchor:_cardContainer.leadingAnchor constant:12],
+            [_contentLabel.trailingAnchor constraintEqualToAnchor:_cardContainer.trailingAnchor constant:-12],
+            [_contentLabel.topAnchor constraintEqualToAnchor:_chapterTitleLabel.bottomAnchor constant:8],
+            [_contentLabel.bottomAnchor constraintEqualToAnchor:_cardContainer.bottomAnchor constant:-12],
         ]];
     }
     return self;
 }
 
-// 时间徽标点击：透传给外部回调
-- (void)onTimeLabelTapped:(UITapGestureRecognizer *)recognizer {
-    if (self.onTimeTapped) {
-        self.onTimeTapped();
-    }
-}
-
 - (void)prepareForReuse {
     [super prepareForReuse];
-    // 复用前清空富文本与回调，避免样式串行和误触旧回调
-    self.titleLabel.text = nil;
-    self.timeLabel.text = nil;
-    self.timeLabel.textColor = AiEducationTextSecondaryColor();
-    self.contentLabel.text = nil;
+    self.chapterTitleLabel.text = nil;
+    self.timeBadgeLabel.text = nil;
     self.contentLabel.attributedText = nil;
-    self.onTimeTapped = nil;
 }
 
 @end
@@ -197,32 +178,34 @@ static NSString * const kSegmentCellIdentifier = @"AiEducationSegmentCell";
 
 @interface ChapterContentView () <UITableViewDataSource, UITableViewDelegate>
 
-// AI 视频内容数据
-@property (nonatomic, strong) AiVideoContent *content;
+// 视图模型（持有全部展示数据）
+@property (nonatomic, strong) AiContentViewModel *viewModel;
 
 // 顶部标题
 @property (nonatomic, strong) UILabel *panelTitleLabel;
 
-// 双 Tab 切换控件（仅一类内容时隐藏）
+// 双 Tab 切换控件（无 TAB 时隐藏）
 @property (nonatomic, strong) UISegmentedControl *tabControl;
 
-// 章节列表
+// 章节列表（ChaptersOnly）
 @property (nonatomic, strong) UITableView *chapterTableView;
 
-// AI 解析列表
-@property (nonatomic, strong) UITableView *segmentTableView;
+// 文字解析列表（TextAnalysis）
+@property (nonatomic, strong) UITableView *textAnalysisTableView;
 
-// 是否有章节数据
-@property (nonatomic, assign) BOOL hasChapters;
+// 图解分析列表（GraphicAnalysis，内容位于 tableHeaderView）
+@property (nonatomic, strong) UITableView *graphicTableView;
 
-// 是否有 AI 解析数据
-@property (nonatomic, assign) BOOL hasAnalysis;
+// TAB 组合配置
+@property (nonatomic, assign) AiContentType tab0Type;
+@property (nonatomic, assign) AiContentType tab1Type;
+@property (nonatomic, assign) BOOL showTabs;
 
-// 当前高亮章节索引
+// 当前激活的内容类型
+@property (nonatomic, assign) AiContentType activeType;
+
+// 当前高亮章节索引（ChaptersOnly / TextAnalysis 共用）
 @property (nonatomic, assign) NSInteger currentChapterIndex;
-
-// 当前高亮分段索引
-@property (nonatomic, assign) NSInteger currentSegmentIndex;
 
 // 构建摘要头部时所用的宽度（0 表示尚未构建）
 @property (nonatomic, assign) CGFloat headerLayoutWidth;
@@ -233,23 +216,39 @@ static NSString * const kSegmentCellIdentifier = @"AiEducationSegmentCell";
 
 #pragma mark - Lifecycle
 
-- (instancetype)initWithContent:(AiVideoContent *)content {
+- (instancetype)initWithViewModel:(AiContentViewModel *)viewModel {
     // frame 由容器在挂载时设定，这里只需零 frame
     self = [super initWithFrame:CGRectZero];
 
     if (self) {
-        _content = content;
+        _viewModel = viewModel;
         _currentChapterIndex = -1;
-        _currentSegmentIndex = -1;
-        _hasChapters = content.chapters.count > 0;
-        // 有 AI 解析：summary 或 segments 有内容，且类型达到文字解析
-        BOOL hasAnalysisContent = (content.summary != nil) || (content.segments.count > 0);
-        _hasAnalysis = hasAnalysisContent && content.type >= AiContentTypeTextAnalysis;
+
+        // 确定 TAB 组合逻辑
+        BOOL hasChapter = viewModel.hasChapterData;
+        BOOL hasSummary = viewModel.hasSummaryData;
+
+        if (hasChapter && hasSummary) {
+            // 双 TAB：ChaptersOnly + GraphicAnalysis
+            _tab0Type = AiContentTypeChaptersOnly;
+            _tab1Type = AiContentTypeGraphicAnalysis;
+            _showTabs = YES;
+        } else if (hasChapter) {
+            // 双 TAB：ChaptersOnly + TextAnalysis
+            _tab0Type = AiContentTypeChaptersOnly;
+            _tab1Type = AiContentTypeTextAnalysis;
+            _showTabs = YES;
+        } else {
+            // 无 TAB：GraphicAnalysis 直接展示
+            _tab0Type = AiContentTypeGraphicAnalysis;
+            _tab1Type = AiContentTypeGraphicAnalysis; // unused
+            _showTabs = NO;
+        }
 
         // 面板内容背景（蒙层与圆角由外部容器处理，对齐 SettingMenuSlot 纯 UIView 模式）
         self.backgroundColor = AiEducationPanelBgColor();
         [self setupSubviews];
-        [self switchToTab:_hasChapters ? 0 : 1];
+        [self switchToTab:0];
     }
 
     return self;
@@ -258,71 +257,90 @@ static NSString * const kSegmentCellIdentifier = @"AiEducationSegmentCell";
 - (void)layoutSubviews {
     [super layoutSubviews];
     [self layoutControlsForSize:self.bounds.size];
-    [self refreshSummaryHeaderForWidth:self.bounds.size.width];
+    [self refreshGraphicHeaderForWidth:self.bounds.size.width];
 }
 
 #pragma mark - Public Methods
 
 - (void)updateCurrentPosition:(NSInteger)positionMs {
     // 章节高亮：二分定位，仅索引变化时刷新变化行
-    if (self.hasChapters) {
-        NSInteger chapterIndex = [ChapterInfo findIndexByPosition:self.content.chapters
-                                                       positionMs:positionMs];
-        if (chapterIndex != self.currentChapterIndex) {
-            NSInteger oldIndex = self.currentChapterIndex;
-            self.currentChapterIndex = chapterIndex;
+    NSArray<ChapterInfo *> *chapters = self.viewModel.chapters;
+    if (chapters.count == 0) {
+        return;
+    }
+    NSInteger chapterIndex = [ChapterInfo findIndexByPosition:chapters positionMs:positionMs];
+    if (chapterIndex != self.currentChapterIndex) {
+        NSInteger oldIndex = self.currentChapterIndex;
+        self.currentChapterIndex = chapterIndex;
+        // 刷新 ChaptersOnly 列表（仅当 ChaptersOnly 在当前 TAB 组合中时）
+        if (self.tab0Type == AiContentTypeChaptersOnly || self.tab1Type == AiContentTypeChaptersOnly) {
             [self reloadRow:oldIndex newRow:chapterIndex inTableView:self.chapterTableView];
         }
-    }
-    // 分段高亮：二分定位，仅索引变化时刷新变化行
-    if (self.hasAnalysis && self.content.segments.count > 0) {
-        NSInteger segmentIndex = [self.content findSegmentIndexByPosition:positionMs];
-        if (segmentIndex != self.currentSegmentIndex) {
-            NSInteger oldIndex = self.currentSegmentIndex;
-            self.currentSegmentIndex = segmentIndex;
-            [self reloadRow:oldIndex newRow:segmentIndex inTableView:self.segmentTableView];
+        // 刷新 TextAnalysis 列表（仅当 TextAnalysis 在当前 TAB 组合中时）
+        if (self.tab0Type == AiContentTypeTextAnalysis || self.tab1Type == AiContentTypeTextAnalysis) {
+            [self reloadRow:oldIndex newRow:chapterIndex inTableView:self.textAnalysisTableView];
         }
     }
 }
 
 #pragma mark - Private Methods - Setup
 
-// 创建标题、Tab 与两个列表控件
+// 创建标题、Tab 与列表控件
 - (void)setupSubviews {
     self.panelTitleLabel = [[UILabel alloc] init];
     self.panelTitleLabel.font = [UIFont boldSystemFontOfSize:16];
     self.panelTitleLabel.textColor = AiEducationTextPrimaryColor();
-    if (self.hasChapters) {
+
+    // 标题文案
+    if (self.viewModel.chapters.count > 0) {
         self.panelTitleLabel.text =
             [NSString stringWithFormat:LocalizedString(@"ai_education_chapter_count_format"),
-                                       (long)self.content.chapters.count];
+                                       (long)self.viewModel.chapters.count];
     } else {
         self.panelTitleLabel.text = LocalizedString(@"ai_education_tab_analysis");
     }
     [self addSubview:self.panelTitleLabel];
 
-    // 双 Tab：有章节且有 AI 解析时显示
-    self.tabControl = [[UISegmentedControl alloc] initWithItems:@[
-        LocalizedString(@"ai_education_tab_chapters"),
-        LocalizedString(@"ai_education_tab_analysis"),
-    ]];
+    // 双 Tab 控件：根据组合类型设置标题
+    NSString *tab0Title = [self tabTitleForContentType:self.tab0Type];
+    NSString *tab1Title = [self tabTitleForContentType:self.tab1Type];
+    self.tabControl = [[UISegmentedControl alloc] initWithItems:@[tab0Title, tab1Title]];
     self.tabControl.selectedSegmentIndex = 0;
     [self.tabControl addTarget:self
                         action:@selector(onTabChanged:)
               forControlEvents:UIControlEventValueChanged];
-    self.tabControl.hidden = !(self.hasChapters && self.hasAnalysis);
+    self.tabControl.hidden = !self.showTabs;
     [self addSubview:self.tabControl];
 
+    // ChaptersOnly 列表
     self.chapterTableView = [self buildTableView];
     [self.chapterTableView registerClass:[AiEducationChapterCell class]
                   forCellReuseIdentifier:kChapterCellIdentifier];
     [self addSubview:self.chapterTableView];
 
-    self.segmentTableView = [self buildTableView];
-    [self.segmentTableView registerClass:[AiEducationSegmentCell class]
-                  forCellReuseIdentifier:kSegmentCellIdentifier];
-    [self addSubview:self.segmentTableView];
-    // 摘要头部依赖最终宽度，留到首次布局时构建（见 refreshSummaryHeaderForWidth:）
+    // TextAnalysis 列表
+    self.textAnalysisTableView = [self buildTableView];
+    [self.textAnalysisTableView registerClass:[AiEducationTextAnalysisCell class]
+                       forCellReuseIdentifier:kTextAnalysisCellIdentifier];
+    [self addSubview:self.textAnalysisTableView];
+
+    // GraphicAnalysis 列表（内容全部位于 tableHeaderView，列表体始终 0 行）
+    self.graphicTableView = [self buildTableView];
+    [self addSubview:self.graphicTableView];
+    // 摘要头部依赖最终宽度，留到首次布局时构建（见 refreshGraphicHeaderForWidth:）
+}
+
+// 返回 TAB 标题文案
+- (NSString *)tabTitleForContentType:(AiContentType)type {
+    switch (type) {
+        case AiContentTypeChaptersOnly:
+            return LocalizedString(@"ai_education_tab_chapters");
+        case AiContentTypeTextAnalysis:
+            return LocalizedString(@"ai_education_tab_analysis");
+        case AiContentTypeGraphicAnalysis:
+            return LocalizedString(@"ai_education_tab_analysis");
+    }
+    return @"";
 }
 
 // 创建通用列表控件
@@ -339,22 +357,22 @@ static NSString * const kSegmentCellIdentifier = @"AiEducationSegmentCell";
 }
 
 /**
- * 按当前宽度构建 AI 解析列表的头部卡片。
+ * 按当前宽度构建图解分析列表的头部卡片。
  * tableHeaderView 必须带显式 frame，而本视图的宽度由容器挂载后才确定，
  * 因此头部只能在首次布局时构建，并在宽度变化（横竖屏形态不同）时按新宽度重建。
  */
-- (void)refreshSummaryHeaderForWidth:(CGFloat)width {
-    if (!self.content.summary || width <= 0 || width == self.headerLayoutWidth) {
+- (void)refreshGraphicHeaderForWidth:(CGFloat)width {
+    if (!self.viewModel.summaryInfo || width <= 0 || width == self.headerLayoutWidth) {
         return;
     }
 
     self.headerLayoutWidth = width;
-    self.segmentTableView.tableHeaderView = [self buildSummaryHeaderViewForWidth:width];
+    self.graphicTableView.tableHeaderView = [self buildSummaryHeaderViewForWidth:width];
 }
 
-// AI 解析列表头部：浅灰圆角卡片内渲染视频标题 + 标签徽标行 + 整体摘要
+// 图解分析头部：ParagraphSummary + Tags 徽标行 + MarkdownContent
 - (nullable UIView *)buildSummaryHeaderViewForWidth:(CGFloat)width {
-    AiSummary *summary = self.content.summary;
+    SummaryInfo *summary = self.viewModel.summaryInfo;
     if (!summary) {
         return nil;
     }
@@ -373,27 +391,28 @@ static NSString * const kSegmentCellIdentifier = @"AiEducationSegmentCell";
 
     CGFloat cursorY = cardPadding;
 
-    UILabel *headerTitleLabel = [[UILabel alloc] init];
-    headerTitleLabel.font = [UIFont boldSystemFontOfSize:15];
-    headerTitleLabel.textColor = AiEducationTextPrimaryColor();
-    headerTitleLabel.numberOfLines = 0;
-    NSString *headerTitle = summary.title.length > 0
-        ? summary.title
-        : LocalizedString(@"ai_education_summary_header_title");
-    headerTitleLabel.text = headerTitle;
-    CGSize titleSize = [headerTitleLabel sizeThatFits:CGSizeMake(innerWidth, CGFLOAT_MAX)];
-    headerTitleLabel.frame = CGRectMake(cardPadding, cursorY, innerWidth, titleSize.height);
-    [cardView addSubview:headerTitleLabel];
-    cursorY += titleSize.height;
+    // 整体摘要文字：paragraphSummary 为空时跳过
+    if (summary.paragraphSummary.length > 0) {
+        UILabel *summaryLabel = [[UILabel alloc] init];
+        summaryLabel.font = [UIFont systemFontOfSize:13];
+        summaryLabel.textColor = AiEducationBodyTextColor();
+        summaryLabel.numberOfLines = 0;
+        summaryLabel.text = summary.paragraphSummary;
+        CGSize summarySize = [summaryLabel sizeThatFits:CGSizeMake(innerWidth, CGFLOAT_MAX)];
+        summaryLabel.frame = CGRectMake(cardPadding, cursorY, innerWidth, summarySize.height);
+        [cardView addSubview:summaryLabel];
+        cursorY += summarySize.height;
+    }
 
-    // 标签徽标行：红字浅红底圆角，水平排列超宽换行；无 tags 时不占位
-    if (summary.tags.count > 0) {
+    // 标签徽标行：圆角，水平排列超宽换行；无 mindMapItems 时不占位
+    if (summary.mindMapItems.count > 0) {
         cursorY += 8;
         CGFloat tagX = cardPadding;
         CGFloat tagHeight = 20;
         CGFloat tagSpacing = 8;
         UIFont *tagFont = [UIFont systemFontOfSize:11];
-        for (NSString *tag in summary.tags) {
+        for (MindMapItem *item in summary.mindMapItems) {
+            NSString *tag = item.title;
             if (tag.length == 0) {
                 continue;
             }
@@ -419,25 +438,34 @@ static NSString * const kSegmentCellIdentifier = @"AiEducationSegmentCell";
         cursorY += tagHeight;
     }
 
-    UILabel *summaryLabel = [[UILabel alloc] init];
-    summaryLabel.font = [UIFont systemFontOfSize:13];
-    summaryLabel.textColor = AiEducationBodyTextColor();
-    summaryLabel.numberOfLines = 0;
-    summaryLabel.text = summary.summaryText ?: @"";
-    CGSize summarySize = [summaryLabel sizeThatFits:CGSizeMake(innerWidth, CGFLOAT_MAX)];
-    summaryLabel.frame = CGRectMake(cardPadding, cursorY + 8, innerWidth, summarySize.height);
-    [cardView addSubview:summaryLabel];
-    cursorY += 8 + summarySize.height + cardPadding;
+    cursorY += cardPadding;
 
-    // 回填卡片与头部 frame（tableHeaderView 需要显式 frame）
+    // 回填卡片 frame
     cardView.frame = CGRectMake(cardMargin, 12, cardWidth, cursorY);
-    header.frame = CGRectMake(0, 0, width, cursorY + 12 + 8);
+    CGFloat headerHeight = cursorY + 12 + 8;
+
+    // 在卡片下方渲染完整 Markdown 内容（markdownContent 为空时跳过）
+    if (summary.markdownContent.length > 0) {
+        CGFloat mdTop = headerHeight;
+        NSAttributedString *renderedMarkdown =
+            [[AiEducationMarkdownRenderer sharedRenderer] renderMarkdown:summary.markdownContent];
+        UILabel *mdLabel = [[UILabel alloc] init];
+        mdLabel.numberOfLines = 0;
+        mdLabel.attributedText = renderedMarkdown;
+        CGSize mdSize = [mdLabel sizeThatFits:CGSizeMake(innerWidth, CGFLOAT_MAX)];
+        mdLabel.frame = CGRectMake(cardMargin + cardPadding, mdTop, innerWidth, mdSize.height);
+        [header addSubview:mdLabel];
+        headerHeight = mdTop + mdSize.height + 16;
+    }
+
+    // 回填头部 frame（tableHeaderView 需要显式 frame）
+    header.frame = CGRectMake(0, 0, width, headerHeight);
     return header;
 }
 
 #pragma mark - Private Methods - Layout
 
-// 标题与 Tab 顺次排布，两个列表占据剩余区域（自身已铺满外部容器）
+// 标题与 Tab 顺次排布，列表控件占据剩余区域（自身已铺满外部容器）
 - (void)layoutControlsForSize:(CGSize)size {
     CGFloat width = size.width;
     CGFloat height = size.height;
@@ -453,7 +481,8 @@ static NSString * const kSegmentCellIdentifier = @"AiEducationSegmentCell";
 
     CGRect listFrame = CGRectMake(0, contentTop, width, height - contentTop);
     self.chapterTableView.frame = listFrame;
-    self.segmentTableView.frame = listFrame;
+    self.textAnalysisTableView.frame = listFrame;
+    self.graphicTableView.frame = listFrame;
 }
 
 #pragma mark - Private Methods - Actions
@@ -463,16 +492,19 @@ static NSString * const kSegmentCellIdentifier = @"AiEducationSegmentCell";
     [self switchToTab:control.selectedSegmentIndex];
 }
 
-// 切换显示章节列表 / AI 解析列表；index: 0=章节 1=AI 解析
+// 切换显示对应内容视图
 - (void)switchToTab:(NSInteger)index {
-    BOOL showChapters = (index == 0) && self.hasChapters;
-    self.chapterTableView.hidden = !showChapters;
-    self.segmentTableView.hidden = showChapters;
+    AiContentType type = (index == 0) ? self.tab0Type : self.tab1Type;
+    self.activeType = type;
+
+    self.chapterTableView.hidden = (type != AiContentTypeChaptersOnly);
+    self.textAnalysisTableView.hidden = (type != AiContentTypeTextAnalysis);
+    self.graphicTableView.hidden = (type != AiContentTypeGraphicAnalysis);
 }
 
 // 只刷新高亮变化的行
 - (void)reloadRow:(NSInteger)oldRow newRow:(NSInteger)newRow inTableView:(UITableView *)tableView {
-    if (!tableView.window) {
+    if (!tableView.window || tableView.hidden) {
         return;
     }
     NSMutableArray<NSIndexPath *> *indexPaths = [NSMutableArray array];
@@ -493,9 +525,13 @@ static NSString * const kSegmentCellIdentifier = @"AiEducationSegmentCell";
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     if (tableView == self.chapterTableView) {
-        return (NSInteger)self.content.chapters.count;
+        return (NSInteger)self.viewModel.chapters.count;
     }
-    return (NSInteger)self.content.segments.count;
+    if (tableView == self.textAnalysisTableView) {
+        return (NSInteger)self.viewModel.knowledgeItems.count;
+    }
+    // GraphicAnalysis：内容全部位于 tableHeaderView，列表体无行
+    return 0;
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView
@@ -503,7 +539,11 @@ static NSString * const kSegmentCellIdentifier = @"AiEducationSegmentCell";
     if (tableView == self.chapterTableView) {
         return [self chapterCellForTableView:tableView indexPath:indexPath];
     }
-    return [self segmentCellForTableView:tableView indexPath:indexPath];
+    if (tableView == self.textAnalysisTableView) {
+        return [self textAnalysisCellForTableView:tableView indexPath:indexPath];
+    }
+    // GraphicAnalysis 始终 0 行，不会到达此处
+    return [[UITableViewCell alloc] init];
 }
 
 // 章节 cell 绑定
@@ -512,7 +552,7 @@ static NSString * const kSegmentCellIdentifier = @"AiEducationSegmentCell";
     AiEducationChapterCell *cell =
         [tableView dequeueReusableCellWithIdentifier:kChapterCellIdentifier
                                         forIndexPath:indexPath];
-    ChapterInfo *chapter = self.content.chapters[(NSUInteger)indexPath.row];
+    ChapterInfo *chapter = self.viewModel.chapters[(NSUInteger)indexPath.row];
     cell.titleLabel.text = chapter.title;
     cell.timeLabel.text = [FormatUtil formatTime:chapter.startMs];
     BOOL highlighted = indexPath.row == self.currentChapterIndex;
@@ -525,53 +565,51 @@ static NSString * const kSegmentCellIdentifier = @"AiEducationSegmentCell";
     return cell;
 }
 
-// 分段 cell 绑定：文字摘要或 Markdown 渲染
-- (UITableViewCell *)segmentCellForTableView:(UITableView *)tableView
-                                   indexPath:(NSIndexPath *)indexPath {
-    AiEducationSegmentCell *cell =
-        [tableView dequeueReusableCellWithIdentifier:kSegmentCellIdentifier
+// 文字解析 cell 绑定
+- (UITableViewCell *)textAnalysisCellForTableView:(UITableView *)tableView
+                                        indexPath:(NSIndexPath *)indexPath {
+    AiEducationTextAnalysisCell *cell =
+        [tableView dequeueReusableCellWithIdentifier:kTextAnalysisCellIdentifier
                                         forIndexPath:indexPath];
-    AiSegment *segment = self.content.segments[(NSUInteger)indexPath.row];
-    cell.titleLabel.text = segment.title;
-    cell.timeLabel.text = [NSString stringWithFormat:@"▷ %@", [FormatUtil formatTime:segment.startMs]];
+    KnowledgeInfo *item = self.viewModel.knowledgeItems[(NSUInteger)indexPath.row];
 
-    // 时间徽标点击 → 透传分段起始时间给外部 seek（仅时间戳可点）
-    NSInteger startMs = segment.startMs;
-    __weak typeof(self) weakSelf = self;
-    cell.onTimeTapped = ^{
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (strongSelf.onSegmentSelected) {
-            strongSelf.onSegmentSelected(startMs);
-        }
-    };
+    cell.chapterTitleLabel.text = item.title;
+    cell.timeBadgeLabel.text = [NSString stringWithFormat:@" %@ ",
+                                [FormatUtil formatTime:item.startMs]];
 
-    if (segment.markdown.length > 0) {
+    // 高亮状态
+    BOOL highlighted = indexPath.row == self.currentChapterIndex;
+    cell.chapterTitleLabel.textColor = highlighted
+        ? AiEducationHighlightRedColor()
+        : AiEducationTextPrimaryColor();
+    cell.cardContainer.backgroundColor = highlighted
+        ? AiEducationCardBgHighlightColor()
+        : AiEducationSummaryBgColor();
+
+    // 渲染预组装的 Markdown 内容
+    if (item.contentMarkdown.length > 0) {
         cell.contentLabel.attributedText =
-            [[AiEducationMarkdownRenderer sharedRenderer] renderMarkdown:segment.markdown];
+            [[AiEducationMarkdownRenderer sharedRenderer] renderMarkdown:item.contentMarkdown];
     } else {
-        cell.contentLabel.text = segment.summary ?: @"";
+        cell.contentLabel.attributedText = nil;
     }
 
-    // 高亮：时间徽标变红，保留卡片背景高亮
-    BOOL highlighted = indexPath.row == self.currentSegmentIndex;
-    cell.timeLabel.textColor = highlighted
-        ? AiEducationHighlightRedColor()
-        : AiEducationTextSecondaryColor();
-    cell.cardView.backgroundColor = highlighted
-        ? AiEducationCardBgHighlightColor()
-        : AiEducationCardBgNormalColor();
     return cell;
 }
 
 #pragma mark - UITableViewDelegate
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
-    if (tableView != self.chapterTableView) {
-        return;
-    }
-    ChapterInfo *chapter = self.content.chapters[(NSUInteger)indexPath.row];
-    if (self.onChapterSelected) {
-        self.onChapterSelected(chapter.startMs);
+    if (tableView == self.chapterTableView) {
+        ChapterInfo *chapter = self.viewModel.chapters[(NSUInteger)indexPath.row];
+        if (self.onChapterSelected) {
+            self.onChapterSelected(chapter.startMs);
+        }
+    } else if (tableView == self.textAnalysisTableView) {
+        KnowledgeInfo *item = self.viewModel.knowledgeItems[(NSUInteger)indexPath.row];
+        if (self.onChapterSelected) {
+            self.onChapterSelected(item.startMs);
+        }
     }
 }
 

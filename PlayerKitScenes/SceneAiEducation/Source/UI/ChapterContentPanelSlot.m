@@ -8,7 +8,9 @@
 
 #import "ChapterContentPanelSlot.h"
 #import "ChapterContentView.h"
-#import "AiVideoContent.h"
+#import "AiAnalysisResponse.h"
+#import "AiContentAssembler.h"
+#import "AiContentViewModel.h"
 #import "AliPlayerController.h"
 #import "PlayerViewState.h"
 #import "PlayerNotificationDelegate.h"
@@ -24,8 +26,8 @@ static const CGFloat kPortraitCornerRadius = 16.0;
 
 @interface ChapterContentPanelSlot () <PlayerNotificationDelegate>
 
-// 场景层推入的 AI 内容
-@property (nonatomic, strong, nullable) AiVideoContent *aiContent;
+// 场景层推入的 AI 响应
+@property (nonatomic, strong, nullable) AiAnalysisResponse *aiResponse;
 
 // 面板内容视图（仅在面板显示期间存在）
 @property (nonatomic, strong, nullable) ChapterContentView *panelContentView;
@@ -59,12 +61,12 @@ static const CGFloat kPortraitCornerRadius = 16.0;
 
 #pragma mark - Public
 
-- (void)updateAiContent:(nullable AiVideoContent *)content {
-    if (self.aiContent == content) {
+- (void)updateAiContent:(nullable AiAnalysisResponse *)response {
+    if (self.aiResponse == response) {
         return;
     }
 
-    self.aiContent = content;
+    self.aiResponse = response;
 
     // 内容视图按当前内容一次性构建，显示期间换内容只能先收起，下次打开时重建
     if (self.isPanelShowing) {
@@ -111,7 +113,7 @@ static const CGFloat kPortraitCornerRadius = 16.0;
     // 形态可能已切换，先彻底清理上一次的残留视图
     [self teardownCurrentViews];
 
-    if (!self.aiContent) {
+    if (!self.aiResponse) {
         return NO;
     }
 
@@ -178,17 +180,15 @@ static const CGFloat kPortraitCornerRadius = 16.0;
     self.popupContainer = [[UIView alloc] init];
     self.popupContainer.backgroundColor = [UIColor clearColor];
 
-    ChapterContentView *contentView =
-        [[ChapterContentView alloc] initWithContent:self.aiContent];
+    // 通过 Assembler 组装视图模型
+    AiContentViewModel *viewModel = [AiContentAssembler buildViewModelFromResponse:self.aiResponse];
+
+    ChapterContentView *contentView = [[ChapterContentView alloc] initWithViewModel:viewModel];
     __weak typeof(self) weakSelf = self;
     contentView.onChapterSelected = ^(NSInteger startMs) {
         // 点击章节：seek 到章节起点并关闭面板
         [weakSelf.host.controller seekTo:startMs];
         [weakSelf hidePanel];
-    };
-    contentView.onSegmentSelected = ^(NSInteger startMs) {
-        // 点击分段时间戳：seek 到分段起点，不关闭面板
-        [weakSelf.host.controller seekTo:startMs];
     };
     self.panelContentView = contentView;
 

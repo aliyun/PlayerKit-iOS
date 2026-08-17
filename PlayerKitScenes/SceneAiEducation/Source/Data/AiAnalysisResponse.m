@@ -8,6 +8,9 @@
 
 #import "AiAnalysisResponse.h"
 #import "SafeValueHelper.h"
+#import "AiContentConstants.h"
+
+#pragma mark - Chapter 场景数据
 
 @implementation KnowledgePointItem
 
@@ -59,6 +62,27 @@
 
 @end
 
+#pragma mark - Summary 场景数据
+
+@implementation MindMapItem
+
+#pragma mark - Public Methods
+
++ (nullable instancetype)itemWithDictionary:(nullable NSDictionary *)dictionary {
+    if (![dictionary isKindOfClass:[NSDictionary class]]) {
+        return nil;
+    }
+    MindMapItem *item = [[MindMapItem alloc] init];
+    item.title = SafeString(dictionary[@"Title"]);
+    NSArray *topics = dictionary[@"Topic"];
+    if ([topics isKindOfClass:[NSArray class]]) {
+        item.topics = topics;
+    }
+    return item;
+}
+
+@end
+
 @implementation SummaryContent
 
 #pragma mark - Public Methods
@@ -70,10 +94,25 @@
     SummaryContent *content = [[SummaryContent alloc] init];
     content.paragraphSummary = SafeString(dictionary[@"ParagraphSummary"]);
     content.markdownContent = SafeString(dictionary[@"MarkdownContent"]);
+
+    // 解析思维导图摘要列表
+    NSArray *mindMapArray = dictionary[@"MindMapSummary"];
+    if ([mindMapArray isKindOfClass:[NSArray class]]) {
+        NSMutableArray<MindMapItem *> *items = [NSMutableArray array];
+        for (NSDictionary *dict in mindMapArray) {
+            MindMapItem *item = [MindMapItem itemWithDictionary:dict];
+            if (item) {
+                [items addObject:item];
+            }
+        }
+        content.mindMapSummary = items.count > 0 ? [items copy] : nil;
+    }
     return content;
 }
 
 @end
+
+#pragma mark - 通用数据（Chapter + Summary）
 
 @implementation ResultItem
 
@@ -142,6 +181,26 @@
         response.aiAnalysisResult = [results copy];
     }
     return response;
+}
+
+#pragma mark - Convenience Accessors
+
+- (ResultItem *)chapterResult {
+    for (ResultItem *item in self.aiAnalysisResult) {
+        if ([AiContentResultTypeChapter isEqualToString:item.resultType]) {
+            return item;
+        }
+    }
+    return nil;
+}
+
+- (ResultItem *)summaryResult {
+    for (ResultItem *item in self.aiAnalysisResult) {
+        if ([AiContentResultTypeSummary isEqualToString:item.resultType]) {
+            return item;
+        }
+    }
+    return nil;
 }
 
 @end

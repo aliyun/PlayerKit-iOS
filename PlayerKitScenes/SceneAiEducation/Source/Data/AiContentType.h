@@ -11,20 +11,19 @@
 NS_ASSUME_NONNULL_BEGIN
 
 /**
- * @brief AI 内容类型枚举
+ * @brief AI 内容展示样式枚举
  *
- * @discussion 标识 AI 内容理解结果的展示形态，决定面板如何渲染内容。
- *
- * @see AiVideoContent
+ * @discussion 定义面板内三种渲染模式，由 TAB 组合逻辑决定实际展示方式：
+ *             - 仅 chapterResult：双 TAB（ChaptersOnly + TextAnalysis）
+ *             - 仅 summaryResult：无 TAB（GraphicAnalysis 直接展示）
+ *             - 两者都有：双 TAB（TextAnalysis + GraphicAnalysis）
  */
 typedef NS_ENUM(NSInteger, AiContentType) {
-    /** 仅章节划分，无 AI 解析内容 */
+    /// 章节列表：缩略图 + 标题 + 时间
     AiContentTypeChaptersOnly = 0,
-
-    /** 文字解析（含摘要或知识点文本） */
+    /// 文字解析：知识点格式化列表或 Summary markdown
     AiContentTypeTextAnalysis = 1,
-
-    /** Markdown 图解解析 */
+    /// 图解分析：ParagraphSummary + Tags 徽章 + MarkdownContent
     AiContentTypeGraphicAnalysis = 2,
 };
 

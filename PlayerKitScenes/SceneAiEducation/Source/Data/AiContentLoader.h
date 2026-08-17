@@ -8,7 +8,7 @@
 
 #import <Foundation/Foundation.h>
 
-@class AiVideoContent;
+@class AiAnalysisResponse;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -24,7 +24,7 @@ NS_ASSUME_NONNULL_BEGIN
  * @note 页面销毁（dealloc）时必须调用 cancel。
  *
  * @see AiContentConstants
- * @see AiVideoContent
+ * @see AiAnalysisResponse
  */
 @interface AiContentLoader : NSObject
 
@@ -55,15 +55,14 @@ NS_ASSUME_NONNULL_BEGIN
  * @brief 异步加载 AI 内容理解结果
  *
  * @discussion 请求 /GetMediaAiAnalysisByResultType?MediaId={vid} 接口（省略 ResultType 返回全部），
- *             并将 DTO 转换为 AiVideoContent 业务模型；
  *             失败或无有效内容时回调 nil。
  *             回调在主队列执行；已 cancel 时不回调。
  *
- * @param mediaId    媒资 ID（透传至 AiVideoContent.videoId）。
+ * @param mediaId    媒资 ID（透传至 AiAnalysisResponse.mediaId）。
  * @param completion 完成回调，失败为 nil。
  */
-- (void)loadWithMediaId:(NSString *)mediaId
-             completion:(void (^)(AiVideoContent * _Nullable content))completion;
+- (void)loadAiAnalysisWithMediaId:(NSString *)mediaId
+                       completion:(void (^)(AiAnalysisResponse * _Nullable response))completion;
 
 /**
  * @brief 取消所有进行中的请求

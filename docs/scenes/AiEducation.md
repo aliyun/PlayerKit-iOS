@@ -112,17 +112,6 @@ AI 教育场景由客户端、App Server、ICE / AI 工作流和 VOD 服务共�
 
 ![LayeredArchitecture](https://alivc-demo-cms.alicdn.com/versionProduct/resources/ai_education/LayeredArchitecture-iOS.png)
 
-**组件职责**：
-
-| 组件 | 说明 |
-| ---- | ---- |
-| `SceneAiEducationViewController` | 场景入口，编排数据加载、播放器初始化和 UI 绑定 |
-| `AiContentLoader` | 在后台线程依次请求播放凭证和 AI 分析结果，并在主线程回调处理结果 |
-| `ChapterButtonSlot` | 在播放器控制栏中展示「章节」按钮，并触发章节内容面板展开 |
-| `ChapterContentView` | 章节内容面板 UI，展示章节列表、视频摘要、章节摘要和知识点（双 Tab 设计） |
-| `AiEducationMarkdownRenderer` | 将 AI 分析内容的 Markdown 文本渲染为富文本（基于 Down/cmark） |
-| `AliPlayerController` | 提供视频加载、播放控制、Seek 和播放进度回调等基础能力 |
-
 ---
 
 ## **6. 服务端接口**
@@ -205,7 +194,14 @@ GET {AppServerBaseURL}/GetMediaAiAnalysisByResultType?MediaId={vid}
       "ResultType": "Summary",
       "Title": "视频标题",
       "SummaryContent": {
-        "ParagraphSummary": "视频整体内容摘要..."
+        "ParagraphSummary": "视频整体内容摘要...",
+        "MarkdownContent": "# 章节标题\n详细内容...",
+        "MindMapSummary": [
+          {
+            "Title": "主题分支",
+            "Topic": ["子主题A", "子主题B"]
+          }
+        ]
       },
       "Tags": ["教育", "技术"]
     }
@@ -235,13 +231,17 @@ GET {AppServerBaseURL}/GetMediaAiAnalysisByResultType?MediaId={vid}
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `SummaryContent.ParagraphSummary` | String | 视频整体段落摘要 |
+| `SummaryContent.MarkdownContent` | String | Markdown 格式的完整分析内容 |
+| `SummaryContent.MindMapSummary` | Array | 思维导图分支列表，每项含 Title(String) 和 Topic(Array\<String\>) |
 | `Tags` | Array\<String\> | 视频标签列表 |
 
 ---
 
 ## **7. 数据模型与映射**
 
-### **7.1 三层映射**
+### **7.1 数据映射**
+
+服务端 JSON 经 `AiAnalysisResponse` 直映射为 DTO，再由 `AiContentAssembler` 组装为业务模型。以下为服务端字段到客户端 DTO 及业务模型的映射关系：
 
 | 服务端 JSON 字段 | 客户端 DTO | 业务模型 | 说明 |
 |-----------------|-----------|---------|------|
@@ -250,29 +250,69 @@ GET {AppServerBaseURL}/GetMediaAiAnalysisByResultType?MediaId={vid}
 | `EndTime` | `ChapterContentItem.endTime` | `ChapterInfo.endMs` | 毫秒 |
 | `ChapterTitle` | `ChapterContentItem.chapterTitle` | `ChapterInfo.title` | 章节标题 |
 | `ThumbnailUrl` | `ChapterContentItem.thumbnailUrl` | `ChapterInfo.thumbnailUrl` | 缩略图 |
-| `Summary` | `ChapterContentItem.summary` | `AiSegment.summary` | 章节摘要 |
-| `KnowledgePoints[]` | `ChapterContentItem.knowledgePoints` | `AiSegment.markdown` | 拼接为 Markdown |
-| `ParagraphSummary` | `SummaryContent.paragraphSummary` | `AiSummary.summaryText` | 视频全局摘要 |
+| `Summary` | `ChapterContentItem.summary` | — | 章节摘要（DTO 保留，未映射业务模型） |
+| `KnowledgePoints[]` | `ChapterContentItem.knowledgePoints` | — | 知识点列表（DTO 保留，未映射业务模型） |
+| `ParagraphSummary` | `SummaryContent.paragraphSummary` | `SummaryInfo.paragraphSummary` | 视频全局摘要 |
+| `MarkdownContent` | `SummaryContent.markdownContent` | `SummaryInfo.markdownContent` | Markdown 完整分析内容 |
+| `MindMapSummary[]` | `SummaryContent.mindMapSummary` | `SummaryInfo.mindMapItems` | 保留完整 MindMapItem 结构（含 title 和 topics） |
 
 ### **7.2 聚合模型**
 
-最终聚合为 `AiVideoContent`，包含：
+最终聚合为 `AiAnalysisResponse`，包含：
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `videoId` | `NSString *` | 视频 ID |
-| `type` | `AiContentType` | 内容类型（决定面板渲染模式） |
-| `summary` | `AiSummary *` | 视频级摘要（可为 nil） |
-| `chapters` | `NSArray<ChapterInfo *> *` | 章节目录列表 |
-| `segments` | `NSArray<AiSegment *> *` | 分段解析列表 |
+| `mediaId` | `NSString *` | 媒资 ID |
+| `aiAnalysisResult` | `NSArray<ResultItem *> *` | AI 分析结果列表 |
+| `chapterResult` | `ResultItem *` | 章节类型结果条目（便利查找，遍历匹配 Chapter 类型） |
+| `summaryResult` | `ResultItem *` | 摘要类型结果条目（便利查找，遍历匹配 Summary 类型） |
 
-`AiContentType` 枚举决定面板展示形态：
+**DTO 模型补充说明**：
 
-| 枚举值 | 含义 |
-|--------|------|
-| `AiContentTypeChaptersOnly` | 仅章节划分，无 AI 解析内容 |
-| `AiContentTypeTextAnalysis` | 文字解析（含摘要或知识点文本） |
-| `AiContentTypeGraphicAnalysis` | Markdown 图解解析 |
+- `SummaryContent` 包含三个属性：`paragraphSummary`（NSString，段落摘要）、`markdownContent`（NSString，Markdown 格式完整分析）、`mindMapSummary`（`NSArray<MindMapItem *>`，思维导图分支列表）
+- `MindMapItem` 模型：`title`（NSString，思维导图节点标题）、`topics`（NSArray\<NSString *\>，子主题列表）
+
+面板展示形态由 `AiAnalysisResponse` 中实际存在的数据决定，每个 TAB 与结果条目一一对应：
+
+| 条件 | 渲染模式 |
+|------|----------|
+| 仅 `chapterResult` 非空 | 仅显示章节 TAB，渲染 `chapters` 章节列表 |
+| 仅 `summaryResult` 非空 | 仅显示 AI 解析 TAB，渲染 `summary` 的整体摘要 + 标签 + Markdown |
+| 两者均非空 | 显示双 TAB：章节 TAB 渲染 `chapters`，AI 解析 TAB 渲染 `summary` |
+
+### **7.3 客户端数据架构**
+
+重构后的客户端数据架构采用分层设计，将数据组装与 UI 渲染职责分离。
+
+**数据流图**：
+
+```
+Server JSON → AiAnalysisResponse (DTO) → AiContentAssembler → AiContentViewModel → ChapterContentView (UI)
+```
+
+**新增客户端模型说明**：
+
+| 类名 | 职责 | 关键属性 |
+|------|------|----------|
+| `AiContentAssembler` | 数据组装：将 DTO 转换为 ViewModel | `+buildViewModelFromResponse:` |
+| `AiContentViewModel` | UI 视图模型，面板唯一数据入口 | `chapters`、`knowledgeItems`、`summaryInfo`、`hasChapterData`、`hasSummaryData` |
+| `KnowledgeInfo` | TextAnalysis 章节展示模型 | `title`、`startMs`、`endMs`、`contentMarkdown`（预格式化：`- **Point**：Description`） |
+| `SummaryInfo` | GraphicAnalysis 摘要展示模型 | `paragraphSummary`、`mindMapItems`、`markdownContent` |
+
+**设计原则**：
+
+- `AiAnalysisResponse` 保持纯 DTO 定位，直映射服务端 JSON
+- `AiContentAssembler` 承担所有数据组装职责（格式化、提取、转换）
+- `ChapterContentView` 通过 `initWithViewModel:` 初始化，纯渲染不做任何数据处理
+- 知识点渲染格式由 Assembler 预组装：`- **{Point}**：{Description}`（中文冒号）
+
+**TAB 组合规则**（由 ViewModel 的 `hasChapterData` / `hasSummaryData` 决定）：
+
+| 条件 | 渲染模式 |
+|------|----------|
+| 仅 `hasChapterData` | 双 TAB：ChaptersOnly（章节）+ TextAnalysis（AI解析） |
+| 仅 `hasSummaryData` | 无 TAB：GraphicAnalysis（AI解析） |
+| 两者都有 | 双 TAB：ChaptersOnly（章节）+ GraphicAnalysis（AI解析） |
 
 ---
 
@@ -289,9 +329,9 @@ AiContentLoader *loader = [[AiContentLoader alloc] initWithBaseURL:@"http://your
                      completion:^(NSString * _Nullable playAuth) {
     // 获取到 playAuth 后继续加载 AI 内容...
 }];
-[loader loadWithMediaId:@"your-vid"
-             completion:^(AiVideoContent * _Nullable content) {
-    // 获取到 AiVideoContent 后配置播放器...
+[loader loadAiAnalysisWithMediaId:@"your-vid"
+             completion:^(AiAnalysisResponse * _Nullable response) {
+    // 获取到 AiAnalysisResponse 后配置播放器...
 }];
 ```
 
@@ -323,7 +363,7 @@ AliPlayerController *playerController = [[AliPlayerController alloc] init];
 VideoSource *source = [VideoSource vidAuthSourceWithVid:mediaId playAuth:playAuth];
 AliPlayerModel *model = [[AliPlayerModel alloc] initWithVideoSource:source];
 model.sceneType = SceneTypeAIVod;
-model.chapters = aiContent.chapters;
+model.chapters = response.chapters;
 
 // 3. 注册章节按钮自定义插槽
 CustomSlotType *slotType = [CustomSlotType typeWithKey:@"chapter_button" order:85];
@@ -350,5 +390,5 @@ CustomSlotType *slotType = [CustomSlotType typeWithKey:@"chapter_button" order:8
 | 如何关闭某个 AI 能力 | 服务端接口中不返回对应 ResultType 即可 |
 | SDK 版本兼容性 | 需要阿里云播放器 SDK ≥ 6.14.0 |
 | Markdown 渲染异常 | 确认 Podfile 中已正确引入 Down 依赖（~> 0.11.0） |
-| 章节按钮不显示 | 确认 `AiVideoContent.chapters` 非空，`ChapterButtonSlot` 依据章节数据可用性控制显隐 |
+| 章节按钮不显示 | 确认 `AiAnalysisResponse.chapters` 非空，`ChapterButtonSlot` 依据章节数据可用性控制显隐 |
 | 网络超时 | `AiContentLoader` 连接和读取超时均为 5 秒，可通过自定义 Loader 调整 |

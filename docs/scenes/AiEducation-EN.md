@@ -112,17 +112,6 @@ The Scene layer handles page orchestration, data loading, and AI content display
 
 ![LayeredArchitecture](https://alivc-demo-cms.alicdn.com/versionProduct/resources/ai_education/LayeredArchitecture-iOS-EN.png)
 
-**Component Responsibilities**:
-
-| Component | Description |
-| --------- | ----------- |
-| `SceneAiEducationViewController` | Scene entry point; orchestrates data loading, player initialization, and UI binding |
-| `AiContentLoader` | Sequentially requests play credentials and AI analysis results on a background thread, with results dispatched back to the main thread |
-| `ChapterButtonSlot` | Displays the "Chapter" button in the player control bar and triggers the chapter content panel |
-| `ChapterContentView` | Chapter content panel UI; displays chapter list, video summary, chapter summaries, and knowledge points (dual-tab design) |
-| `AiEducationMarkdownRenderer` | Renders AI analysis Markdown text as rich text (based on Down/cmark) |
-| `AliPlayerController` | Provides video loading, playback control, seek, and playback progress callbacks |
-
 ---
 
 ## **6. Server-Side APIs**
@@ -205,7 +194,14 @@ GET {AppServerBaseURL}/GetMediaAiAnalysisByResultType?MediaId={vid}
       "ResultType": "Summary",
       "Title": "Video Title",
       "SummaryContent": {
-        "ParagraphSummary": "Overall video content summary..."
+        "ParagraphSummary": "Overall video content summary...",
+        "MarkdownContent": "# Chapter Title\nDetailed content...",
+        "MindMapSummary": [
+          {
+            "Title": "Topic Branch",
+            "Topic": ["Sub-topic A", "Sub-topic B"]
+          }
+        ]
       },
       "Tags": ["Education", "Technology"]
     }
@@ -235,13 +231,17 @@ GET {AppServerBaseURL}/GetMediaAiAnalysisByResultType?MediaId={vid}
 | Field | Type | Description |
 |-------|------|-------------|
 | `SummaryContent.ParagraphSummary` | String | Overall video paragraph summary |
+| `SummaryContent.MarkdownContent` | String | Complete analysis content in Markdown format |
+| `SummaryContent.MindMapSummary` | Array | Mind map branch list, each item contains Title(String) and Topic(Array\<String\>) |
 | `Tags` | Array\<String\> | Video tag list |
 
 ---
 
 ## **7. Data Models and Mapping**
 
-### **7.1 Three-Layer Mapping**
+### **7.1 Data Mapping**
+
+Server JSON is directly mapped into DTOs by `AiAnalysisResponse`, then assembled into business models by `AiContentAssembler`. The following shows the mapping from server-side fields to client DTOs and business models:
 
 | Server JSON Field | Client DTO | Business Model | Description |
 |-----------------|-----------|---------|------|
@@ -250,29 +250,69 @@ GET {AppServerBaseURL}/GetMediaAiAnalysisByResultType?MediaId={vid}
 | `EndTime` | `ChapterContentItem.endTime` | `ChapterInfo.endMs` | Milliseconds |
 | `ChapterTitle` | `ChapterContentItem.chapterTitle` | `ChapterInfo.title` | Chapter title |
 | `ThumbnailUrl` | `ChapterContentItem.thumbnailUrl` | `ChapterInfo.thumbnailUrl` | Thumbnail |
-| `Summary` | `ChapterContentItem.summary` | `AiSegment.summary` | Chapter summary |
-| `KnowledgePoints[]` | `ChapterContentItem.knowledgePoints` | `AiSegment.markdown` | Joined as Markdown |
-| `ParagraphSummary` | `SummaryContent.paragraphSummary` | `AiSummary.summaryText` | Video-level summary |
+| `Summary` | `ChapterContentItem.summary` | — | Chapter summary (retained in DTO, not mapped to a business model) |
+| `KnowledgePoints[]` | `ChapterContentItem.knowledgePoints` | — | Knowledge point list (retained in DTO, not mapped to a business model) |
+| `ParagraphSummary` | `SummaryContent.paragraphSummary` | `SummaryInfo.paragraphSummary` | Video-level summary |
+| `MarkdownContent` | `SummaryContent.markdownContent` | `SummaryInfo.markdownContent` | Complete Markdown analysis content |
+| `MindMapSummary[]` | `SummaryContent.mindMapSummary` | `SummaryInfo.mindMapItems` | Preserves complete MindMapItem structure (with title and topics) |
 
 ### **7.2 Aggregated Model**
 
-The final aggregation is `AiVideoContent`, containing:
+The final aggregation is `AiAnalysisResponse`, containing:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `videoId` | `NSString *` | Video ID |
-| `type` | `AiContentType` | Content type (determines panel rendering mode) |
-| `summary` | `AiSummary *` | Video-level summary (may be nil) |
-| `chapters` | `NSArray<ChapterInfo *> *` | Chapter directory list |
-| `segments` | `NSArray<AiSegment *> *` | Segment analysis list |
+| `mediaId` | `NSString *` | Media ID |
+| `aiAnalysisResult` | `NSArray<ResultItem *> *` | AI analysis result list |
+| `chapterResult` | `ResultItem *` | Chapter-type result item (convenience lookup; traverses to match the Chapter type) |
+| `summaryResult` | `ResultItem *` | Summary-type result item (convenience lookup; traverses to match the Summary type) |
 
-`AiContentType` enum determines the panel display style:
+**DTO Model Details**:
 
-| Enum Value | Meaning |
-|--------|------|
-| `AiContentTypeChaptersOnly` | Chapters only, no AI analysis content |
-| `AiContentTypeTextAnalysis` | Text analysis (with summary or knowledge point text) |
-| `AiContentTypeGraphicAnalysis` | Markdown graphic analysis |
+- `SummaryContent` contains three properties: `paragraphSummary` (NSString, paragraph summary), `markdownContent` (NSString, complete Markdown analysis), `mindMapSummary` (`NSArray<MindMapItem *>`, mind map branch list)
+- `MindMapItem` model: `title` (NSString, mind map node title), `topics` (NSArray\<NSString *\>, sub-topic list)
+
+The panel display style is determined by the actual data present in `AiAnalysisResponse`, with each TAB mapping one-to-one to a result item:
+
+| Condition | Rendering Mode |
+|-----------|----------------|
+| Only `chapterResult` is non-empty | Shows the Chapter TAB only, rendering the `chapters` list |
+| Only `summaryResult` is non-empty | Shows the AI Analysis TAB only, rendering `summary`'s overall summary + tags + Markdown |
+| Both are non-empty | Shows dual TABs: Chapter TAB renders `chapters`, AI Analysis TAB renders `summary` |
+
+### **7.3 Client Data Architecture**
+
+The refactored client data architecture adopts a layered design, separating data assembly from UI rendering responsibilities.
+
+**Data Flow**:
+
+```
+Server JSON → AiAnalysisResponse (DTO) → AiContentAssembler → AiContentViewModel → ChapterContentView (UI)
+```
+
+**Client Model Reference**:
+
+| Class | Responsibility | Key Properties |
+|-------|----------------|----------------|
+| `AiContentAssembler` | Data assembly: converts DTO to ViewModel | `+buildViewModelFromResponse:` |
+| `AiContentViewModel` | UI view model, sole data entry for the panel | `chapters`, `knowledgeItems`, `summaryInfo`, `hasChapterData`, `hasSummaryData` |
+| `KnowledgeInfo` | TextAnalysis chapter display model | `title`, `startMs`, `endMs`, `contentMarkdown` (pre-formatted: `- **Point**：Description`) |
+| `SummaryInfo` | GraphicAnalysis summary display model | `paragraphSummary`, `mindMapItems`, `markdownContent` |
+
+**Design Principles**:
+
+- `AiAnalysisResponse` maintains a pure DTO role, directly mapping server JSON
+- `AiContentAssembler` handles all data assembly responsibilities (formatting, extraction, transformation)
+- `ChapterContentView` initializes via `initWithViewModel:`, performing pure rendering without any data processing
+- Knowledge point rendering format is pre-assembled by the Assembler: `- **{Point}**：{Description}` (Chinese colon)
+
+**TAB Combination Rules** (determined by ViewModel's `hasChapterData` / `hasSummaryData`):
+
+| Condition | Rendering Mode |
+|-----------|----------------|
+| Only `hasChapterData` | Dual TABs: ChaptersOnly (Chapters) + TextAnalysis (AI Analysis) |
+| Only `hasSummaryData` | No TABs: GraphicAnalysis (AI Analysis) |
+| Both present | Dual TABs: ChaptersOnly (Chapters) + GraphicAnalysis (AI Analysis) |
 
 ---
 
@@ -289,9 +329,9 @@ AiContentLoader *loader = [[AiContentLoader alloc] initWithBaseURL:@"http://your
                      completion:^(NSString * _Nullable playAuth) {
     // After obtaining playAuth, continue loading AI content...
 }];
-[loader loadWithMediaId:@"your-vid"
-             completion:^(AiVideoContent * _Nullable content) {
-    // After obtaining AiVideoContent, configure the player...
+[loader loadAiAnalysisWithMediaId:@"your-vid"
+             completion:^(AiAnalysisResponse * _Nullable response) {
+    // After obtaining AiAnalysisResponse, configure the player...
 }];
 ```
 
@@ -323,7 +363,7 @@ AliPlayerController *playerController = [[AliPlayerController alloc] init];
 VideoSource *source = [VideoSource vidAuthSourceWithVid:mediaId playAuth:playAuth];
 AliPlayerModel *model = [[AliPlayerModel alloc] initWithVideoSource:source];
 model.sceneType = SceneTypeAIVod;
-model.chapters = aiContent.chapters;
+model.chapters = response.chapters;
 
 // 3. Register chapter button custom slot
 CustomSlotType *slotType = [CustomSlotType typeWithKey:@"chapter_button" order:85];
@@ -350,5 +390,5 @@ CustomSlotType *slotType = [CustomSlotType typeWithKey:@"chapter_button" order:8
 | How to disable a specific AI capability | Simply don't return the corresponding ResultType from the server-side API |
 | SDK version compatibility | Requires Alibaba Cloud Player SDK ≥ 6.14.0 |
 | Markdown rendering issues | Confirm that the Down dependency (~> 0.11.0) is correctly included in the Podfile |
-| Chapter button not showing | Confirm that `AiVideoContent.chapters` is non-empty; `ChapterButtonSlot` controls visibility based on chapter data availability |
+| Chapter button not showing | Confirm that `AiAnalysisResponse.chapters` is non-empty; `ChapterButtonSlot` controls visibility based on chapter data availability |
 | Network timeout | `AiContentLoader` has a 5-second timeout for both connection and reading; customize by creating your own Loader |

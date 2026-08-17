@@ -18,8 +18,8 @@
 #import "LocaleMacros.h"
 #import "AiContentConstants.h"
 #import "AiContentLoader.h"
-#import "AiVideoContent.h"
-#import "AiSummary.h"
+#import "AiAnalysisResponse.h"
+#import "AiContentAssembler.h"
 #import "ChapterButtonSlot.h"
 #import "ChapterContentPanelSlot.h"
 
@@ -42,8 +42,8 @@ static const NSTimeInterval kExitDelayOnAuthFailure = 1.5;
 // AI 内容加载器（dealloc 时必须 cancel）
 @property (nonatomic, strong) AiContentLoader *contentLoader;
 
-// 缓存的 AI 内容，供 UI 组件按需读取
-@property (nonatomic, strong, nullable) AiVideoContent *aiContent;
+// 缓存的 AI 响应，供 UI 组件按需读取
+@property (nonatomic, strong, nullable) AiAnalysisResponse *aiResponse;
 
 // 章节按钮插槽（provider 创建后弱引用持有）
 @property (nonatomic, weak, nullable) ChapterButtonSlot *chapterButtonSlot;
@@ -121,25 +121,27 @@ static const NSTimeInterval kExitDelayOnAuthFailure = 1.5;
 // 请求 AI 内容：失败降级为无 AI 内容的普通播放
 - (void)loadAiContentWithPlayAuth:(NSString *)playAuth {
     __weak typeof(self) weakSelf = self;
-    [self.contentLoader loadWithMediaId:self.mediaId
-                             completion:^(AiVideoContent * _Nullable content) {
+    [self.contentLoader loadAiAnalysisWithMediaId:self.mediaId
+                                       completion:^(AiAnalysisResponse * _Nullable response) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) {
             return;
         }
-        if (!content) {
+        // 判断是否有 AI 内容，chapter 和 summary 有其一即可
+        BOOL hasContent = response.chapterResult || response.summaryResult;
+        if (!hasContent) {
             // AI 内容失败：Toast 提示，仍用 playAuth 正常起播
             [ToastUtils showToast:LocalizedString(@"ai_education_error_ai_content_load_failed")
                  inViewController:strongSelf];
         }
-        strongSelf.aiContent = content;
-        [strongSelf setupPlayerKitWithPlayAuth:playAuth content:content];
+        strongSelf.aiResponse = hasContent ? response : nil;
+        [strongSelf setupPlayerKitWithPlayAuth:playAuth response:strongSelf.aiResponse];
     }];
 }
 
 // 初始化 AliPlayerKit 播放组件并起播
 - (void)setupPlayerKitWithPlayAuth:(NSString *)playAuth
-                           content:(nullable AiVideoContent *)content {
+                          response:(nullable AiAnalysisResponse *)response {
     // 1. 创建播放器组件视图
     self.playerView = [[AliPlayerView alloc] initWithFrame:self.view.bounds];
     [self.view addSubview:self.playerView];
@@ -158,11 +160,12 @@ static const NSTimeInterval kExitDelayOnAuthFailure = 1.5;
                                                    playAuth:playAuth];
     AliPlayerModel *model = [[AliPlayerModel alloc] initWithVideoSource:source];
     model.sceneType = SceneTypeAIVod;
-    model.chapters = content.chapters;
-    NSString *aiTitle = content.summary.title;
-    model.videoTitle = aiTitle.length > 0
-        ? aiTitle
-        : LocalizedString(@"ai_education_video_title_demo");
+
+    // 当 AI 分析结果中包含有效章节数据时，将章节列表注入播放器，用于展示章节入口及章节内容。
+    NSArray<ChapterInfo *> *chapters = [AiContentAssembler buildChaptersFromResponse:response];
+    if (response && chapters.count > 0) {
+        model.chapters = chapters;
+    }
 
     // 4. 注册章节入口按钮与章节内容面板两个自定义插槽
     [self registerChapterButtonSlot];
@@ -207,11 +210,11 @@ static const NSTimeInterval kExitDelayOnAuthFailure = 1.5;
 
 // attach 后配置两个插槽：按钮可用状态、面板内容，以及按钮点击到面板的接线
 - (void)configureSlots {
-    BOOL chapterAvailable = self.aiContent.chapters.count > 0;
+    BOOL chapterAvailable = (self.aiResponse.chapterResult != nil || self.aiResponse.summaryResult != nil);
     [self.chapterButtonSlot updateChapterAvailable:chapterAvailable];
 
-    // AI 内容（摘要 / 分段）装不进 AliPlayerModel，只能由本 VC 直接推给面板
-    [self.chapterContentPanelSlot updateAiContent:self.aiContent];
+    // 将 AI 响应（章节 / 摘要）更新到 ChapterContentPanelSlot（章节内容面板插槽）
+    [self.chapterContentPanelSlot updateAiContent:self.aiResponse];
 
     __weak typeof(self) weakSelf = self;
     // 点按钮切换面板显示

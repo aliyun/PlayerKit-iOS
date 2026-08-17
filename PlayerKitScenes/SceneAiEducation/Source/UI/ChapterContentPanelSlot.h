@@ -8,7 +8,7 @@
 
 #import <PlayerKit/BasePanelSlot.h>
 
-@class AiVideoContent;
+@class AiAnalysisResponse;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -38,9 +38,9 @@ NS_ASSUME_NONNULL_BEGIN
  *             内容视图在面板显示时按当前内容一次性构建，
  *             故显示期间换内容会先收起面板，下次打开时按新内容重建。
  *
- * @param content AI 视频内容；为 nil 时面板无内容可显示，将拒绝打开。
+ * @param response AI 分析响应；为 nil 时面板无内容可显示，将拒绝打开。
  */
-- (void)updateAiContent:(nullable AiVideoContent *)content;
+- (void)updateAiContent:(nullable AiAnalysisResponse *)response;
 
 @end
 

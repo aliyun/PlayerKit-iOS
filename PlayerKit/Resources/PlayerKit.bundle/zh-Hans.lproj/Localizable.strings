@@ -61,10 +61,9 @@
 "ai_education_error_server_unreachable"   = "服务暂时无法访问";
 "ai_education_error_ai_content_load_failed" = "AI 内容加载失败";
 "ai_education_tab_chapters"               = "章节";
-"ai_education_tab_analysis"               = "AI解析";
+"ai_education_tab_analysis"               = "AI 解析";
 "ai_education_chapter_button"             = "章节";
 "ai_education_chapter_count_format"       = "章节 共%ld段";
 "ai_education_summary_header_title"       = "视频摘要";
 "ai_education_scene_title"                = "AI 教育场景";
-"ai_education_video_title_demo"           = "AI 教育课程示例";
 "ai_education_empty_content"              = "暂无内容";

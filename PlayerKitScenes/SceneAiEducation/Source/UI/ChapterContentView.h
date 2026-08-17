@@ -8,24 +8,27 @@
 
 #import <UIKit/UIKit.h>
 
-@class AiVideoContent;
+@class AiContentViewModel;
 
 NS_ASSUME_NONNULL_BEGIN
 
 /**
  * @brief 章节 / AI 解析面板的内容视图。
  *
- * @discussion 展示 AI 内容理解结果，只负责内容渲染：
- *             - 有章节且有 AI 解析时顶部显示双 Tab（章节 / AI 解析），
- *               仅一类内容时不显示 Tab；
- *             - 章节列表项点击后通过 onChapterSelected 回调外部 seek 并关闭面板；
- *             - 分段时间徽标点击后通过 onSegmentSelected 回调外部 seek，不关闭面板。
+ * @discussion 展示 AI 内容理解结果，纯渲染角色，不做任何数据组装，支持三种展示样式：
+ *             - ChaptersOnly：章节列表（缩略图 + 标题 + 时间）；
+ *             - TextAnalysis：文字解析（知识点格式化或 Summary markdown）；
+ *             - GraphicAnalysis：图解分析（ParagraphSummary + Tags + Markdown）。
  *
- *             自身铺满所在容器，不做尺寸与横竖屏适配：frame、圆角、弹出方向、
- *             动画与蒙层由 ChapterContentPanelSlot 统一决定（竖屏自底部弹出约 60% 高，
- *             横屏自右侧弹出定宽 345pt），显示期间切换全屏则直接关闭面板。
+ *             TAB 组合规则由 AiContentViewModel 中的 hasChapterData / hasSummaryData 决定：
+ *             - 仅 hasChapterData → 双 TAB（章节 + AI 解析）
+ *             - 仅 hasSummaryData → 无 TAB（图解直接展示）
+ *             - 两者都有 → 双 TAB（章节 + 图解）
  *
- * @see AiVideoContent
+ *             章节列表项点击后通过 onChapterSelected 回调外部 seek 并关闭面板。
+ *
+ * @see AiContentViewModel
+ * @see AiContentType
  * @see ChapterContentPanelSlot
  */
 @interface ChapterContentView : UIView
@@ -38,27 +41,20 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, copy, nullable) void (^onChapterSelected)(NSInteger startMs);
 
 /**
- * @brief 分段时间徽标点击回调。
- *
- * @discussion 参数为分段起始时间（毫秒），由外部执行 seek；seek 后不关闭面板。
- */
-@property (nonatomic, copy, nullable) void (^onSegmentSelected)(NSInteger startMs);
-
-/**
- * @brief 通过 AI 视频内容创建内容视图。
+ * @brief 通过视图模型创建内容视图。
  *
  * @discussion 初始 frame 为 CGRectZero，由容器负责设定。
  *
- * @param content AI 视频内容业务模型。
+ * @param viewModel 由 AiContentAssembler 组装好的视图模型。
  *
  * @return 已初始化的内容视图实例。
  */
-- (instancetype)initWithContent:(AiVideoContent *)content;
+- (instancetype)initWithViewModel:(AiContentViewModel *)viewModel;
 
 /**
- * @brief 更新当前播放位置，驱动章节 / 分段高亮。
+ * @brief 更新当前播放位置，驱动章节高亮。
  *
- * @discussion 内部二分查找定位当前章节与分段，仅在索引变化时刷新对应行。
+ * @discussion 内部二分查找定位当前章节，仅在索引变化时刷新对应行。
  *
  * @param positionMs 当前播放位置，单位毫秒。
  */

@@ -10,6 +10,8 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+#pragma mark - Chapter 场景数据
+
 /**
  * @brief 知识点条目 DTO
  *
@@ -77,6 +79,33 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
+#pragma mark - Summary 场景数据
+
+/**
+ * @brief 思维导图条目 DTO
+ *
+ * @discussion 对应 summaryContent.MindMapSummary[] 节点，
+ *             包含思维导图的分支标题和子主题列表。
+ */
+@interface MindMapItem : NSObject
+
+/// 思维导图节点标题
+@property (nonatomic, copy, nullable) NSString *title;
+
+/// 思维导图节点子主题列表
+@property (nonatomic, copy, nullable) NSArray<NSString *> *topics;
+
+/**
+ * @brief 从 JSON 字典解析思维导图条目
+ *
+ * @param dictionary JSON 字典，非字典类型时返回 nil。
+ *
+ * @return 解析后的实例；入参无效时返回 nil。
+ */
++ (nullable instancetype)itemWithDictionary:(nullable NSDictionary *)dictionary;
+
+@end
+
 /**
  * @brief 摘要内容 DTO
  *
@@ -90,6 +119,9 @@ NS_ASSUME_NONNULL_BEGIN
 /// Markdown 格式摘要
 @property (nonatomic, copy, nullable) NSString *markdownContent;
 
+/// 思维导图摘要列表
+@property (nonatomic, copy, nullable) NSArray<MindMapItem *> *mindMapSummary;
+
 /**
  * @brief 从 JSON 字典解析摘要内容
  *
@@ -100,6 +132,8 @@ NS_ASSUME_NONNULL_BEGIN
 + (nullable instancetype)contentWithDictionary:(nullable NSDictionary *)dictionary;
 
 @end
+
+#pragma mark - 通用数据（Chapter + Summary）
 
 /**
  * @brief AI 分析结果条目 DTO
@@ -139,15 +173,25 @@ NS_ASSUME_NONNULL_BEGIN
 @end
 
 /**
- * @brief AI 内容分析接口响应 DTO
+ * @brief AI 内容分析接口响应
  *
  * @discussion 对应接口 GET {BASE_URL}/GetMediaAiAnalysisByResultType?MediaId={vid} 的完整响应。
- *             通过转换层映射为业务模型 AiVideoContent。
+ *             定位为纯 DTO + 便利查找：仅直映射服务端 JSON 并提供 chapterResult /
+ *             summaryResult 便利检索，客户端展示模型的组装交由 AiContentAssembler。
  */
 @interface AiAnalysisResponse : NSObject
 
 /// AI 分析结果列表
 @property (nonatomic, copy, nullable) NSArray<ResultItem *> *aiAnalysisResult;
+
+/// 媒资 ID（由加载器在解析完成后设置）
+@property (nonatomic, copy, nullable) NSString *mediaId;
+
+/// 章节类型结果条目（便利查找，遍历 aiAnalysisResult 匹配 Chapter 类型）
+@property (nonatomic, readonly, nullable) ResultItem *chapterResult;
+
+/// 摘要类型结果条目（便利查找，遍历 aiAnalysisResult 匹配 Summary 类型）
+@property (nonatomic, readonly, nullable) ResultItem *summaryResult;
 
 /**
  * @brief 从 JSON 字典解析响应
