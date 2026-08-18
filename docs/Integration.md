@@ -44,7 +44,7 @@ AliPlayerKit 采用分层架构设计，根据集成深度提供两种方案：
 播放器 SDK 需要有效的 License 授权才能正常工作。
 
 - 您已获取音视频终端 SDK 的播放器 **License 授权证书**（`license.crt`）和 **License Key**
-- 获取步骤详见 [管理 License](https://help.aliyun.com/zh/vod/developer-reference/license-authorization-and-management)
+- 获取步骤详见 [获取播放器SDK License](https://help.aliyun.com/zh/vod/developer-reference/obtain-the-player-sdk-license)
 
 > **注意**：未正确配置 License 将导致播放器无法正常工作，播放时出现黑屏等异常。这是最常见的集成问题。
 
@@ -103,9 +103,9 @@ open YourApp.xcworkspace
 
 ### **步骤 4：配置 License**
 
-播放器 SDK 需要有效的 License 授权才能正常工作。请参阅 [管理 License](https://help.aliyun.com/zh/vod/developer-reference/license-authorization-and-management) 完成 License 的获取与配置。
+播放器 SDK 需要有效的 License 授权才能正常工作。请参阅 [接入 License](https://help.aliyun.com/zh/vod/developer-reference/access-to-license) 完成 License 的配置。
 
-> **注意**：未正确配置 License 将导致播放器无法正常工作，播放时出现黑屏等异常。请确保 License 注册在 `[AliPlayerKit setup]` 之前完成。
+> **注意**：未正确配置 License 将导致播放器无法正常工作，播放时出现黑屏等异常。
 
 ### **步骤 5：全局初始化**
 
@@ -158,7 +158,7 @@ func application(_ application: UIApplication, didFinishLaunchingWithOptions lau
 **验证检查清单**：
 
 - [ ] `pod install` 成功，无依赖冲突
-- [ ] License 已正确配置（详见 [管理 License](https://help.aliyun.com/zh/vod/developer-reference/license-authorization-and-management)）
+- [ ] License 已正确配置
 - [ ] `AppDelegate` 中调用 `[AliPlayerKit setup]`
 - [ ] 编译通过（`Cmd + B`），无链接错误
 
@@ -298,7 +298,9 @@ AliPlayerKit 依赖以下底层 SDK：
 
 **问题**：播放器报 License 错误或播放黑屏
 
-请确认 License 已正确获取与配置，详见 [管理 License](https://help.aliyun.com/zh/vod/developer-reference/license-authorization-and-management)。常见原因包括：证书文件未正确添加到工程、License Key 不匹配、Bundle ID 与 License 绑定的包名不一致、License 已过期等。
+请确认 License 已正确获取与配置，如未正确配置将导致播放器无法正常工作，详见 [License相关常见问题](https://help.aliyun.com/zh/vod/developer-reference/faqs-for-sdk-license)。
+
+常见原因包括：证书文件未正确添加到工程、License Key 不匹配、Bundle ID 与 License 绑定的包名不一致、License 已过期等。
 
 ### **6.2 依赖冲突问题**
 
@@ -318,7 +320,7 @@ AliPlayerKit 依赖以下底层 SDK：
 **排查步骤**：
 
 1. 确认在 `AppDelegate` 的 `application:didFinishLaunchingWithOptions:` 中调用
-2. 确认 License 已正确配置（详见 [管理 License](https://help.aliyun.com/zh/vod/developer-reference/license-authorization-and-management)）
+2. 确认 License 已正确配置
 3. 通过 `[AliPlayerKit isInitialized]` 确认初始化成功
 4. `setup` 内置幂等保护（`dispatch_once`），重复调用不会抛异常
 5. 如需注入全局 SDK 配置，确认 `setOnGlobalInitBlock:` 在 `setup` 之前设置

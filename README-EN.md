@@ -124,7 +124,7 @@ Before running the project, ensure the following requirements are met:
 | Xcode | 15.0+, latest stable version recommended |
 | iOS | Minimum 9.0, real device recommended |
 | CocoaPods | 1.13.0+ |
-| License | Player License certificate and License Key obtained. See [License Authorization and Management](https://www.alibabacloud.com/help/en/apsara-video-sdk/) |
+| License | Player License certificate and License Key obtained. See [Obtain an ApsaraVideo Player SDK license](https://www.alibabacloud.com/help/en/vod/developer-reference/obtain-the-player-sdk-license) |
 
 #### **Running Steps**
 
@@ -141,7 +141,7 @@ Open `Example/Example.xcworkspace` with Xcode (use `.xcworkspace`, not `.xcodepr
 
 **Step 3: Configure License**
 
-The player SDK requires a valid License to function properly. See [License Authorization and Management](https://www.alibabacloud.com/help/en/apsara-video-sdk/) for License acquisition and configuration.
+The player SDK requires a valid License to function properly. See [Integrate a license](https://www.alibabacloud.com/help/en/vod/developer-reference/access-to-license) for License acquisition and configuration.
 
 **Step 4: Run the Project**
 
@@ -149,7 +149,7 @@ Select the target device and click Run (`Cmd + R`).
 
 #### **FAQ**
 
-**License Issues**: The License is bound to the application Bundle ID. Without proper configuration, the player will not work. See [License Authorization and Management](https://www.alibabacloud.com/help/en/apsara-video-sdk/) for details.
+**License Issues**: The License is bound to the application Bundle ID. Without proper configuration, the player will not work. See [License FAQ](https://www.alibabacloud.com/help/en/vod/developer-reference/faqs-for-sdk-license) for details.
 
 ### **7.2 Demo App**
 
@@ -159,7 +159,7 @@ To help developers quickly experience the features of AliPlayerKit, we have buil
 
 Scan the following QR code with your phone to quickly download and install the demo:
 
-![Demo QR Code](https://alivc-demo-cms.alicdn.com/versionProduct/installPackage/AliPlayerKit/demo-qr-code.png)
+![Demo QR Code](https://alivc-demo-cms.alicdn.com/versionProduct/installPackage/AliPlayerKit/demo-qr-code_en.png)
 
 > **Note**: The QR code points to the latest version of the demo. Please ensure that your device allows the installation of third-party applications.
 

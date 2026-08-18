@@ -22,6 +22,7 @@ xcuserdata/
 ## Other
 *.moved-aside
 *.xcuserstate
+__pycache__/
 
 ## Obj-C/Swift specific
 *.hmap

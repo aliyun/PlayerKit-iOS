@@ -44,7 +44,7 @@ AliPlayerKit adopts a layered architecture design, offering two integration opti
 The Player SDK requires a valid License to function properly.
 
 - You have obtained the ApsaraVideo **License certificate** (`license.crt`) and **License Key** for the player
-- For detailed steps, see [Manage License](https://www.alibabacloud.com/help/en/apsara-video-sdk/)
+- For detailed steps, see [Obtain an ApsaraVideo Player SDK license](https://www.alibabacloud.com/help/en/vod/developer-reference/obtain-the-player-sdk-license)
 
 > **Note**: Failure to properly configure the License will cause the player to malfunction, resulting in issues such as black screen during playback. This is the most common integration issue.
 
@@ -103,9 +103,9 @@ open YourApp.xcworkspace
 
 ### **Step 4: Configure License**
 
-The Player SDK requires a valid License to function properly. Please refer to [Manage License](https://www.alibabacloud.com/help/en/apsara-video-sdk/) to obtain and configure the License.
+The Player SDK requires a valid License to function properly. Please refer to [Integrate a license](https://www.alibabacloud.com/help/en/vod/developer-reference/access-to-license) to configure the License.
 
-> **Note**: Failure to properly configure the License will cause the player to malfunction, resulting in issues such as black screen during playback. Ensure that License registration is completed before calling `[AliPlayerKit setup]`.
+> **Note**: Failure to properly configure the License will cause the player to malfunction, resulting in issues such as black screen during playback.
 
 ### **Step 5: Global Initialization**
 
@@ -158,7 +158,7 @@ func application(_ application: UIApplication, didFinishLaunchingWithOptions lau
 **Verification Checklist**:
 
 - [ ] `pod install` succeeded without dependency conflicts
-- [ ] License is properly configured (see [Manage License](https://www.alibabacloud.com/help/en/apsara-video-sdk/))
+- [ ] License is properly configured
 - [ ] `[AliPlayerKit setup]` is called in `AppDelegate`
 - [ ] Build succeeds (`Cmd + B`) with no linker errors
 
@@ -298,7 +298,9 @@ AliPlayerKit depends on the following underlying SDKs:
 
 **Problem**: Player reports License error or playback shows black screen
 
-Confirm that the License has been properly obtained and configured. See [Manage License](https://www.alibabacloud.com/help/en/apsara-video-sdk/) for details. Common causes include: certificate file not properly added to the project, License Key mismatch, Bundle ID inconsistent with the package name bound to the License, or License has expired.
+Confirm that the License has been properly obtained and configured. Failure to properly configure the License will cause the player to malfunction. See [License FAQ](https://www.alibabacloud.com/help/en/vod/developer-reference/faqs-for-sdk-license) for details.
+
+Common causes include: certificate file not properly added to the project, License Key mismatch, Bundle ID inconsistent with the package name bound to the License, or License has expired.
 
 ### **6.2 Dependency Conflict Issues**
 
@@ -318,7 +320,7 @@ Confirm that the License has been properly obtained and configured. See [Manage 
 **Troubleshooting Steps**:
 
 1. Confirm it is called in `AppDelegate`'s `application:didFinishLaunchingWithOptions:`
-2. Confirm the License is properly configured (see [Manage License](https://www.alibabacloud.com/help/en/apsara-video-sdk/))
+2. Confirm the License is properly configured
 3. Verify initialization succeeded via `[AliPlayerKit isInitialized]`
 4. `setup` has built-in idempotency protection (`dispatch_once`); repeated calls will not throw exceptions
 5. If you need to inject global SDK configuration, confirm that `setOnGlobalInitBlock:` is set before `setup`

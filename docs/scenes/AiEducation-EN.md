@@ -34,7 +34,7 @@ Before integration, complete the following preparations:
 
 | Item | Requirement |
 | ---- | ----------- |
-| Alibaba Cloud Services | [ApsaraVideo VOD](https://www.aliyun.com/product/vod) and [Intelligent Media Services (IMS)](https://www.aliyun.com/product/apsaravideo/ice) activated |
+| Alibaba Cloud Services | [ApsaraVideo VOD](https://www.alibabacloud.com/en/product/apsaravideo-for-vod) and [Intelligent Media Services (IMS)](https://www.alibabacloud.com/en/product/ims) have been activated |
 | Media Resources | Test videos prepared with AI content analysis completed |
 | App Server | Deployed and able to provide play credentials and AI analysis data; refer to the open-source project [VodAppServer](https://github.com/MediaBox-Demos/VodAppServer) |
 
@@ -92,7 +92,7 @@ The global business flow describes the complete pipeline from AI analysis result
 
 VOD is responsible for unified storage of media assets and AI analysis results; ICE/AI workflow handles content understanding and structured analysis; App Server encapsulates server-side capabilities and provides unified interfaces to the client.
 
-![ProductArchitecture](https://alivc-demo-cms.alicdn.com/versionProduct/resources/ai_education/ProductArchitecture.png)
+![ProductArchitecture](https://alivc-demo-cms.alicdn.com/versionProduct/resources/ai_education/ProductArchitecture-EN.png)
 
 ### **5.2 Client Interaction Flow**
 
@@ -100,7 +100,7 @@ The client interaction flow describes the calling relationships between the clie
 
 During page initialization, the client sequentially obtains play credentials and AI analysis results; after data loading completes, users can view chapters, summaries, and knowledge points through the chapter content panel and jump to corresponding video positions.
 
-![CallSequence](https://alivc-demo-cms.alicdn.com/versionProduct/resources/ai_education/CallSequence.png)
+![CallSequence](https://alivc-demo-cms.alicdn.com/versionProduct/resources/ai_education/CallSequence-EN.png)
 
 When the AI analysis request fails or returns empty results, the client can still use play credentials for normal video playback without displaying the chapter and AI analysis panel.
 
@@ -388,7 +388,7 @@ CustomSlotType *slotType = [CustomSlotType typeWithKey:@"chapter_button" order:8
 | How to use my own video ID | Modify `AiContentDefaultMediaId` in `AiContentConstants.m` |
 | Panel anomaly on orientation change | The panel uses `FullscreenTransition.isInFullscreen` to determine current state; ensure the ViewController supports multiple orientations |
 | How to disable a specific AI capability | Simply don't return the corresponding ResultType from the server-side API |
-| SDK version compatibility | Requires Alibaba Cloud Player SDK ≥ 6.14.0 |
+| SDK version compatibility | Requires Alibaba Cloud Player SDK ≥ 7.16.0 |
 | Markdown rendering issues | Confirm that the Down dependency (~> 0.11.0) is correctly included in the Podfile |
 | Chapter button not showing | Confirm that `AiAnalysisResponse.chapters` is non-empty; `ChapterButtonSlot` controls visibility based on chapter data availability |
 | Network timeout | `AiContentLoader` has a 5-second timeout for both connection and reading; customize by creating your own Loader |

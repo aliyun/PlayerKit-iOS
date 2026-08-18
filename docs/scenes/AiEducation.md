@@ -388,7 +388,7 @@ CustomSlotType *slotType = [CustomSlotType typeWithKey:@"chapter_button" order:8
 | 如何使用自己的视频 ID | 修改 `AiContentConstants.m` 中的 `AiContentDefaultMediaId` |
 | 横竖屏切换面板异常 | 面板通过 `FullscreenTransition.isInFullscreen` 判断当前状态，确认 ViewController 支持多方向 |
 | 如何关闭某个 AI 能力 | 服务端接口中不返回对应 ResultType 即可 |
-| SDK 版本兼容性 | 需要阿里云播放器 SDK ≥ 6.14.0 |
+| SDK 版本兼容性 | 需要阿里云播放器 SDK ≥ 7.16.0 |
 | Markdown 渲染异常 | 确认 Podfile 中已正确引入 Down 依赖（~> 0.11.0） |
 | 章节按钮不显示 | 确认 `AiAnalysisResponse.chapters` 非空，`ChapterButtonSlot` 依据章节数据可用性控制显隐 |
 | 网络超时 | `AiContentLoader` 连接和读取超时均为 5 秒，可通过自定义 Loader 调整 |

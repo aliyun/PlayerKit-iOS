@@ -124,7 +124,7 @@ AliPlayerKit 采用 **MVC「3 + 1」分层架构设计**，提供两种接入方
 | Xcode | 15.0+，推荐最新稳定版 |
 | iOS | 最低 9.0，推荐真机运行 |
 | CocoaPods | 1.13.0+ |
-| License | 已获取播放器 License 授权证书和 License Key，详见 [管理 License](https://help.aliyun.com/zh/vod/developer-reference/license-authorization-and-management) |
+| License | 已获取播放器 License 授权证书和 License Key，详见 [获取播放器SDK License](https://help.aliyun.com/zh/vod/developer-reference/obtain-the-player-sdk-license) |
 
 #### **运行步骤**
 
@@ -141,7 +141,7 @@ pod install
 
 **步骤 3：配置 License**
 
-播放器 SDK 需要有效的 License 授权才能正常工作。请参阅 [管理 License](https://help.aliyun.com/zh/vod/developer-reference/license-authorization-and-management) 完成 License 的获取与配置。
+播放器 SDK 需要有效的 License 授权才能正常工作。请参阅 [接入 License](https://help.aliyun.com/zh/vod/developer-reference/access-to-license) 完成 License 的配置。
 
 **步骤 4：运行项目**
 
@@ -149,7 +149,7 @@ pod install
 
 #### **常见问题**
 
-**License 问题**：License 与应用 Bundle ID 绑定，如未正确配置将导致播放器无法正常工作。详见 [管理 License](https://help.aliyun.com/zh/vod/developer-reference/license-authorization-and-management)。
+**License 问题**：License 与应用 Bundle ID 绑定，如未正确配置将导致播放器无法正常工作。详见 [License相关常见问题](https://help.aliyun.com/zh/vod/developer-reference/faqs-for-sdk-license)。
 
 ### **7.2 演示应用**
 
