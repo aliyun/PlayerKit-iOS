@@ -51,7 +51,7 @@ Based on this mechanism, developers can flexibly build player interfaces like as
 
 ### **2.2 Built-in Slot Types**
 
-AliPlayerKit includes 11 built-in slot types, arranged by Z-Order from bottom to top:
+AliPlayerKit includes 13 built-in slot types, arranged by Z-Order from bottom to top:
 
 | Slot Type | Enum Value | Description | Default Implementation |
 |---------|--------|------|---------|
@@ -63,9 +63,11 @@ AliPlayerKit includes 11 built-in slot types, arranged by Z-Order from bottom to
 | Play State | `SlotTypePlayState` (60) | Shows loading/error/playback completion states | `PlayStateSlot` |
 | Log Panel | `SlotTypeLogPanel` (70) | Displays player logs during debugging | `LogPanelSlot` |
 | Top Bar | `SlotTypeTopBar` (80) | Back button/title/settings button | `TopBarSlot` |
+| Seek Thumbnail | `SlotTypeSeekThumbnail` (85) | Shows thumbnail preview when dragging progress bar | `SeekThumbnailSlot` |
 | Bottom Bar | `SlotTypeBottomBar` (90) | Play-pause/progress bar/fullscreen button | `BottomBarSlot` |
 | Setting Menu | `SlotTypeSettingMenu` (100) | Speed/resolution/mirror/rotation | `SettingMenuSlot` |
 | Option Panel | `SlotTypeOptionPanel` (110) | Speed/resolution option popup panel (top layer) | `OptionPanelSlot` |
+| Chapter Panel | `SlotTypeChapterPanel` (115) | Chapter navigation and AI content display panel | `ChapterPanelSlot` |
 
 > **Note**: Enum values are spaced by 10 to allow inserting new types without affecting existing ordering. The enum value also determines the slot's Z-axis order (lower values are further back). Use the `SlotTypeName()` function to get a readable name for a slot type, and `SlotTypeAllBuiltinTypes()` to get an ordered array of all built-in types.
 
@@ -73,11 +75,15 @@ AliPlayerKit includes 11 built-in slot types, arranged by Z-Order from bottom to
 
 ```text
 ┌────────────────────────────────────────┐  ← Top layer
+│       ChapterPanel (Chapter Panel)     │  Z=115
+├────────────────────────────────────────┤
 │       OptionPanel (Option Panel)       │  Z=110
 ├────────────────────────────────────────┤
 │       SettingMenu (Setting Menu)       │  Z=100
 ├────────────────────────────────────────┤
 │       BottomBar (Bottom Bar)           │  Z=90
+├────────────────────────────────────────┤
+│     SeekThumbnail (Seek Thumbnail)    │  Z=85
 ├────────────────────────────────────────┤
 │       TopBar (Top Bar)                 │  Z=80
 ├────────────────────────────────────────┤
@@ -99,7 +105,7 @@ AliPlayerKit includes 11 built-in slot types, arranged by Z-Order from bottom to
 
 ### **2.4 Scene Adaptation**
 
-AliPlayerKit defines 5 playback scenes, with slot visibility and behavior automatically adapting to different scenes. Scene adaptation is implemented through `SlotConfig`, and `DefaultSlotFactory` provides default configurations for all built-in slots.
+AliPlayerKit defines 6 playback scenes, with slot visibility and behavior automatically adapting to different scenes. Scene adaptation is implemented through `SlotConfig`, and `DefaultSlotFactory` provides default configurations for all built-in slots.
 
 | Scene | Enum Value | Description | Typical Use |
 |-----|--------|------|---------|
@@ -108,33 +114,36 @@ AliPlayerKit defines 5 playback scenes, with slot visibility and behavior automa
 | VIDEO_LIST | `SceneTypeVideoList` | List playback scene, disables vertical gestures | Feed streams, short video lists |
 | RESTRICTED | `SceneTypeRestricted` | Restricted playback scene, limits seek operations | Education/training, exam monitoring |
 | MINIMAL | `SceneTypeMinimal` | Minimal playback scene, shows only video surface | Background video, decorative video |
+| AI_VOD | `SceneTypeAIVod` | AI video-on-demand scene, supports all VOD features | AI education, interactive VOD |
 
 **Slot Visibility Rules** (defined by `DefaultSlotFactory.defaultConfigs`):
 
-| Slot | VOD | LIVE | VIDEO_LIST | RESTRICTED | MINIMAL |
-|------|-----|------|------------|------------|---------|
-| PlayerSurface | ✓ | ✓ | ✓ | ✓ | ✓ |
-| GestureControl | ✓ | ✓ | ✓ | ✓ | ✗ |
-| LandscapeHint | ✓ | ✓ | ✓ | ✓ | ✗ |
-| Cover | ✓ | ✗ | ✓ | ✗ | ✗ |
-| CenterDisplay | ✓ | ✓ | ✓ | ✓ | ✗ |
-| PlayState | ✓ | ✓ | ✓ | ✓ | ✓ |
-| LogPanel | Configurable | Configurable | Configurable | Configurable | ✗ |
-| TopBar | ✓ | ✓ | ✓ | ✓ | ✗ |
-| BottomBar | ✓ | ✓ | ✓ | ✓ | ✗ |
-| SettingMenu | ✓ | ✓ | ✓ | ✓ | ✗ |
-| OptionPanel | ✓ | ✓ | ✓ | ✓ | ✗ |
+| Slot | VOD | LIVE | VIDEO_LIST | RESTRICTED | MINIMAL | AI_VOD |
+|------|-----|------|------------|------------|---------|--------|
+| PlayerSurface | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| GestureControl | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| LandscapeHint | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| Cover | ✓ | ✗ | ✓ | ✗ | ✗ | ✓ |
+| CenterDisplay | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| PlayState | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| LogPanel | Configurable | Configurable | Configurable | Configurable | ✗ | Configurable |
+| TopBar | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| SeekThumbnail | ✓ | ✗ | ✓ | ✗ | ✗ | ✓ |
+| BottomBar | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| SettingMenu | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| OptionPanel | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| ChapterPanel | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
 
 **Gesture Behavior Differences**:
 
-| Gesture | VOD | LIVE | VIDEO_LIST | RESTRICTED | MINIMAL |
-|------|-----|------|------------|------------|---------|
-| Single Tap | Show/hide controls | Show/hide controls | Show/hide controls | Show/hide controls | Disabled |
-| Double Tap | Toggle play/pause | Toggle play/pause | Toggle play/pause | Toggle play/pause | Disabled |
-| Long Press | 2x speed playback | Disabled | 2x speed playback | Disabled | Disabled |
-| Horizontal Drag | Seek progress | Disabled | Seek progress | Disabled | Disabled |
-| Left Vertical Drag | Brightness adjustment | Brightness adjustment | Disabled | Brightness adjustment | Disabled |
-| Right Vertical Drag | Volume adjustment | Volume adjustment | Disabled | Volume adjustment | Disabled |
+| Gesture | VOD | LIVE | VIDEO_LIST | RESTRICTED | MINIMAL | AI_VOD |
+|------|-----|------|------------|------------|---------|--------|
+| Single Tap | Show/hide controls | Show/hide controls | Show/hide controls | Show/hide controls | Disabled | Show/hide controls |
+| Double Tap | Toggle play/pause | Toggle play/pause | Toggle play/pause | Toggle play/pause | Disabled | Toggle play/pause |
+| Long Press | 2x speed playback | Disabled | 2x speed playback | Disabled | Disabled | 2x speed playback |
+| Horizontal Drag | Seek progress | Disabled | Seek progress | Disabled | Disabled | Seek progress |
+| Left Vertical Drag | Brightness adjustment | Brightness adjustment | Disabled | Brightness adjustment | Disabled | Brightness adjustment |
+| Right Vertical Drag | Volume adjustment | Volume adjustment | Disabled | Volume adjustment | Disabled | Volume adjustment |
 
 ---
 
@@ -287,11 +296,11 @@ SlotConfig *coverConfig = [SlotConfig configWithSlotType:SlotTypeCover
                                          excludedScenes:[NSSet setWithObjects:@(SceneTypeLive), @(SceneTypeRestricted), nil]];
 [slotManager registerSlotConfig:coverConfig];
 
-// Use visibilityCondition for dynamic visibility control
+// Use visibilityCondition for dynamic visibility control (LogPanel's default creation is also gated by this switch, see DefaultSlotFactory)
 SlotConfig *logConfig = [SlotConfig configWithSlotType:SlotTypeLogPanel
                                        excludedScenes:[NSSet setWithObject:@(SceneTypeMinimal)]
                                   visibilityCondition:^BOOL{
-    return [AliPlayerKit isDebugModeEnabled];
+    return [AliPlayerKit isLogPanelEnabled];
 }];
 [slotManager registerSlotConfig:logConfig];
 
@@ -741,13 +750,13 @@ Through this "events bubble up, state sinks down" pattern, mesh-like UI coupling
 
 ### **7.4 Bottom Bar Scene Differences**
 
-| Control | VOD | LIVE | VIDEO_LIST | RESTRICTED | MINIMAL |
-|------|-----|------|------------|------------|--------|
-| Play/Pause Button | ✓ | ✓ | ✓ | ✓ | ✗ |
-| Progress Bar | Draggable | Not draggable | Draggable | Not draggable | ✗ |
-| Time Display | ✓ | ✓ | ✓ | ✓ | ✗ |
-| Refresh Button | ✗ | ✓ | ✗ | ✗ | ✗ |
-| Fullscreen Button | ✓ | ✓ | ✓ | ✓ | ✗ |
+| Control | VOD | LIVE | VIDEO_LIST | RESTRICTED | MINIMAL | AI_VOD |
+|------|-----|------|------------|------------|--------|--------|
+| Play/Pause Button | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| Progress Bar | Draggable | Not draggable | Draggable | Not draggable | ✗ | Draggable |
+| Time Display | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| Refresh Button | ✗ | ✓ | ✗ | ✗ | ✗ | ✗ |
+| Fullscreen Button | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
 
 ---
 

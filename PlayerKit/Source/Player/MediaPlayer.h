@@ -228,6 +228,31 @@ typedef NS_ENUM(NSInteger, PlayerState) {
 - (void)snapshot;
 
 /**
+ * @brief 设置缩略图 URL。
+ *
+ * @param url 缩略图资源地址（仅支持雪碧图 VTT 格式）。
+ *
+ * @discussion 在请求缩略图前必须先设置 URL。设置后底层 SDK 开始异步加载
+ *             缩略图资源，加载完成后方可通过 requestThumbnailAtPosition: 获取。
+ *
+ * @see requestThumbnailAtPosition:
+ */
+- (void)setThumbnailUrl:(NSString *)url;
+
+/**
+ * @brief 请求指定位置的缩略图。
+ *
+ * @param positionMs 目标位置，单位毫秒。
+ *
+ * @discussion 异步请求。结果通过 notificationDispatcher 的
+ *             dispatchDidRetrieveThumbnail:image: 派发。
+ *             **前置条件**：必须先调用 setThumbnailUrl: 设置缩略图地址。
+ *
+ * @see setThumbnailUrl:
+ */
+- (void)requestThumbnailAtPosition:(int64_t)positionMs;
+
+/**
  * @brief 切换播放/暂停状态。
  *
  * @discussion 根据当前状态自动执行相应操作：

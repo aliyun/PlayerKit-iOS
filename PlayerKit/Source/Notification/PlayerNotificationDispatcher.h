@@ -118,6 +118,50 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)dispatchDidChangeScaleMode:(ScaleMode)scaleMode;
 - (void)dispatchDidChangeRotateMode:(RotateMode)rotateMode;
 
+#pragma mark - Thumbnail Dispatch
+
+/**
+ * @brief 分发缩略图 URL 就绪通知。
+ *
+ * @param thumbnailUrl 从媒体信息中提取的缩略图 URL，非空字符串。
+ *
+ * @discussion 在主线程上向所有实现了 @c playerDidReadyThumbnailUrl: 的
+ *             观察者分发回调。
+ *
+ * @note 需要阿里云播放器 SDK 版本 ≥ 7.16.0。
+ */
+- (void)dispatchDidReadyThumbnailUrl:(NSString *)thumbnailUrl;
+- (void)dispatchDidRetrieveThumbnail:(int64_t)positionMs
+                               image:(UIImage *)image;
+
+#pragma mark - Cover URL Dispatch
+
+/**
+ * @brief 分发封面图 URL 就绪通知。
+ *
+ * @param coverUrl 从媒体信息中提取的封面图 URL，非空字符串。
+ *
+ * @discussion 在主线程上向所有实现了 @c playerDidReadyCoverUrl: 的
+ *             观察者分发回调。仅 Vid 播放方式下有效。
+ *
+ * @note 需要阿里云播放器 SDK 版本 ≥ 7.16.0。
+ */
+- (void)dispatchDidReadyCoverUrl:(NSString *)coverUrl;
+
+#pragma mark - Video Title Dispatch
+
+/**
+ * @brief 分发视频标题就绪通知。
+ *
+ * @param videoTitle 从媒体信息中提取的视频标题，非空字符串。
+ *
+ * @discussion 在主线程上向所有实现了 @c playerDidReadyVideoTitle: 的
+ *             观察者分发回调。仅 Vid 播放方式下有效。
+ *
+ * @note 需要阿里云播放器 SDK 版本 ≥ 7.16.0。
+ */
+- (void)dispatchDidReadyVideoTitle:(NSString *)videoTitle;
+
 /**
  * @brief 返回当前已注册的观察者数量。
  *

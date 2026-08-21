@@ -371,6 +371,17 @@ static const int kRTSHighBufferDurationMs = 10;
     SLOGI(@"[player][API][snapShot]");
 }
 
+- (void)setThumbnailUrl:(NSString *)url {
+    if (!_aliPlayer) return;
+    [_aliPlayer setThumbnailUrl:url];
+    SLOGI(@"[player][API][setThumbnailUrl], url=%@", url);
+}
+
+- (void)requestThumbnailAtPosition:(int64_t)positionMs {
+    if (!_aliPlayer) return;
+    [_aliPlayer getThumbnail:positionMs];
+}
+
 - (void)toggle {
     SLOGI(@"toggle");
     switch (self.state) {
@@ -460,6 +471,12 @@ static const int kRTSHighBufferDurationMs = 10;
             [self transitionToState:PlayerStatePrepared];
             [self.stateStoreInternal updateDuration:(NSInteger)_aliPlayer.duration];
             [self.notificationDispatcher dispatchDidPreparedWithDuration:(NSInteger)_aliPlayer.duration];
+            // 从媒体信息中提取缩略图 URL（Vid 播放时由控制台雪碧图自动提供），
+            // 始终派发，去重由 Slot 侧完成
+            [self dispatchThumbnailUrlIfAvailable];
+            // 从媒体信息中提取封面图 URL 和视频标题（Vid 播放时由服务端自动提供）
+            [self dispatchCoverUrlIfAvailable];
+            [self dispatchVideoTitleIfAvailable];
             break;
         case AVPEventFirstRenderedStart:
             SLOGI(@"[player][CBK][FirstRenderedStart]");
@@ -587,7 +604,71 @@ static const int kRTSHighBufferDurationMs = 10;
     [self transitionToState:mappedState];
 }
 
+- (void)onGetThumbnailSuc:(int64_t)positionMs fromPos:(int64_t)fromPos toPos:(int64_t)toPos image:(id)image {
+//    SLOGI(@"[player][CBK][GetThumbnailSuc], position=%lldms", positionMs);
+    // iOS 平台 image 实际类型为 UIImage；dispatcher 内部保证主线程派发
+    [self.notificationDispatcher dispatchDidRetrieveThumbnail:positionMs
+                                                        image:(UIImage *)image];
+}
+
 #pragma mark - Private Methods
+
+/**
+ * 提取缩略图 URL
+ *
+ * 从 MediaInfo 中提取缩略图 URL，用于 Seek 时的缩略图预览。
+ * 提取成功后通过 dispatcher 通知相关 Slot 初始化缩略图能力。
+ *
+ * SDK 版本要求：通过 getMediaInfo.thumbnails 获取缩略图 URL
+ * 需要阿里云播放器 SDK 版本 ≥ 7.16.0，低版本 SDK 该接口可能返回 nil。
+ */
+- (void)dispatchThumbnailUrlIfAvailable {
+    if (!_aliPlayer) return;
+    AVPMediaInfo *mediaInfo = [_aliPlayer getMediaInfo];
+    AVPThumbnailInfo *thumbnailInfo = mediaInfo.thumbnails.firstObject;
+    if (thumbnailInfo && thumbnailInfo.URL && thumbnailInfo.URL.length > 0) {
+        SLOGI(@"[player][CBK][ThumbnailUrlReady], url=%@", thumbnailInfo.URL);
+        [self.notificationDispatcher dispatchDidReadyThumbnailUrl:thumbnailInfo.URL];
+    }
+}
+
+/**
+ * 提取封面图 URL
+ *
+ * 从 MediaInfo 中提取封面图 URL，用于播放前的封面图展示。
+ * 提取成功后通过 dispatcher 通知相关 Slot 初始化封面图能力。
+ *
+ * SDK 版本要求：通过 getMediaInfo.coverURL 获取封面图 URL
+ * 需要阿里云播放器 SDK 版本 ≥ 7.16.0，低版本 SDK 该接口可能返回 nil。
+ */
+- (void)dispatchCoverUrlIfAvailable {
+    if (!_aliPlayer) return;
+    AVPMediaInfo *mediaInfo = [_aliPlayer getMediaInfo];
+    NSString *coverURL = mediaInfo.coverURL;
+    if (coverURL.length > 0) {
+        SLOGI(@"[player][CBK][CoverUrlReady], url=%@", coverURL);
+        [self.notificationDispatcher dispatchDidReadyCoverUrl:coverURL];
+    }
+}
+
+/**
+ * 提取视频标题
+ *
+ * 从 MediaInfo 中提取视频标题，用于显示视频标题。
+ * 提取成功后通过 dispatcher 通知相关 Slot 初始化视频标题能力。
+ *
+ * SDK 版本要求：通过 getMediaInfo.title 获取视频标题
+ * 需要阿里云播放器 SDK 版本 ≥ 7.16.0，低版本 SDK 该接口可能返回 nil。
+ */
+- (void)dispatchVideoTitleIfAvailable {
+    if (!_aliPlayer) return;
+    AVPMediaInfo *mediaInfo = [_aliPlayer getMediaInfo];
+    NSString *title = mediaInfo.title;
+    if (title.length > 0) {
+        SLOGI(@"[player][CBK][VideoTitleReady], title=%@", title);
+        [self.notificationDispatcher dispatchDidReadyVideoTitle:title];
+    }
+}
 
 - (void)transitionToState:(PlayerState)newState {
     if (self.state == newState) return;

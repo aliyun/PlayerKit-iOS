@@ -49,5 +49,22 @@
 /* LandscapeHint Slot */
 "landscape_hint.fullscreen"     = "全屏观看";
 
+/* Chapter */
+"chapter.count_format"          = "共 %ld 章";
+"chapter.next_button"           = "下一章";
+"chapter.nav_format"            = "章节%ld：%@";
+
 /* Common */
 "common.unknown"            = "未知";
+
+/* AI Education Scene */
+"ai_education_error_server_unreachable"   = "服务暂时无法访问";
+"ai_education_error_ai_content_load_failed" = "AI 内容加载失败";
+"ai_education_tab_chapters"               = "章节";
+"ai_education_tab_analysis"               = "AI 解析";
+"ai_education_chapter_button"             = "章节";
+"ai_education_chapter_count_format"       = "章节 共%ld段";
+"ai_education_summary_header_title"       = "视频摘要";
+"ai_education_scene_title"                = "AI 教育场景";
+"ai_education_empty_content"              = "暂无内容";
+"ai_education_ai_generated"              = "内容由AI生成";

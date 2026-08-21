@@ -170,7 +170,7 @@ FileLogObserver *fileObserver = [[FileLogObserver alloc] init];
 [[LogHub sharedHub] removeObserver:fileObserver];
 ```
 
-> **注意**：`LogHub` 以**强引用**方式持有观察者，直到通过 `removeObserver:` 显式移除。因此必须在适当时机（如 `dealloc` 或 `viewWillDisappear:`）调用 `removeObserver:` 以避免循环引用。
+> **注意**：`LogHub` 以**弱引用**方式持有观察者（底层基于 `NSHashTable weakObjectsHashTable`），观察者销毁后会自动从列表中移除，不会造成循环引用。但仍建议在合适的时机（如 `viewWillDisappear:`）主动调用 `removeObserver:`，避免在对象即将销毁前的窗口期内继续收到日志回调。
 
 ### **3.5 高级用法 — 日志面板**
 
@@ -405,23 +405,22 @@ Error: domain=xxx code=xxx userInfo=xxx
 }
 ```
 
-#### **错误 3：忘记移除观察者导致循环引用**
+#### **建议：及时移除观察者，避免收到无意义回调**
 
 ```objc
-// ✗ 错误：LogHub 强引用观察者，不移除会导致循环引用
+// LogHub 弱引用观察者，不移除不会造成循环引用，但可能在页面消失后仍收到日志回调
 - (void)viewDidLoad {
     [[LogHub sharedHub] addObserver:self];
-    // 永远不会释放...
 }
 
-// ✓ 正确：在生命周期结束时移除
+// ✓ 推荐：在生命周期结束时主动移除
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
     [[LogHub sharedHub] removeObserver:self];
 }
 ```
 
-> **注意**：与通知系统的 Dispatcher 不同，`LogHub` 以**强引用**方式持有观察者。不调用 `removeObserver:` 将导致观察者无法释放。
+> **说明**：与通知系统的 Dispatcher 类似，`LogHub` 以**弱引用**方式持有观察者，因此不会造成内存泄漏；调用 `removeObserver:` 主要是为了避免在观察者生命周期结束后继续收到无意义的日志回调。
 
 ---
 
@@ -456,7 +455,7 @@ Error: domain=xxx code=xxx userInfo=xxx
 | `e:msg:error:` | 实例方法 | 输出 Error 日志，附带 `NSError` |
 | `log:tag:msg:` | 实例方法 | 按指定级别输出 |
 | `logLevel:file:line:message:error:` | 实例方法 | 核心日志方法（供 SLOG 宏使用） |
-| `addObserver:` | 实例方法 | 添加观察者（**强引用**，重复添加无效果） |
+| `addObserver:` | 实例方法 | 添加观察者（**弱引用**，重复添加无效果） |
 | `removeObserver:` | 实例方法 | 移除观察者 |
 | `+levelToString:` | 类方法 | 级别转字符串（V/D/I/W/E/N） |
 | `+stringToLevel:` | 类方法 | 字符串转级别（不区分大小写，无法识别时返回 `LogLevelInfo`） |

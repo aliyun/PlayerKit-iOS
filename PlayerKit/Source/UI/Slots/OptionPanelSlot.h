@@ -6,17 +6,15 @@
 //  Copyright © 2024 Alibaba Cloud. All rights reserved.
 //
 
-#import "BaseSlot.h"
+#import "BasePanelSlot.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface OptionPanelSlot : BaseSlot
+@interface OptionPanelSlot : BasePanelSlot
 
 - (void)showWithOptions:(NSArray<NSString *> *)displayTexts
           selectedIndex:(NSInteger)selectedIndex
                onSelect:(void(^)(NSInteger index))selectBlock;
-
-- (void)hidePanel;
 
 @end
 

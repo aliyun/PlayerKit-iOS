@@ -307,7 +307,7 @@ AliPlayerModel *model = [[AliPlayerModel alloc] initWithVideoSource:videoSource]
 | `acquirePlayerWithUniqueId:` (ID 未命中) | 优先从预加载队列取，否则创建新实例并绑定 ID |
 | `recyclePlayer:uniqueId:force:NO` | 仅停止播放，保留在映射表中（由 LRU 自动淘汰） |
 | `recyclePlayer:uniqueId:force:YES` | 从映射表移除并立即销毁 |
-| `clear` | 清理预加载队列和映射表中的实例 |
+| `clear` | 清理预加载队列和映射表中的非活跃实例，活跃实例不受影响 |
 | `preloadWithCount:` | 创建未绑定 ID 的实例，首次 acquire 新 ID 时从中取出 |
 
 > **说明**：当策略实现了 `acquirePlayerWithUniqueId:` 方法时，`AliPlayerController` 会优先调用它代替 `acquirePlayer`，通过 `VideoSource.uniqueId` 实现 ID 绑定。同理，`recyclePlayer:uniqueId:force:` 会优先于 `recyclePlayer:force:` 被调用。
@@ -332,7 +332,7 @@ AliPlayerModel *model = [[AliPlayerModel alloc] initWithVideoSource:videoSource]
 
 - 全局唯一，所有使用此策略的控制器共享同一播放器实例
 - 内存占用最低
-- `clear` 为空操作（不销毁单例实例），需通过 `recyclePlayer:force:YES` 显式销毁
+- `clear` 会销毁当前单例播放器实例并置空，之后再次 `acquirePlayer` 会重新创建
 - 不适合多视频同时播放场景
 - 多个 `AliPlayerController` 不可同时持有播放器，否则会导致状态冲突
 
@@ -343,7 +343,7 @@ AliPlayerModel *model = [[AliPlayerModel alloc] initWithVideoSource:videoSource]
 | `acquirePlayer` | 全局实例存在则直接返回，否则创建 |
 | `recyclePlayer:force:NO` | 仅停止播放，保留实例 |
 | `recyclePlayer:force:YES` | 销毁全局实例 |
-| `clear` | 空操作（不销毁单例实例） |
+| `clear` | 销毁单例播放器实例并置空 |
 
 ### **4.5 策略对比表**
 

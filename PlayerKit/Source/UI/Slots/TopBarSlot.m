@@ -48,6 +48,9 @@ static const CGFloat kTitleShadowRadius = 2.0;
 @property (nonatomic, strong) NSLayoutConstraint *backIconLeadingConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *settingTrailingConstraint;
 
+// Whether external title is used (higher priority than MediaInfo)
+@property (nonatomic, assign) BOOL externalTitleUsed;
+
 @end
 
 @implementation TopBarSlot
@@ -129,6 +132,11 @@ static const CGFloat kTitleShadowRadius = 2.0;
 }
 
 - (void)onBindData:(AliPlayerModel *)model {
+    if (model.videoTitle.length > 0) {
+        self.externalTitleUsed = YES;
+    } else {
+        self.externalTitleUsed = NO;
+    }
     self.titleLabel.text = model.videoTitle ?: @"";
     [self updatePaddingForFullscreen:self.host.viewState.isFullscreen];
     AliPlayerController *controller = self.host.controller;
@@ -138,6 +146,7 @@ static const CGFloat kTitleShadowRadius = 2.0;
 - (void)onUnbindData {
     [self cancelAutoHide];
     self.titleLabel.text = @"";
+    self.externalTitleUsed = NO;
 }
 
 #pragma mark - GestureDispatcher
@@ -414,6 +423,16 @@ static const CGFloat kTitleShadowRadius = 2.0;
         [self cancelAutoHide];
         [self hideWithAnimation:YES];
     }
+}
+
+- (void)playerDidReadyVideoTitle:(NSString *)videoTitle {
+    // 仅在未使用外部 videoTitle 时，使用自动提取的值
+    if (self.externalTitleUsed || videoTitle.length == 0) {
+        return;
+    }
+    dispatch_async(dispatch_get_main_queue(), ^{
+        self.titleLabel.text = videoTitle;
+    });
 }
 
 #pragma mark - Notification Handlers

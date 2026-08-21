@@ -9,6 +9,8 @@
 #import "BaseSlot.h"
 #import "AliPlayerController.h"
 #import "PlayerNotificationDelegate.h"
+#import "SlotActionNotificationDispatcher.h"
+#import "SlotActionNotificationDelegate.h"
 #import "SlotManager.h"
 #import "Log.h"
 
@@ -57,7 +59,7 @@ static const CGFloat kAlphaHidden = 0.0;
 //
 // 资源管理：
 //   onAttach:  — 保存 host（weak），注册 PlayerNotificationDelegate
-//   onDetach   — 注销 PlayerNotificationDelegate，置空 host
+//   onDetach   — 注销 PlayerNotificationDelegate 与 SlotActionNotificationDelegate，置空 host
 //   dismiss    — 委托 host 统一管理解除挂载和视图移除；无 host 时直接执行清理
 //
 // ==================== End ====================
@@ -108,7 +110,27 @@ static const CGFloat kAlphaHidden = 0.0;
             [controller removeNotificationDelegate:(id<PlayerNotificationDelegate>)self];
         }
     }
+    // 置空即触发下面的 setter，完成 SlotActionNotificationDelegate 注销
+    self.slotActionDispatcher = nil;
     self.host = nil;
+}
+
+#pragma mark - Slot Action Notification
+
+/// 切换分发器：从旧的注销 → 保存 → 向新的注册（仅当自身遵循 delegate 协议）
+- (void)setSlotActionDispatcher:(SlotActionNotificationDispatcher *)slotActionDispatcher {
+    if (_slotActionDispatcher == slotActionDispatcher) {
+        return;
+    }
+    BOOL isObserver = [self conformsToProtocol:@protocol(SlotActionNotificationDelegate)];
+    if (_slotActionDispatcher && isObserver) {
+        [_slotActionDispatcher removeObserver:(id<SlotActionNotificationDelegate>)self];
+    }
+    _slotActionDispatcher = slotActionDispatcher;
+    if (_slotActionDispatcher && isObserver) {
+        [_slotActionDispatcher addObserver:(id<SlotActionNotificationDelegate>)self];
+        SLOT_LOG(@"[setSlotActionDispatcher] <%@: %p> registered as observer", NSStringFromClass([self class]), self);
+    }
 }
 
 - (void)onBindData:(AliPlayerModel *)model {

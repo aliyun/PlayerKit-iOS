@@ -2,13 +2,13 @@
 install! 'cocoapods', :deterministic_uuids => false
 source 'https://github.com/CocoaPods/Specs.git'
 
-platform :ios, '9.0'
+platform :ios, '13.0'
 
 def aliyun_uicom
 
   # 播放器 SDK 版本（建议保持与官方最新版本一致）
   # 参考更新日志：https://help.aliyun.com/zh/vod/developer-reference/release-notes-for-apsaravideo-player-sdk-for-ios
-  player_sdk_version = '7.15.0'
+  player_sdk_version = '7.16.0'
 
   # Rts低延时直播组件版本（建议保持与官方最新版本一致）
   # 您可以参考官网获取 RTS SDK 最新版本：https://help.aliyun.com/zh/live/pull-streams-over-rts-on-ios
@@ -23,10 +23,18 @@ def aliyun_uicom
 
 end
 
+def third_party
+
+  # Markdown 渲染库（SceneAiEducation 使用，纯 Swift，iOS 13+）
+  pod 'GMarkdown', '~> 0.1.1'
+
+end
+
 target 'Example' do
   use_frameworks!
   
   aliyun_uicom
+  third_party
   
   # App 模块：提供首页导航、动态模块发现与 Schema 路由框架
   pod 'App', :path => '../App'
@@ -50,5 +58,9 @@ post_install do |installer|
         config.build_settings['CLANG_WARN_DOCUMENTATION_COMMENTS'] = 'NO'
         config.build_settings['CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER'] = 'NO'
         config.build_settings['ENABLE_USER_SCRIPT_SANDBOXING'] = 'NO'
+
+        # 规避 Xcode 16+ 显式模块构建无法解析 swift-markdown-pod 私有 C 模块 CAtomic 的问题
+        config.build_settings['SWIFT_ENABLE_EXPLICIT_MODULES'] = 'NO'
+        config.build_settings['CLANG_ENABLE_EXPLICIT_MODULES'] = 'NO'
     end
 end

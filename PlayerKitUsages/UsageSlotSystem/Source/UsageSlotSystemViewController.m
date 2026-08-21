@@ -76,7 +76,6 @@ static const CGFloat kSectionSpacing = 20.0;
     VideoSource *source = [VideoSource vidAuthSourceWithVid:[SceneConstants landscapeSampleVid]
                                                    playAuth:[SceneConstants landscapeSamplePlayAuth]];
     AliPlayerModel *model = [[AliPlayerModel alloc] initWithVideoSource:source];
-    model.videoTitle = @"插槽系统演示";
 
     // 3. 使用 model 配置 controller
     [self.controller configure:model];

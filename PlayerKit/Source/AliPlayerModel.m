@@ -35,6 +35,7 @@
         // 可选字段：与 Android Builder 默认值对齐
         _sceneType = SceneTypeVOD;
         _coverUrl = nil;
+        _thumbnailUrl = nil;
         _videoTitle = nil;
         _autoPlay = YES;
         _traceId = nil;
@@ -51,13 +52,14 @@
 
 - (NSString *)description {
     return [NSString stringWithFormat:
-            @"<%@: %p, videoSource=%@, sceneType=%ld, coverUrl=%@, videoTitle=%@, "
+            @"<%@: %p, videoSource=%@, sceneType=%ld, coverUrl=%@, thumbnailUrl=%@, videoTitle=%@, "
             @"autoPlay=%@, traceId=%@, startTime=%ld, hardwareDecode=%@, "
-            @"allowScreenSleep=%@, disableScreenshot=%@, onPlayerConfigBlock=%@>",
+            @"allowScreenSleep=%@, disableScreenshot=%@, onPlayerConfigBlock=%@, chapters=%@>",
             NSStringFromClass([self class]), self,
             self.videoSource,
             (long)self.sceneType,
             self.coverUrl ?: @"(nil)",
+            _thumbnailUrl ?: @"(nil)",
             self.videoTitle ?: @"(nil)",
             self.autoPlay ? @"YES" : @"NO",
             self.traceId ?: @"(nil)",
@@ -65,7 +67,8 @@
             self.hardwareDecode ? @"YES" : @"NO",
             self.allowScreenSleep ? @"YES" : @"NO",
             self.disableScreenshot ? @"YES" : @"NO",
-            self.onPlayerConfigBlock ? @"<set>" : @"(nil)"];
+            self.onPlayerConfigBlock ? @"<set>" : @"(nil)",
+            self.chapters];
 }
 
 @end

@@ -44,7 +44,7 @@ AliPlayerKit adopts a layered architecture design, offering two integration opti
 The Player SDK requires a valid License to function properly.
 
 - You have obtained the ApsaraVideo **License certificate** (`license.crt`) and **License Key** for the player
-- For detailed steps, see [Manage License](https://www.alibabacloud.com/help/en/apsara-video-sdk/)
+- For detailed steps, see [Obtain an ApsaraVideo Player SDK license](https://www.alibabacloud.com/help/en/vod/developer-reference/obtain-the-player-sdk-license)
 
 > **Note**: Failure to properly configure the License will cause the player to malfunction, resulting in issues such as black screen during playback. This is the most common integration issue.
 
@@ -73,7 +73,7 @@ YourProject/
 Reference `PlayerKit` via local path in your `Podfile`:
 
 ```ruby
-platform :ios, '11.0'
+platform :ios, '9.0'
 
 target 'YourApp' do
   use_frameworks!
@@ -103,9 +103,9 @@ open YourApp.xcworkspace
 
 ### **Step 4: Configure License**
 
-The Player SDK requires a valid License to function properly. Please refer to [Manage License](https://www.alibabacloud.com/help/en/apsara-video-sdk/) to obtain and configure the License.
+The Player SDK requires a valid License to function properly. Please refer to [Integrate a license](https://www.alibabacloud.com/help/en/vod/developer-reference/access-to-license) to configure the License.
 
-> **Note**: Failure to properly configure the License will cause the player to malfunction, resulting in issues such as black screen during playback. Ensure that License registration is completed before calling `[AliPlayerKit setup]`.
+> **Note**: Failure to properly configure the License will cause the player to malfunction, resulting in issues such as black screen during playback.
 
 ### **Step 5: Global Initialization**
 
@@ -114,7 +114,7 @@ Complete framework initialization in `AppDelegate` (only needs to be called once
 * **Objective-C**:
 
 ```objc
-#import <AliPlayerKit/AliPlayerKit.h>
+#import <PlayerKit/AliPlayerKit.h>
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     // (Optional) Global SDK configuration, such as setOption, etc.
@@ -158,7 +158,7 @@ func application(_ application: UIApplication, didFinishLaunchingWithOptions lau
 **Verification Checklist**:
 
 - [ ] `pod install` succeeded without dependency conflicts
-- [ ] License is properly configured (see [Manage License](https://www.alibabacloud.com/help/en/apsara-video-sdk/))
+- [ ] License is properly configured
 - [ ] `[AliPlayerKit setup]` is called in `AppDelegate`
 - [ ] Build succeeds (`Cmd + B`) with no linker errors
 
@@ -186,7 +186,8 @@ YourProject/
 │   ├── SceneLongVideo/
 │   ├── SceneShortVideo/
 │   ├── SceneLive/
-│   └── ScenePlaylist/
+│   ├── ScenePlaylist/
+│   └── SceneAiEducation/
 └── Podfile
 ```
 
@@ -203,12 +204,13 @@ target 'YourApp' do
   pod 'AliPlayerSDK_iOS', '~> 7.15.0'
 
   # Playback scene solutions (referenced via local path, include as needed)
-  pod 'PlayerKitScenes', :path => './PlayerKitScenes'    # All scenes (includes LongVideo/ShortVideo/Live/Playlist by default)
+  pod 'PlayerKitScenes', :path => './PlayerKitScenes'    # All scenes (includes LongVideo/ShortVideo/Live/Playlist/AiEducation by default)
   # Or select individual scenes as needed:
   # pod 'PlayerKitScenes/SceneLongVideo', :path => './PlayerKitScenes'   # Long-form video only
   # pod 'PlayerKitScenes/SceneShortVideo', :path => './PlayerKitScenes'  # Short video only
   # pod 'PlayerKitScenes/SceneLive', :path => './PlayerKitScenes'        # Live streaming only
   # pod 'PlayerKitScenes/ScenePlaylist', :path => './PlayerKitScenes'    # Playlist only
+  # pod 'PlayerKitScenes/SceneAiEducation', :path => './PlayerKitScenes' # AI Education only
 end
 ```
 
@@ -219,8 +221,16 @@ end
 | `SceneCommon` | `PlayerKitScenes/SceneCommon` | Common scene module (automatically included as a base dependency) |
 | `SceneLongVideo` | `PlayerKitScenes/SceneLongVideo` | Long-form video scene |
 | `SceneShortVideo` | `PlayerKitScenes/SceneShortVideo` | Short video scene |
-| `SceneLive` | `PlayerKitScenes/SceneLive` | Live streaming scene |
+| `SceneLive` | `PlayerKitScenes/SceneLive` | Live streaming scene. **Additionally depends on the `DemoSettings` module** (demo-level config storage). If integrating this scene standalone, you must also copy the `DemoSettings/` directory, otherwise `pod install` will fail |
 | `ScenePlaylist` | `PlayerKitScenes/ScenePlaylist` | Playlist scene |
+| `SceneAiEducation` | `PlayerKitScenes/SceneAiEducation` | AI Education scene. **Additionally depends on the `DemoSettings` module and the third-party library `GMarkdown (~> 0.1.1)`** (MIT license, pure Swift, based on swift-markdown + MPITextKit, minimum iOS 13.0) for Markdown rendering, automatically fetched during `pod install` |
+
+> **SceneAiEducation Dependency Notes**:
+>
+> - This scene contains Swift source code (`swift_version 5.1`). Integrators must use a modern Xcode version with Swift support, and the Podfile must enable `use_frameworks!`.
+> - iOS ≥ 12.2 ships with the Swift runtime built-in, incurring no additional binary size cost; for lower versions, Xcode automatically embeds the runtime.
+> - The default subspec set includes this scene, meaning a default integration will pull in the `GMarkdown` dependency and require the Swift runtime (iOS 13.0+). If you do not need the AI Education scene, explicitly reference only the desired subspecs (excluding `SceneAiEducation`) in your Podfile — this avoids pulling in `GMarkdown` and compiling Swift.
+> - All other subspecs and the PlayerKit core library remain pure Objective-C and are unaffected.
 
 > **Cross-platform Alignment**: Scene module naming is aligned with the Android counterpart (`scene-longvideo`, `scene-shortvideo`, `scene-live`, `scene-playlist`). Business capabilities and UI interactions for each scene are consistent across platforms.
 
@@ -288,7 +298,9 @@ AliPlayerKit depends on the following underlying SDKs:
 
 **Problem**: Player reports License error or playback shows black screen
 
-Confirm that the License has been properly obtained and configured. See [Manage License](https://www.alibabacloud.com/help/en/apsara-video-sdk/) for details. Common causes include: certificate file not properly added to the project, License Key mismatch, Bundle ID inconsistent with the package name bound to the License, or License has expired.
+Confirm that the License has been properly obtained and configured. Failure to properly configure the License will cause the player to malfunction. See [License FAQ](https://www.alibabacloud.com/help/en/vod/developer-reference/faqs-for-sdk-license) for details.
+
+Common causes include: certificate file not properly added to the project, License Key mismatch, Bundle ID inconsistent with the package name bound to the License, or License has expired.
 
 ### **6.2 Dependency Conflict Issues**
 
@@ -308,7 +320,7 @@ Confirm that the License has been properly obtained and configured. See [Manage 
 **Troubleshooting Steps**:
 
 1. Confirm it is called in `AppDelegate`'s `application:didFinishLaunchingWithOptions:`
-2. Confirm the License is properly configured (see [Manage License](https://www.alibabacloud.com/help/en/apsara-video-sdk/))
+2. Confirm the License is properly configured
 3. Verify initialization succeeded via `[AliPlayerKit isInitialized]`
 4. `setup` has built-in idempotency protection (`dispatch_once`); repeated calls will not throw exceptions
 5. If you need to inject global SDK configuration, confirm that `setOnGlobalInitBlock:` is set before `setup`

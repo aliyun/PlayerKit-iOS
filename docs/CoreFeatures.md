@@ -21,7 +21,7 @@ AliPlayerKit 的设计目标是为开发者提供一套**开箱即用且高度�
 | 设计目标 | 说明 |
 |---------|------|
 | **低代码接入** | 通过少量代码即可接入完整播放场景 |
-| **多场景覆盖** | 覆盖点播、直播、短视频等多种播放场景 |
+| **多场景覆盖** | 覆盖点播、直播、短视频、AI 教育等多种播放场景 |
 | **可复用架构** | 通过插槽 + 策略架构，避免各业务重复建设播放器能力 |
 | **统一基座** | 作为所有播放器解决方案和场景化解决方案的统一基座 |
 | **跨平台对齐** | 与 Android 版本共享相同架构设计理念，接口语义保持一致 |
@@ -35,7 +35,7 @@ AliPlayerKit 的设计目标是为开发者提供一套**开箱即用且高度�
 | 层级 | 定位 | 模块位置 | 职责 |
 |------|------|---------|------|
 | **组件层** | 播放器 UI 组件 | `PlayerKit/` | 提供开箱即用、可配置的播放器 UI 组件，覆盖基础播放与常见交互能力。 |
-| **场景层** | 场景化解决方案 | `PlayerKitScenes/` | 围绕短剧、中长视频、直播等典型场景，提供标准化接入示例，帮助客户以少量代码快速搭建完整播放能力。 |
+| **场景层** | 场景化解决方案 | `PlayerKitScenes/` | 围绕短剧、中长视频、直播、AI 教育等典型场景，提供标准化接入示例，帮助客户以少量代码快速搭建完整播放能力。 |
 
 ---
 
@@ -286,9 +286,11 @@ UI 组件与播放器核心彻底解耦，定制不再意味着修改源码，�
 | `SlotTypeCenterDisplay` | 50 | 中心展示层（加载/音量/亮度） |
 | `SlotTypePlayState` | 60 | 播放状态指示层 |
 | `SlotTypeTopBar` | 80 | 顶部导航栏层 |
+| `SlotTypeSeekThumbnail` | 85 | 拖动进度条时展示目标位置缩略图预览 |
 | `SlotTypeBottomBar` | 90 | 底部控制栏层 |
 | `SlotTypeSettingMenu` | 100 | 设置菜单层 |
 | `SlotTypeOptionPanel` | 110 | 选项面板层（倍速/清晰度） |
+| `SlotTypeChapterPanel` | 115 | 章节面板，展示章节列表并支持跳转 |
 
 插槽系统支持三个层级的可见性控制：**插槽级**（整体隐藏/显示）、**场景级**（按 `SceneType` 控制）、**元素级**（位掩码控制插槽内部子元素，如隐藏返回按钮或禁用特定手势）。还支持通过 `CustomSlotType` 注册自定义插槽。
 
@@ -421,7 +423,35 @@ model.onPlayerConfigBlock = ^(id<MediaPlayer> player) {
 
 **预加载系统** 通过 `PlayerPreloader` 协议封装播放器 SDK 的全局预加载能力，支持添加、取消、暂停和恢复预加载任务。内置 `DefaultPlayerPreloader` 实现，也可通过 `[AliPlayerKit setPreloader:]` 注入自定义实现。
 
-### **3.11 场景类型**
+### **3.11 VID All-in-One 播放体验**
+
+依托 AliPlayerKit 与阿里云视频点播 VOD 的协同能力，业务侧仅需传入视频 VID，即可自动获取播放资源，以及关联的封面图、缩略图和视频标题等媒资信息，简化播放接入。
+
+AliPlayerKit 在播放器 prepared 后自动从云端 MediaInfo 中提取以下媒体信息，并通过通知系统分发给对应 Slot 消费：
+
+| 媒体信息 | 通知回调 | 消费 Slot | 说明 |
+|---------|---------|----------|------|
+| 封面图 URL | `playerDidReadyCoverUrl:` | CoverSlot | 播放前展示封面图 |
+| 视频标题 | `playerDidReadyVideoTitle:` | TopBarSlot | 顶部栏展示视频标题 |
+| 缩略图 URL | `playerDidReadyThumbnailUrl:` | SeekThumbnailSlot | 拖动进度条时展示缩略图 |
+
+**优先级规则：** 通过 `AliPlayerModel` 手动配置的值（`coverUrl` / `thumbnailUrl` / `videoTitle`）优先级高于 MediaInfo 自动获取。仅当未手动配置时，才使用 MediaInfo 中的值。
+
+> 💡 该能力需要阿里云播放器 SDK 版本 ≥ 7.16.0。
+
+### **3.12 视频拆条**
+
+将长视频按内容结构智能拆分为多个章节片段，帮助用户快速定位重点内容，提升视频学习与内容理解效率。章节数据由 AI 内容理解服务对视频进行分析后生成，通过 `AliPlayerModel.chapters` 注入。
+
+| 组件 | 能力 |
+|------|------|
+| `ChapterInfo` 数据模型 | 描述拆条片段的时间区间（`[startMs, endMs)`）与展示信息（标题、缩略图） |
+| `BottomBarSlot` 章节标记 | 进度条上直观展示视频内容结构的拆分点 |
+| `ChapterPanelSlot` | 全屏右侧滑入结构化内容导航面板，支持点击快速跳转到目标片段 |
+
+**场景限定：** 仅在 `SceneTypeAIVod` 场景下生效。
+
+### **3.13 场景类型**
 
 `SceneType` 枚举定义播放场景，影响插槽可见性配置和 UI 行为差异：
 
@@ -432,6 +462,7 @@ model.onPlayerConfigBlock = ^(id<MediaPlayer> player) {
 | `SceneTypeVideoList` | 视频列表/短视频流 | 精简 UI |
 | `SceneTypeRestricted` | 受限播放 | 最小化交互 |
 | `SceneTypeMinimal` | 极简播放页 | 最少 UI 元素 |
+| `SceneTypeAIVod` | AI 视频点播 | AI 视频点播场景（章节划分与 AI 内容解析） |
 
 详见 [场景类型](./advanced/SceneType.md)。
 

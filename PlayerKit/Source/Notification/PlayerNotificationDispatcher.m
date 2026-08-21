@@ -239,4 +239,40 @@
     }];
 }
 
+#pragma mark - Thumbnail Dispatch
+
+- (void)dispatchDidReadyThumbnailUrl:(NSString *)thumbnailUrl {
+    [self notifyObservers:@selector(playerDidReadyThumbnailUrl:)
+                withBlock:^(id<PlayerNotificationDelegate> observer) {
+        [observer playerDidReadyThumbnailUrl:thumbnailUrl];
+    }];
+}
+
+- (void)dispatchDidRetrieveThumbnail:(int64_t)positionMs
+                               image:(UIImage *)image {
+    [self notifyObservers:@selector(playerDidRetrieveThumbnail:image:)
+                withBlock:^(id<PlayerNotificationDelegate> observer) {
+        [observer playerDidRetrieveThumbnail:positionMs
+                                       image:image];
+    }];
+}
+
+#pragma mark - Cover URL Dispatch
+
+- (void)dispatchDidReadyCoverUrl:(NSString *)coverUrl {
+    [self notifyObservers:@selector(playerDidReadyCoverUrl:)
+                withBlock:^(id<PlayerNotificationDelegate> observer) {
+        [observer playerDidReadyCoverUrl:coverUrl];
+    }];
+}
+
+#pragma mark - Video Title Dispatch
+
+- (void)dispatchDidReadyVideoTitle:(NSString *)videoTitle {
+    [self notifyObservers:@selector(playerDidReadyVideoTitle:)
+                withBlock:^(id<PlayerNotificationDelegate> observer) {
+        [observer playerDidReadyVideoTitle:videoTitle];
+    }];
+}
+
 @end

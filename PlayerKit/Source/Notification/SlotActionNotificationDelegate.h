@@ -46,6 +46,46 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (void)slotDidRequestShowQualityPanel;
 
+/**
+ * @brief 用户开始拖动进度条时调用。
+ *
+ * @discussion 通常由 BottomBarSlot 在进度条 touch down 时派发，
+ *             由 SeekThumbnailSlot 响应并显示拖动预览浮层（如缩略图预览）。
+ *
+ * @see slotDidUpdateSeekPreview:duration:
+ * @see slotDidEndSeekPreview
+ */
+- (void)slotDidBeginSeekPreview;
+
+/**
+ * @brief 拖动进度条期间目标位置变化时调用。
+ *
+ * @param targetPositionMs 拖动目标位置，单位为毫秒。
+ * @param durationMs       媒体总时长，单位为毫秒。
+ *
+ * @discussion 在拖动期间高频调用，仅携带位置与时长信息，不携带图片对象。
+ *             需要缩略图的观察者应自行通过 AliPlayerController
+ *             的 requestThumbnailAtPosition: 异步请求。
+ */
+- (void)slotDidUpdateSeekPreview:(int64_t)targetPositionMs
+                        duration:(int64_t)durationMs;
+
+/**
+ * @brief 用户结束拖动进度条时调用。
+ *
+ * @discussion 通常由 BottomBarSlot 在进度条 touch up / touch cancel 时派发，
+ *             由 SeekThumbnailSlot 响应并隐藏拖动预览浮层。
+ */
+- (void)slotDidEndSeekPreview;
+
+/**
+ * @brief 请求显示章节面板。
+ *
+ * @discussion 通常由 BottomBarSlot 的章节按钮点击触发，
+ *             由 ChapterPanelSlot 响应并显示章节列表面板。
+ */
+- (void)slotDidRequestShowChapterPanel;
+
 @end
 
 NS_ASSUME_NONNULL_END

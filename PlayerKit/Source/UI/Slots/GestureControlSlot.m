@@ -312,15 +312,24 @@ static inline void TriggerMediumFeedback(GestureControlSlot *slot) {
 #pragma mark - UIGestureRecognizerDelegate
 
 - (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer {
-    // 仅对 pan 手势做让步判断，避免与 BottomBarSlot 的 UISlider、TopBarSlot 的 UIButton 等控件争夺触摸事件
-    if (gestureRecognizer == self.panRecognizer) {
+    // 对 pan / singleTap / doubleTap 手势做让步判断，避免与其他 Slot 的 UIControl 或带手势的视图争夺触摸事件
+    if (gestureRecognizer == self.panRecognizer ||
+        gestureRecognizer == self.singleTapRecognizer ||
+        gestureRecognizer == self.doubleTapRecognizer) {
         CGPoint point = [gestureRecognizer locationInView:self];
         UIView *superview = self.superview;
         if (superview) {
             CGPoint pointInSuper = [self convertPoint:point toView:superview];
             UIView *hitView = [superview hitTest:pointInSuper withEvent:nil];
-            if ([hitView isKindOfClass:[UIControl class]]) {
-                return NO;
+            if (hitView && hitView != self) {
+                // UIControl（UIButton / UISlider 等）优先响应
+                if ([hitView isKindOfClass:[UIControl class]]) {
+                    return NO;
+                }
+                // 带有 gestureRecognizers 且允许交互的视图优先响应
+                if (hitView.userInteractionEnabled && hitView.gestureRecognizers.count > 0) {
+                    return NO;
+                }
             }
         }
     }

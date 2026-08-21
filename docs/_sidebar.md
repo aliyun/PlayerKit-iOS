@@ -14,4 +14,6 @@
   - [多语言](./advanced/Locale.md)
   - [场景类型](./advanced/SceneType.md)
   - [多视频源支持](./advanced/VideoSource.md)
+- **场景方案**
+  - [AI 教育场景](./scenes/AiEducation.md)
 - [更新日志](./CHANGELOG.md)

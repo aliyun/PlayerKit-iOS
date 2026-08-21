@@ -46,6 +46,9 @@ typedef NS_ENUM(NSInteger, SlotType) {
     /** 顶部导航栏层 */
     SlotTypeTopBar = 80,
 
+    /** 拖动进度条缩略图预览层 */
+    SlotTypeSeekThumbnail = 85,
+
     /** 底部控制栏层 */
     SlotTypeBottomBar = 90,
 
@@ -53,7 +56,10 @@ typedef NS_ENUM(NSInteger, SlotType) {
     SlotTypeSettingMenu = 100,
 
     /** 选项面板层（倍速/清晰度） */
-    SlotTypeOptionPanel = 110
+    SlotTypeOptionPanel = 110,
+
+    /** 章节面板层 */
+    SlotTypeChapterPanel = 115
 };
 
 /**

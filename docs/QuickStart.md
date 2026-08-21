@@ -8,15 +8,13 @@
 
 只需几步，您就可以轻松实现视频播放功能！
 
-通过极简的 API 设计，帮助您以低代码的方式快速集成视频播放功能，无需直接调用底层播放器 API，也无需自行实现复杂的播放器 UI。
+**AliPlayerKit 提供极简的 API 设计**，帮助您以低代码的方式快速集成视频播放功能。无需直接调用底层播放器 API，也无需自行实现复杂的播放器 UI。
 
 > **注意**：在开始之前，请确保您已经按照 [集成准备](./Integration.md) 完成环境配置和依赖添加。
 
 ---
 
 ## **1. 接入流程概览**
-
-只需几步，您就可以轻松实现视频播放功能！**AliPlayerKit 提供了极简的 API 设计**，帮助您以低代码的方式快速集成视频播放功能。
 
 下图展示了 **组件层接入** 的基本流程：
 
@@ -44,7 +42,7 @@ AliPlayerKit 采用 **分层架构设计**。除组件层接入外，还提供 *
 * **Objective-C**：
 
 ```objc
-#import <AliPlayerKit/AliPlayerKit.h>
+#import <PlayerKit/AliPlayerKit.h>
 
 @implementation AppDelegate
 
@@ -116,7 +114,7 @@ view.addSubview(playerView)
 * **Objective-C**：
 
 ```objc
-#import <AliPlayerKit/AliPlayerKit.h>
+#import <PlayerKit/AliPlayerKit.h>
 
 @interface VideoPlayerViewController ()
 @property (nonatomic, strong) AliPlayerView *playerView;
@@ -268,8 +266,9 @@ model.onPlayerConfigBlock = { player in
 | `SceneCommon` | `PlayerKitScenes/SceneCommon` | 场景公共模块（必需，其他场景模块的基础依赖） |
 | `SceneLongVideo` | `PlayerKitScenes/SceneLongVideo` | **中长视频场景**：提供中长视频播放的完整解决方案 |
 | `SceneShortVideo` | `PlayerKitScenes/SceneShortVideo` | **短视频场景**：提供短视频滑动播放的完整解决方案 |
-| `SceneLive` | `PlayerKitScenes/SceneLive` | **直播场景**：提供直播播放的完整解决方案 |
+| `SceneLive` | `PlayerKitScenes/SceneLive` | **直播场景**：提供直播播放的完整解决方案。**额外依赖 `DemoSettings` 模块**，单独集成时需一并拷贝 |
 | `ScenePlaylist` | `PlayerKitScenes/ScenePlaylist` | **列表播放场景**：提供视频列表播放的完整解决方案 |
+| `SceneAiEducation` | `PlayerKitScenes/SceneAiEducation` | **AI 教育场景**：含章节导航、AI 内容解析面板和 Markdown 渲染（依赖 GMarkdown ~> 0.1.1，需 iOS 13.0+） |
 
 > **跨平台对齐**：场景模块与 Android 端对齐（`scene-longvideo` / `scene-shortvideo` / `scene-live` / `scene-playlist`）。各场景的业务能力和 UI 交互在多端间保持一致。
 
@@ -307,6 +306,7 @@ navigationController?.pushViewController(vc, animated: true)
 | 短视频 | `SceneShortVideoViewController` |
 | 直播 | `SceneLiveViewController` |
 | 列表播放 | `ScenePlaylistViewController` |
+| AI 教育 | `SceneAiEducationViewController` |
 
 #### **方式二：Schema 路由**
 
@@ -336,6 +336,7 @@ AppSchemaRouter.navigate(toSchema: "playerkit://scenes/longvideo", from: self)
 | 短视频 | `playerkit://scenes/shortvideo` |
 | 直播 | `playerkit://scenes/live` |
 | 列表播放 | `playerkit://scenes/playlist` |
+| AI 教育 | `playerkit://scenes/aieducation` |
 
 > **说明**：`AppSchemaRouter` 是 Demo 工程（`App` 模块）中提供的路由工具，基于 `AppModuleProtocol` 协议实现模块自动发现。场景模块通过 `*Module` 类（如 `SceneLongVideoModule`）注册自身的 Schema、标题和优先级。如需在您的应用中使用 Schema 路由，可参考此实现或对接您自己的路由框架。
 >

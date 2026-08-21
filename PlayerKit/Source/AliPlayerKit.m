@@ -37,7 +37,7 @@
  *
  * @discussion AliPlayerKit version number.
  */
-static NSString * const kPlayerKitVersion = @"7.15.0";
+static NSString * const kPlayerKitVersion = @"7.16.0";
 
 static BOOL sInitialized = NO;
 static BOOL sDebugModeEnabled = NO;

@@ -2,7 +2,7 @@ name: Example
 options:
   bundleIdPrefix: com.aliyun.playerkit
   deploymentTarget:
-    iOS: "11.0"
+    iOS: "13.0"
   xcodeVersion: "15.0"
   generateEmptyDirectories: true
   createIntermediateGroups: true

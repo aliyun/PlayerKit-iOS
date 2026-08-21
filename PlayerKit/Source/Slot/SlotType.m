@@ -26,12 +26,16 @@ NSString *SlotTypeName(SlotType type) {
             return @"LogPanel";
         case SlotTypeTopBar:
             return @"TopBar";
+        case SlotTypeSeekThumbnail:
+            return @"SeekThumbnail";
         case SlotTypeBottomBar:
             return @"BottomBar";
         case SlotTypeSettingMenu:
             return @"SettingMenu";
         case SlotTypeOptionPanel:
             return @"OptionPanel";
+        case SlotTypeChapterPanel:
+            return @"ChapterPanel";
         default:
             return @"Unknown";
     }
@@ -50,9 +54,11 @@ NSArray<NSNumber *> *SlotTypeAllBuiltinTypes(void) {
             @(SlotTypePlayState),
             @(SlotTypeLogPanel),
             @(SlotTypeTopBar),
+            @(SlotTypeSeekThumbnail),
             @(SlotTypeBottomBar),
             @(SlotTypeSettingMenu),
-            @(SlotTypeOptionPanel)
+            @(SlotTypeOptionPanel),
+            @(SlotTypeChapterPanel)
         ];
     });
     return builtinTypes;

@@ -1,5 +1,26 @@
 # Changelog
 
+## [7.16.0] - 2026-08-26
+
+### SDK Upgrade
+
+- AliPlayerSDK_iOS: 7.15.0 → 7.16.0
+
+### Added
+
+- **VID All-in-One Playback Experience**: Leveraging the collaboration between AliPlayerKit and Alibaba Cloud ApsaraVideo VOD, the business layer only needs to pass in a video VID to automatically obtain playback resources along with associated video title, cover image, and thumbnail information, reducing the need for playback URL retrieval, media info passing, and client-side parameter configuration
+- **Seek Thumbnail**: Displays video thumbnails when dragging the progress bar. Thumbnails are automatically obtained when using VID playback, and manual thumbnail data input is also supported
+- **Video Chapter Splitting**: Intelligently segments long videos into multiple chapter clips by content structure, with progress bar markers and a chapter panel to help users quickly locate key content
+- **AI Education Scene**:
+  - Added an AI-powered video education solution for online education and knowledge courses, providing intelligent chapters, content summaries, knowledge points, and graphic analysis capabilities to help users quickly locate key content and improve video learning efficiency
+  - Added `SceneTypeAIVod` scene type that supports chapter segmentation, chapter navigation, and chapter information display during seek on top of standard VOD playback capabilities
+
+### Documentation
+
+- Added [AI Education Scene](./scenes/AiEducation-EN.md) documentation
+
+---
+
 ## [7.15.0] - 2026-06-23
 
 ### SDK Upgrade

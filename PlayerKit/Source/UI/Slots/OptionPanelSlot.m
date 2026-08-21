@@ -12,14 +12,11 @@
 #import "Log.h"
 
 static const CGFloat kPanelWidth = 200.0;
-static const CGFloat kDimmingAlpha = 0.5;
 static const CGFloat kItemHeight = 54.0;
 static const CGFloat kItemFontSize = 14.0;
-static const NSTimeInterval kAnimDuration = 0.25;
 
 @interface OptionPanelSlot ()
 
-@property (nonatomic, strong) UIView *dimmingView;
 @property (nonatomic, strong) UIView *contentPanel;
 @property (nonatomic, strong) UIStackView *optionsStack;
 
@@ -28,21 +25,42 @@ static const NSTimeInterval kAnimDuration = 0.25;
 @property (nonatomic, copy) void(^selectBlock)(NSInteger index);
 @property (nonatomic, strong) NSMutableArray<UILabel *> *optionLabels;
 
-@property (nonatomic, assign) BOOL isAnimating;
-
 @end
 
 @implementation OptionPanelSlot
 
-#pragma mark - Slot Lifecycle
+#pragma mark - BasePanelSlot Overrides
 
-- (instancetype)initWithFrame:(CGRect)frame {
-    self = [super initWithFrame:frame];
-    if (self) {
-        self.safeAreaEdges = SlotSafeAreaEdgeNone;
-    }
-    return self;
+/// 面板贴右侧边缘，由基类统一以 transform 滑入滑出
+- (nullable UIView *)panelView {
+    return self.contentPanel;
 }
+
+- (PanelSlideEdge)panelSlideEdge {
+    return PanelSlideEdgeRight;
+}
+
+/// 宽度由约束固定为 kPanelWidth，直接给出确定尺寸，不依赖布局是否已结算
+- (CGSize)panelSize {
+    return CGSizeMake(kPanelWidth, self.bounds.size.height);
+}
+
+- (NSTimeInterval)animationDuration {
+    return 0.25;
+}
+
+/// 显示前按最新的 displayTexts / selectedIndex 重建选项
+- (BOOL)onPrepareForShow {
+    [self rebuildOptionLabels];
+    return YES;
+}
+
+- (void)onPanelHidden {
+    [super onPanelHidden];
+    self.selectBlock = nil;
+}
+
+#pragma mark - Slot Lifecycle
 
 - (void)setupContentView {
     self.hidden = YES;
@@ -51,7 +69,6 @@ static const NSTimeInterval kAnimDuration = 0.25;
 
     _optionLabels = [NSMutableArray array];
 
-    [self createDimmingView];
     [self createContentPanel];
     [self createOptionsStack];
     [self setupConstraints];
@@ -64,69 +81,16 @@ static const NSTimeInterval kAnimDuration = 0.25;
 - (void)showWithOptions:(NSArray<NSString *> *)displayTexts
           selectedIndex:(NSInteger)selectedIndex
                onSelect:(void(^)(NSInteger index))selectBlock {
-    if (!self.hidden || self.isAnimating) {
-        return;
-    }
-    self.isAnimating = YES;
-
     self.displayTexts = displayTexts;
     self.selectedIndex = selectedIndex;
     self.selectBlock = selectBlock;
 
-    [self rebuildOptionLabels];
-    [self.superview bringSubviewToFront:self];
-    self.hidden = NO;
-
-    self.contentPanel.transform = CGAffineTransformMakeTranslation(kPanelWidth, 0);
-    self.dimmingView.alpha = 0;
-
-    [UIView animateWithDuration:kAnimDuration
-                          delay:0
-                        options:UIViewAnimationOptionCurveEaseOut
-                     animations:^{
-        self.dimmingView.alpha = kDimmingAlpha;
-        self.contentPanel.transform = CGAffineTransformIdentity;
-    } completion:^(BOOL finished) {
-        self.isAnimating = NO;
-    }];
+    [self showPanel];
 
     SLOGI(@"Show option panel, options count: %ld", (long)displayTexts.count);
 }
 
-- (void)hidePanel {
-    if (self.hidden || self.isAnimating) {
-        return;
-    }
-    self.isAnimating = YES;
-
-    [UIView animateWithDuration:kAnimDuration
-                          delay:0
-                        options:UIViewAnimationOptionCurveEaseIn
-                     animations:^{
-        self.dimmingView.alpha = 0;
-        self.contentPanel.transform = CGAffineTransformMakeTranslation(kPanelWidth, 0);
-    } completion:^(BOOL finished) {
-        self.hidden = YES;
-        self.isAnimating = NO;
-        self.selectBlock = nil;
-    }];
-
-    SLOGI(@"Hide option panel");
-}
-
 #pragma mark - Private - UI
-
-- (void)createDimmingView {
-    self.dimmingView = [[UIView alloc] init];
-    self.dimmingView.backgroundColor = [UIColor blackColor];
-    self.dimmingView.alpha = 0;
-    self.dimmingView.translatesAutoresizingMaskIntoConstraints = NO;
-    [self addSubview:self.dimmingView];
-
-    UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self
-                                                                          action:@selector(dimmingTapped)];
-    [self.dimmingView addGestureRecognizer:tap];
-}
 
 - (void)createContentPanel {
     self.contentPanel = [[UIView alloc] init];
@@ -147,11 +111,6 @@ static const NSTimeInterval kAnimDuration = 0.25;
 
 - (void)setupConstraints {
     [NSLayoutConstraint activateConstraints:@[
-        [self.dimmingView.topAnchor constraintEqualToAnchor:self.topAnchor],
-        [self.dimmingView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
-        [self.dimmingView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
-        [self.dimmingView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
-
         [self.contentPanel.topAnchor constraintEqualToAnchor:self.topAnchor],
         [self.contentPanel.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
         [self.contentPanel.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
@@ -209,13 +168,11 @@ static const NSTimeInterval kAnimDuration = 0.25;
 
 #pragma mark - Actions
 
-- (void)dimmingTapped {
-    [self hidePanel];
-}
-
 - (void)optionTapped:(UITapGestureRecognizer *)gesture {
     NSInteger index = gesture.view.tag;
-    if (index < 0 || index >= (NSInteger)self.displayTexts.count) return;
+    if (index < 0 || index >= (NSInteger)self.displayTexts.count) {
+        return;
+    }
 
     self.selectedIndex = index;
     [self refreshStyles];

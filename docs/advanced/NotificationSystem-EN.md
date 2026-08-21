@@ -56,7 +56,7 @@ The PlayerKit Notification System consists of three sets of Dispatcher + Delegat
 |-----------|-------------------|----------------|---------------|
 | `PlayerNotificationDispatcher` | `PlayerNotificationDelegate` | Player core notifications: state, progress, errors, snapshots, fullscreen, controls, loading, display modes, tracks | Via Controller's `addNotificationDelegate:` |
 | `GestureNotificationDispatcher` | `GestureNotificationDelegate` | Gesture notifications: single tap, long press, brightness slide, volume slide | Injected into built-in slots by `SlotHostLayout` |
-| `SlotActionNotificationDispatcher` | `SlotActionNotificationDelegate` | Slot action notifications: settings menu, speed panel, quality panel | Injected into built-in slots by `SlotHostLayout` |
+| `SlotActionNotificationDispatcher` | `SlotActionNotificationDelegate` | Slot action notifications: settings menu, speed panel, quality panel, seek preview, chapter panel | Injected into built-in slots by `SlotHostLayout` |
 
 > **Note**: `AliPlayerController` only exposes the registration entry for `PlayerNotificationDelegate` (`addNotificationDelegate:` / `removeNotificationDelegate:`). `GestureNotificationDispatcher` and `SlotActionNotificationDispatcher` are internal slot communication mechanisms, automatically injected by `SlotHostLayout` during slot construction, and are not publicly exposed.
 
@@ -104,7 +104,7 @@ The player core notification dispatcher, responsible for distributing playback s
 | `dispatchDidTrackReady:` | Track info ready |
 | `dispatchDidTrackChanged:` | Track switch complete |
 
-> **Note**: `PlayerNotificationDelegate` defines 18 `@optional` callback methods, but the Dispatcher provides 17 convenience dispatch methods. The `playerDidChangeControlsVisible:` notification is dispatched by `GestureControlSlot` through the generic `notifyObservers:withBlock:` method, rather than a dedicated convenience method.
+> **Note**: `PlayerNotificationDelegate` defines 22 `@optional` callback methods, but the Dispatcher provides 17 convenience dispatch methods. The `playerDidChangeControlsVisible:` notification is dispatched by `GestureControlSlot` through the generic `notifyObservers:withBlock:` method, rather than a dedicated convenience method.
 
 ### **2.2 GestureNotificationDispatcher**
 
@@ -339,7 +339,7 @@ The following demonstrates how a complete player page subscribes to player notif
 
 ## **4. Notification List**
 
-### **4.1 PlayerNotificationDelegate (18 @optional Methods)**
+### **4.1 PlayerNotificationDelegate (22 @optional Methods)**
 
 #### **Playback State Notifications**
 
@@ -406,6 +406,20 @@ The following demonstrates how a complete player page subscribes to player notif
 | `playerDidTrackReady:` | When available track info is ready | `tracks` — `NSArray<TrackQuality *>` |
 | `playerDidTrackChanged:` | When track switch completes | `quality` — The `TrackQuality` after switching |
 
+#### **VID Info Ready Notifications**
+
+| Method | Trigger Timing | Parameter Description |
+|--------|---------------|----------------------|
+| `playerDidReadyCoverUrl:` | After Vid playback prepared, when cover URL is extracted from MediaInfo | `coverUrl` — Cover image URL (`NSString *`) |
+| `playerDidReadyVideoTitle:` | After Vid playback prepared, when title is extracted from MediaInfo | `videoTitle` — Video title (`NSString *`) |
+| `playerDidReadyThumbnailUrl:` | After Vid playback prepared, when thumbnail URL is extracted from MediaInfo | `thumbnailUrl` — Thumbnail URL (`NSString *`) |
+
+#### **Thumbnail Notifications**
+
+| Method | Trigger Timing | Parameter Description |
+|--------|---------------|----------------------|
+| `playerDidRetrieveThumbnail:image:` | After calling `requestThumbnailAtPosition:` and receiving the image | `positionMs` — Requested position (`int64_t`, milliseconds); `image` — Retrieved `UIImage` |
+
 ### **4.2 GestureNotificationDelegate (7 @optional Methods)**
 
 | Method | Trigger Timing | Parameter Description |
@@ -418,13 +432,27 @@ The following demonstrates how a complete player page subscribes to player notif
 | `gestureDidUpdateVolumeWithPercent:` | Right vertical drag update | `currentPercent` — Volume value 0.0~1.0 |
 | `gestureDidEndVolumeAdjust` | Right vertical drag ends | — |
 
-### **4.3 SlotActionNotificationDelegate (3 @optional Methods)**
+### **4.3 SlotActionNotificationDelegate (7 @optional Methods)**
 
 | Method | Trigger Timing | Parameter Description |
 |--------|---------------|----------------------|
 | `slotDidRequestToggleSettingMenu` | `TopBarSlot` settings button tapped | — |
 | `slotDidRequestShowSpeedPanel` | `BottomBarSlot` speed button tapped | — |
 | `slotDidRequestShowQualityPanel` | `BottomBarSlot` quality button tapped | — |
+
+#### **Seek Preview Notifications**
+
+| Method | Trigger Timing | Parameter Description |
+|--------|---------------|----------------------|
+| `slotDidBeginSeekPreview` | When user starts dragging the seek bar (triggered by BottomBarSlot) | — |
+| `slotDidUpdateSeekPreview:duration:` | When target position changes during dragging | `targetPositionMs` — Target position (`int64_t`, milliseconds); `durationMs` — Total media duration (`int64_t`, milliseconds) |
+| `slotDidEndSeekPreview` | When user releases to end dragging (triggered by BottomBarSlot) | — |
+
+#### **Chapter Panel Notifications**
+
+| Method | Trigger Timing | Parameter Description |
+|--------|---------------|----------------------|
+| `slotDidRequestShowChapterPanel` | When user taps the chapter button (triggered by BottomBarSlot) | — |
 
 > **Note**: All notifications from `SlotActionNotificationDelegate` are dispatched asynchronously via `dispatch_async(dispatch_get_main_queue(), ...)`, ensuring execution in the next RunLoop iteration to avoid UI issues caused by synchronous execution within button event handling chains.
 
@@ -512,7 +540,7 @@ MyAnalyticsObserver *observer = [[MyAnalyticsObserver alloc] init];
 | Feature | Description |
 |---------|-------------|
 | Observer Storage | `NSHashTable weakObjectsHashTable` weak reference storage |
-| List Access | Protected by a serial dispatch queue (`dispatch_queue_t`), thread-safe |
+| List Access | `PlayerNotificationDispatcher` is protected by `os_unfair_lock`; `GestureNotificationDispatcher`/`SlotActionNotificationDispatcher` are protected by a serial dispatch queue (`dispatch_queue_t`) — all thread-safe |
 | Callback Thread | Notifications are always dispatched on the **main thread** (`SlotActionNotificationDispatcher` uses asynchronous main thread) |
 | Exception Isolation | Each observer invocation is wrapped with `@try/@catch`, a single observer's exception does not affect other observers |
 | Duplicate Addition | Adding the same observer repeatedly has no effect |
@@ -551,9 +579,9 @@ SlotActionNotificationDispatcher:
 
 | Protocol | Method Count | Responsibility Scope |
 |----------|-------------|---------------------|
-| `PlayerNotificationDelegate` | 18 `@optional` methods | Playback state, progress, errors, snapshots, fullscreen, controls, loading, display modes, tracks |
+| `PlayerNotificationDelegate` | 22 `@optional` methods | Playback state, progress, errors, snapshots, fullscreen, controls, loading, display modes, tracks, VID info, thumbnails |
 | `GestureNotificationDelegate` | 7 `@optional` methods | Single tap, long press, brightness adjustment, volume adjustment |
-| `SlotActionNotificationDelegate` | 3 `@optional` methods | Settings menu toggle, speed panel, quality panel |
+| `SlotActionNotificationDelegate` | 7 `@optional` methods | Settings menu toggle, speed panel, quality panel, seek preview, chapter panel |
 
 ### **7.3 Controller Entry Points**
 

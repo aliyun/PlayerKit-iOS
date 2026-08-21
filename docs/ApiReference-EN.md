@@ -176,6 +176,8 @@ AliPlayerKit provides a rich set of APIs that allow developers to directly contr
 | `- (void)setRotateMode:` | `RotateMode` rotateMode | `void` | Set rotation angle |
 | `- (void)selectTrack:` | `TrackQuality *` quality | `void` | Switch quality track |
 | `- (void)snapshot` | - | `void` | Capture the current video frame |
+| `- (void)setThumbnailUrl:` | `NSString *` url | `void` | Dynamically set the thumbnail URL (only VTT sprite sheet format supported) |
+| `- (void)requestThumbnailAtPosition:` | `int64_t` positionMs (milliseconds) | `void` | Request the thumbnail at the specified position |
 
 ### **4.4 UI Control**
 
@@ -212,8 +214,9 @@ AliPlayerKit provides a rich set of APIs that allow developers to directly contr
 |----------|------|---------|-------------|
 | `videoSource` | `VideoSource *` (readonly) | - | Video data source (required) |
 | `sceneType` | `SceneType` | `SceneTypeVOD` | Playback scene type |
-| `coverUrl` | `NSString *` (nullable) | `nil` | Cover image URL |
-| `videoTitle` | `NSString *` (nullable) | `nil` | Video title |
+| `coverUrl` | `NSString *` (nullable) | `nil` | Cover image URL. Can be auto-retrieved from MediaInfo when using Vid playback |
+| `thumbnailUrl` | `NSString *` (nullable) | `nil` | Thumbnail URL (for Seek preview). SDK auto-retrieves when using Vid playback; manual setup required for URL playback |
+| `videoTitle` | `NSString *` (nullable) | `nil` | Video title. Can be auto-retrieved from MediaInfo when using Vid playback |
 | `autoPlay` | `BOOL` | `YES` | Whether to auto-play |
 | `traceId` | `NSString *` (nullable) | `nil` | Trace identifier (for playback quality monitoring) |
 | `startTime` | `NSInteger` | `0` | Start position (milliseconds) |
@@ -221,6 +224,7 @@ AliPlayerKit provides a rich set of APIs that allow developers to directly contr
 | `allowScreenSleep` | `BOOL` | `NO` | Whether to allow screen sleep |
 | `disableScreenshot` | `BOOL` | `NO` | Whether to disable screenshot/screen recording (iOS-specific) |
 | `onPlayerConfigBlock` | `void (^)(id<MediaPlayer>)` | `nil` | Instance-level custom configuration callback |
+| `chapters` | `NSArray<ChapterInfo *> *` (nullable) | `nil` | Chapter information list (only effective in SceneTypeAIVod scene) |
 
 ### **5.2 Creation Methods**
 
@@ -304,6 +308,20 @@ Player state change callback protocol; all methods are `@optional`.
 | `- playerDidTrackReady:` | `NSArray<TrackQuality *> *` tracks | Available track information is ready |
 | `- playerDidTrackChanged:` | `TrackQuality *` quality | Track switch completed |
 
+**VID Media Info Ready**
+
+| Method | Parameters | Description |
+|--------|------------|-------------|
+| `- playerDidReadyCoverUrl:` | `NSString *` coverUrl | Cover image URL ready (auto-extracted from MediaInfo during Vid playback) |
+| `- playerDidReadyVideoTitle:` | `NSString *` videoTitle | Video title ready (auto-extracted from MediaInfo during Vid playback) |
+| `- playerDidReadyThumbnailUrl:` | `NSString *` thumbnailUrl | Thumbnail URL ready (auto-extracted from MediaInfo during Vid playback) |
+
+**Thumbnail**
+
+| Method | Parameters | Description |
+|--------|------------|-------------|
+| `- playerDidRetrieveThumbnail:image:` | `int64_t` positionMs, `UIImage *` image | Thumbnail retrieved successfully |
+
 ### **6.2 GestureNotificationDelegate (Gesture Notification Delegate)**
 
 Gesture interaction event callback protocol; all methods are `@optional`. Multicast dispatched by `GestureNotificationDispatcher`.
@@ -344,6 +362,10 @@ Inter-slot action event notification protocol, used to decouple direct method ca
 | `- slotDidRequestToggleSettingMenu` | - | Request to toggle settings menu visibility (typically triggered by TopBarSlot) |
 | `- slotDidRequestShowSpeedPanel` | - | Request to show speed selection panel (typically triggered by BottomBarSlot) |
 | `- slotDidRequestShowQualityPanel` | - | Request to show quality selection panel (typically triggered by BottomBarSlot) |
+| `- slotDidBeginSeekPreview` | - | User began dragging the progress bar (triggered by BottomBarSlot) |
+| `- slotDidUpdateSeekPreview:duration:` | `int64_t` targetPositionMs, `int64_t` durationMs | Target position changed during dragging |
+| `- slotDidEndSeekPreview` | - | User ended dragging the progress bar |
+| `- slotDidRequestShowChapterPanel` | - | Request to show chapter content panel (triggered by BottomBarSlot) |
 
 ---
 
@@ -368,6 +390,8 @@ Defines the core player operation interface; instances are created via `PlayerFa
 | `scaleMode` | `ScaleMode` (readonly) | Current scale mode |
 | `rotateMode` | `RotateMode` (readonly) | Current rotation angle |
 | `stateStore` | `PlayerStateStore *` (readonly) | State store |
+| `playerView` | `UIView *` (nullable) | Player rendering view, injected by the lifecycle strategy on create/recycle |
+| `notificationDispatcher` | `PlayerNotificationDispatcher *` (nullable) | Event notification dispatcher |
 
 **Playback Control**
 
@@ -481,6 +505,8 @@ Abstract base class for all built-in slots (`UIView` subclass), implementing `Sl
 | `- isRegistered:` | `SlotType` type | Check whether a slot is registered |
 | `- registerCustomSlotType:provider:` | `CustomSlotType *` type, provider | Register a custom slot |
 | `- unregisterCustomSlotType:` | `CustomSlotType *` type | Unregister a custom slot |
+| `- isCustomSlotRegistered:` | `CustomSlotType *` type | Check whether a custom slot is registered |
+| `- customSlotTypes` | - | Get all registered custom slot types |
 
 **Slot Visibility**
 
@@ -490,6 +516,14 @@ Abstract base class for all built-in slots (`UIView` subclass), implementing `Sl
 | `- showSlot:` | `SlotType` type | Show a previously hidden slot |
 | `- isSlotHidden:` | `SlotType` type | Check whether a slot is hidden |
 
+**Scene-based Visibility Configuration**
+
+| Method | Parameters | Return Value | Description |
+|--------|------------|--------------|-------------|
+| `- registerSlotConfig:` | `SlotConfig *` config | `void` | Register a scene-based visibility configuration for a slot type (replaces any existing configuration for the same type) |
+| `- unregisterSlotConfigForType:` | `SlotType` slotType | `void` | Remove the scene-based visibility configuration for a slot type; once removed, the slot is visible by default in all scenes (controlled only by `hideSlot:`) |
+| `- slotConfigForType:` | `SlotType` type | `nullable SlotConfig *` | Get the scene-based visibility configuration for a slot type; returns nil if not configured |
+
 **Element-Level Visibility**
 
 | Method | Parameters | Description |
@@ -497,6 +531,8 @@ Abstract base class for all built-in slots (`UIView` subclass), implementing `Sl
 | `- hideElements:forSlot:` | `NSUInteger` mask, `SlotType` type | Hide specific elements within a slot (bitmask) |
 | `- showElements:forSlot:` | `NSUInteger` mask, `SlotType` type | Show previously hidden elements |
 | `- setHiddenElementMask:forSlot:` | `NSUInteger` mask, `SlotType` type | Replace the hidden element mask (override mode) |
+| `- hiddenElementMaskForSlot:` | `SlotType` type | Get the hidden element bitmask for a slot; returns 0 if not configured |
+| `- shownElementMaskForSlot:` | `SlotType` type | Get the shown element bitmask for a slot; returns 0 if not configured |
 | `- setAllHiddenElementMasks:` | `NSDictionary *` config | Batch set all hidden elements |
 | `- clearAllElementMasks` | - | Clear all element visibility configurations |
 
@@ -520,9 +556,11 @@ Abstract base class for all built-in slots (`UIView` subclass), implementing `Sl
 | `SlotTypePlayState` | 60 | Play state indicator layer (loading/error/completed) |
 | `SlotTypeLogPanel` | 70 | Log panel layer |
 | `SlotTypeTopBar` | 80 | Top navigation bar layer |
+| `SlotTypeSeekThumbnail` | 85 | Seek preview thumbnail layer |
 | `SlotTypeBottomBar` | 90 | Bottom control bar layer |
 | `SlotTypeSettingMenu` | 100 | Settings menu layer |
 | `SlotTypeOptionPanel` | 110 | Option panel layer (speed/quality) |
+| `SlotTypeChapterPanel` | 115 | Chapter content panel layer |
 
 ### **8.5 CustomSlotType (Custom Slot Type)**
 
@@ -821,7 +859,7 @@ Log management hub (singleton) that provides unified management of log output an
 | Method | Parameters | Description |
 |--------|------------|-------------|
 | `+ sharedHub` | - | Get the shared LogHub singleton |
-| `- addObserver:` | `id<LogObserver>` observer | Add a log observer (held with strong reference) |
+| `- addObserver:` | `id<LogObserver>` observer | Add a log observer (held with weak reference) |
 | `- removeObserver:` | `id<LogObserver>` observer | Remove a log observer |
 
 **Log Output**
@@ -998,6 +1036,7 @@ When the language mode or language code changes, a `LocaleDidChangeNotification`
 | `SceneTypeVideoList` | 2 | Video list / short video feed |
 | `SceneTypeRestricted` | 3 | Restricted playback |
 | `SceneTypeMinimal` | 4 | Minimal player |
+| `SceneTypeAIVod` | 5 | AI Video-on-Demand scene |
 
 ### **15.3 ScaleMode (Scale Modes)**
 
@@ -1044,6 +1083,21 @@ When the language mode or language code changes, a `LocaleDidChangeNotification`
 | `TrackTypeAudio` | 2 | Audio track |
 | `TrackTypeSubtitle` | 3 | Subtitle track |
 | `TrackTypeVOD` | 4 | VOD track |
+
+### **15.8 TrackQuality (Track Quality)**
+
+`TrackQuality` describes a selectable track (resolution/audio track, etc.), used by APIs such as `selectTrack:`, `trackQualityList`, and `selectedTrackQuality`.
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `index` | `NSInteger` (readonly) | Track index |
+| `type` | `TrackType` (readonly) | Track type |
+| `width` | `NSInteger` (readonly) | Track width (pixels) |
+| `height` | `NSInteger` (readonly) | Track height (pixels) |
+
+| Method | Parameters | Description |
+|--------|------------|-------------|
+| `- initWithIndex:type:width:height:` | `NSInteger` index, `TrackType` type, `NSInteger` width, `NSInteger` height | Constructor |
 
 ---
 

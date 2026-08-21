@@ -8,15 +8,13 @@
 
 Get video playback up and running in just a few steps!
 
-With a minimalist API design, AliPlayerKit helps you integrate video playback quickly with minimal code — no need to call low-level player APIs directly or build complex player UIs from scratch.
+**AliPlayerKit provides a minimalist API design** that helps you integrate video playback quickly with minimal code. There is no need to call low-level player APIs directly or build complex player UIs from scratch.
 
 > **Note**: Before you begin, make sure you have completed the environment setup and dependency configuration described in [Integration Guide](./Integration-EN.md).
 
 ---
 
 ## **1. Integration Flow Overview**
-
-Get video playback up and running in just a few steps! **AliPlayerKit provides a minimalist API design** that helps you integrate video playback quickly with minimal code.
 
 The diagram below shows the basic flow for **Component Layer integration**:
 
@@ -44,7 +42,7 @@ Call `[AliPlayerKit setup]` in `AppDelegate`'s `application:didFinishLaunchingWi
 * **Objective-C**:
 
 ```objc
-#import <AliPlayerKit/AliPlayerKit.h>
+#import <PlayerKit/AliPlayerKit.h>
 
 @implementation AppDelegate
 
@@ -116,7 +114,7 @@ Create the controller, configure data, and attach the view in your ViewControlle
 * **Objective-C**:
 
 ```objc
-#import <AliPlayerKit/AliPlayerKit.h>
+#import <PlayerKit/AliPlayerKit.h>
 
 @interface VideoPlayerViewController ()
 @property (nonatomic, strong) AliPlayerView *playerView;
@@ -268,8 +266,9 @@ Scene modules are located in the `PlayerKitScenes` directory and imported via Co
 | `SceneCommon` | `PlayerKitScenes/SceneCommon` | Common scene module (required, base dependency for other scene modules) |
 | `SceneLongVideo` | `PlayerKitScenes/SceneLongVideo` | **Long Video Scene**: Complete solution for medium/long video playback |
 | `SceneShortVideo` | `PlayerKitScenes/SceneShortVideo` | **Short Video Scene**: Complete solution for short video swipe playback |
-| `SceneLive` | `PlayerKitScenes/SceneLive` | **Live Streaming Scene**: Complete solution for live stream playback |
+| `SceneLive` | `PlayerKitScenes/SceneLive` | **Live Streaming Scene**: Complete solution for live stream playback. **Additionally depends on the `DemoSettings` module**; must be copied together when integrating standalone |
 | `ScenePlaylist` | `PlayerKitScenes/ScenePlaylist` | **Playlist Scene**: Complete solution for video list playback |
+| `SceneAiEducation` | `PlayerKitScenes/SceneAiEducation` | **AI Education Scene**: AI Education scene with chapter navigation, AI content analysis panel, and Markdown rendering (requires GMarkdown ~> 0.1.1, iOS 13.0+) |
 
 > **Cross-platform alignment**: Scene modules are aligned with the Android counterparts (`scene-longvideo` / `scene-shortvideo` / `scene-live` / `scene-playlist`). Business capabilities and UI interactions are consistent across platforms.
 
@@ -307,6 +306,7 @@ ViewControllers for each scene:
 | Short Video | `SceneShortVideoViewController` |
 | Live Streaming | `SceneLiveViewController` |
 | Playlist | `ScenePlaylistViewController` |
+| AI Education | `SceneAiEducationViewController` |
 
 #### **Method 2: Schema Routing**
 
@@ -336,6 +336,7 @@ Schema addresses for each scene:
 | Short Video | `playerkit://scenes/shortvideo` |
 | Live Streaming | `playerkit://scenes/live` |
 | Playlist | `playerkit://scenes/playlist` |
+| AI Education | `playerkit://scenes/aieducation` |
 
 > **Note**: `AppSchemaRouter` is a routing utility provided in the Demo project (`App` module), implementing automatic module discovery based on the `AppModuleProtocol` protocol. Scene modules register their Schema, title, and priority through `*Module` classes (e.g., `SceneLongVideoModule`). To use Schema routing in your app, you can reference this implementation or integrate with your own routing framework.
 >

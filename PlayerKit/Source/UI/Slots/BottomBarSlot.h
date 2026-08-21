@@ -9,7 +9,6 @@
 #import "BaseSlot.h"
 
 @class GestureNotificationDispatcher;
-@class SlotActionNotificationDispatcher;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -32,14 +31,6 @@ NS_ASSUME_NONNULL_BEGIN
  *             由 SlotHostLayout.wireGestureNotifications 在所有插槽挂载后注入。
  */
 @property (nonatomic, weak, nullable) GestureNotificationDispatcher *gestureDispatcher;
-
-/**
- * @brief Slot 操作事件分发器（由宿主注入）。
- *
- * @discussion 用于解耦 BottomBarSlot 对其他 Slot 的直接调用。
- *             由 SlotHostLayout.wireSlotActionNotifications 在所有插槽挂载后注入。
- */
-@property (nonatomic, weak, nullable) SlotActionNotificationDispatcher *slotActionDispatcher;
 
 @end
 

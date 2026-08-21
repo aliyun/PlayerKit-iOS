@@ -56,7 +56,7 @@ PlayerKit 通知系统由三组 Dispatcher + Delegate 协议组成：
 |-----------|---------------|------|---------|
 | `PlayerNotificationDispatcher` | `PlayerNotificationDelegate` | 播放器核心通知：状态、进度、错误、截图、全屏、控制栏、加载、显示模式、轨道 | 通过 Controller 的 `addNotificationDelegate:` |
 | `GestureNotificationDispatcher` | `GestureNotificationDelegate` | 手势通知：单击、长按、亮度滑动、音量滑动 | 由 `SlotHostLayout` 注入到内置插槽 |
-| `SlotActionNotificationDispatcher` | `SlotActionNotificationDelegate` | 插槽操作通知：设置菜单、倍速面板、画质面板 | 由 `SlotHostLayout` 注入到内置插槽 |
+| `SlotActionNotificationDispatcher` | `SlotActionNotificationDelegate` | 插槽操作通知：设置菜单、倍速面板、画质面板、Seek 预览、章节面板 | 由 `SlotHostLayout` 注入到内置插槽 |
 
 > **说明**：`AliPlayerController` 仅暴露 `PlayerNotificationDelegate` 的注册入口（`addNotificationDelegate:` / `removeNotificationDelegate:`）。`GestureNotificationDispatcher` 和 `SlotActionNotificationDispatcher` 属于插槽内部通信机制，由 `SlotHostLayout` 在插槽构建时自动注入，不对外暴露。
 
@@ -104,7 +104,7 @@ PlayerKit 通知系统由三组 Dispatcher + Delegate 协议组成：
 | `dispatchDidTrackReady:` | 轨道信息就绪 |
 | `dispatchDidTrackChanged:` | 轨道切换完成 |
 
-> **说明**：`PlayerNotificationDelegate` 定义了 18 个 `@optional` 回调方法，但 Dispatcher 提供了 17 个便捷分发方法。`playerDidChangeControlsVisible:` 通知由 `GestureControlSlot` 通过通用的 `notifyObservers:withBlock:` 方法分发，而非专属便捷方法。
+> **说明**：`PlayerNotificationDelegate` 定义了 22 个 `@optional` 回调方法，但 Dispatcher 提供了 17 个便捷分发方法。`playerDidChangeControlsVisible:` 通知由 `GestureControlSlot` 通过通用的 `notifyObservers:withBlock:` 方法分发，而非专属便捷方法。
 
 ### **2.2 GestureNotificationDispatcher**
 
@@ -339,7 +339,7 @@ PlayerKit 通知系统由三组 Dispatcher + Delegate 协议组成：
 
 ## **4. 通知列表**
 
-### **4.1 PlayerNotificationDelegate（18 个 @optional 方法）**
+### **4.1 PlayerNotificationDelegate（22 个 @optional 方法）**
 
 #### **播放状态通知**
 
@@ -406,6 +406,20 @@ PlayerKit 通知系统由三组 Dispatcher + Delegate 协议组成：
 | `playerDidTrackReady:` | 可用轨道信息就绪时 | `tracks` — `NSArray<TrackQuality *>` |
 | `playerDidTrackChanged:` | 轨道切换完成时 | `quality` — 切换后的 `TrackQuality` |
 
+#### **VID 信息就绪通知**
+
+| 方法 | 触发时机 | 参数说明 |
+|------|---------|---------|
+| `playerDidReadyCoverUrl:` | Vid 播放 prepared 后，从 MediaInfo 中提取到封面图时 | `coverUrl` — 封面图 URL（`NSString *`） |
+| `playerDidReadyVideoTitle:` | Vid 播放 prepared 后，从 MediaInfo 中提取到标题时 | `videoTitle` — 视频标题（`NSString *`） |
+| `playerDidReadyThumbnailUrl:` | Vid 播放 prepared 后，从 MediaInfo 中提取到缩略图时 | `thumbnailUrl` — 缩略图 URL（`NSString *`） |
+
+#### **缩略图通知**
+
+| 方法 | 触发时机 | 参数说明 |
+|------|---------|---------|
+| `playerDidRetrieveThumbnail:image:` | 调用 `requestThumbnailAtPosition:` 后获取到图片时 | `positionMs` — 请求位置（`int64_t`，毫秒）；`image` — 获取到的 `UIImage` |
+
 ### **4.2 GestureNotificationDelegate（7 个 @optional 方法）**
 
 | 方法 | 触发时机 | 参数说明 |
@@ -418,13 +432,27 @@ PlayerKit 通知系统由三组 Dispatcher + Delegate 协议组成：
 | `gestureDidUpdateVolumeWithPercent:` | 右侧垂直拖动更新 | `currentPercent` — 音量值 0.0~1.0 |
 | `gestureDidEndVolumeAdjust` | 右侧垂直拖动结束 | — |
 
-### **4.3 SlotActionNotificationDelegate（3 个 @optional 方法）**
+### **4.3 SlotActionNotificationDelegate（7 个 @optional 方法）**
 
 | 方法 | 触发时机 | 参数说明 |
 |------|---------|---------|
 | `slotDidRequestToggleSettingMenu` | `TopBarSlot` 设置按钮点击 | — |
 | `slotDidRequestShowSpeedPanel` | `BottomBarSlot` 倍速按钮点击 | — |
 | `slotDidRequestShowQualityPanel` | `BottomBarSlot` 画质按钮点击 | — |
+
+#### **Seek 预览通知**
+
+| 方法 | 触发时机 | 参数说明 |
+|------|---------|---------|
+| `slotDidBeginSeekPreview` | 用户开始拖动进度条时（BottomBarSlot 触发） | — |
+| `slotDidUpdateSeekPreview:duration:` | 拖动期间目标位置变化时 | `targetPositionMs` — 目标位置（`int64_t`，毫秒）；`durationMs` — 媒体总时长（`int64_t`，毫秒） |
+| `slotDidEndSeekPreview` | 用户松手结束拖动时（BottomBarSlot 触发） | — |
+
+#### **章节面板通知**
+
+| 方法 | 触发时机 | 参数说明 |
+|------|---------|---------|
+| `slotDidRequestShowChapterPanel` | 用户点击章节按钮时（BottomBarSlot 触发） | — |
 
 > **说明**：`SlotActionNotificationDelegate` 的所有通知均通过 `dispatch_async(dispatch_get_main_queue(), ...)` 异步分发，确保在下一个 RunLoop 执行，避免在按钮事件处理链中同步执行导致的 UI 问题。
 
@@ -512,7 +540,7 @@ MyAnalyticsObserver *observer = [[MyAnalyticsObserver alloc] init];
 | 特性 | 说明 |
 |------|------|
 | 观察者存储 | `NSHashTable weakObjectsHashTable` 弱引用存储 |
-| 列表访问 | 串行分派队列（`dispatch_queue_t`）保护，线程安全 |
+| 列表访问 | `PlayerNotificationDispatcher` 使用 `os_unfair_lock` 保护；`GestureNotificationDispatcher`/`SlotActionNotificationDispatcher` 使用串行分派队列（`dispatch_queue_t`）保护，均线程安全 |
 | 回调线程 | 通知始终在**主线程**分派（`SlotActionNotificationDispatcher` 为异步主线程） |
 | 异常隔离 | 每次观察者调用通过 `@try/@catch` 包裹，单个观察者异常不影响其他观察者 |
 | 重复添加 | 重复添加同一观察者不会产生效果 |
@@ -551,9 +579,9 @@ SlotActionNotificationDispatcher：
 
 | 协议 | 方法数量 | 职责范围 |
 |------|---------|---------|
-| `PlayerNotificationDelegate` | 18 个 `@optional` 方法 | 播放状态、进度、错误、截图、全屏、控制栏、加载、显示模式、轨道 |
+| `PlayerNotificationDelegate` | 22 个 `@optional` 方法 | 播放状态、进度、错误、截图、全屏、控制栏、加载、显示模式、轨道、VID 信息、缩略图 |
 | `GestureNotificationDelegate` | 7 个 `@optional` 方法 | 单击、长按、亮度调节、音量调节 |
-| `SlotActionNotificationDelegate` | 3 个 `@optional` 方法 | 设置菜单切换、倍速面板、画质面板 |
+| `SlotActionNotificationDelegate` | 7 个 `@optional` 方法 | 设置菜单切换、倍速面板、画质面板、Seek 预览、章节面板 |
 
 ### **7.3 Controller 入口**
 

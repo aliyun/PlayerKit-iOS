@@ -44,7 +44,7 @@ AliPlayerKit 采用分层架构设计，根据集成深度提供两种方案：
 播放器 SDK 需要有效的 License 授权才能正常工作。
 
 - 您已获取音视频终端 SDK 的播放器 **License 授权证书**（`license.crt`）和 **License Key**
-- 获取步骤详见 [管理 License](https://help.aliyun.com/zh/vod/developer-reference/license-authorization-and-management)
+- 获取步骤详见 [获取播放器SDK License](https://help.aliyun.com/zh/vod/developer-reference/obtain-the-player-sdk-license)
 
 > **注意**：未正确配置 License 将导致播放器无法正常工作，播放时出现黑屏等异常。这是最常见的集成问题。
 
@@ -73,7 +73,7 @@ YourProject/
 在 `Podfile` 中通过本地路径引用 `PlayerKit`：
 
 ```ruby
-platform :ios, '11.0'
+platform :ios, '9.0'
 
 target 'YourApp' do
   use_frameworks!
@@ -103,9 +103,9 @@ open YourApp.xcworkspace
 
 ### **步骤 4：配置 License**
 
-播放器 SDK 需要有效的 License 授权才能正常工作。请参阅 [管理 License](https://help.aliyun.com/zh/vod/developer-reference/license-authorization-and-management) 完成 License 的获取与配置。
+播放器 SDK 需要有效的 License 授权才能正常工作。请参阅 [接入 License](https://help.aliyun.com/zh/vod/developer-reference/access-to-license) 完成 License 的配置。
 
-> **注意**：未正确配置 License 将导致播放器无法正常工作，播放时出现黑屏等异常。请确保 License 注册在 `[AliPlayerKit setup]` 之前完成。
+> **注意**：未正确配置 License 将导致播放器无法正常工作，播放时出现黑屏等异常。
 
 ### **步骤 5：全局初始化**
 
@@ -114,7 +114,7 @@ open YourApp.xcworkspace
 * **Objective-C**：
 
 ```objc
-#import <AliPlayerKit/AliPlayerKit.h>
+#import <PlayerKit/AliPlayerKit.h>
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     // （可选）全局 SDK 配置，如 setOption 等
@@ -158,7 +158,7 @@ func application(_ application: UIApplication, didFinishLaunchingWithOptions lau
 **验证检查清单**：
 
 - [ ] `pod install` 成功，无依赖冲突
-- [ ] License 已正确配置（详见 [管理 License](https://help.aliyun.com/zh/vod/developer-reference/license-authorization-and-management)）
+- [ ] License 已正确配置
 - [ ] `AppDelegate` 中调用 `[AliPlayerKit setup]`
 - [ ] 编译通过（`Cmd + B`），无链接错误
 
@@ -186,7 +186,8 @@ YourProject/
 │   ├── SceneLongVideo/
 │   ├── SceneShortVideo/
 │   ├── SceneLive/
-│   └── ScenePlaylist/
+│   ├── ScenePlaylist/
+│   └── SceneAiEducation/
 └── Podfile
 ```
 
@@ -203,12 +204,13 @@ target 'YourApp' do
   pod 'AliPlayerSDK_iOS', '~> 7.15.0'
 
   # 播放场景方案（通过本地路径引用，按需引入）
-  pod 'PlayerKitScenes', :path => './PlayerKitScenes'    # 全部场景（默认包含 LongVideo/ShortVideo/Live/Playlist）
+  pod 'PlayerKitScenes', :path => './PlayerKitScenes'    # 全部场景（默认包含 LongVideo/ShortVideo/Live/Playlist/AiEducation）
   # 或按需选择单个场景：
   # pod 'PlayerKitScenes/SceneLongVideo', :path => './PlayerKitScenes'   # 仅中长视频
   # pod 'PlayerKitScenes/SceneShortVideo', :path => './PlayerKitScenes'  # 仅短视频
   # pod 'PlayerKitScenes/SceneLive', :path => './PlayerKitScenes'        # 仅直播
   # pod 'PlayerKitScenes/ScenePlaylist', :path => './PlayerKitScenes'    # 仅列表播放
+  # pod 'PlayerKitScenes/SceneAiEducation', :path => './PlayerKitScenes' # 仅 AI 教育
 end
 ```
 
@@ -219,8 +221,16 @@ end
 | `SceneCommon` | `PlayerKitScenes/SceneCommon` | 场景公共模块（自动作为基础依赖引入） |
 | `SceneLongVideo` | `PlayerKitScenes/SceneLongVideo` | 中长视频场景 |
 | `SceneShortVideo` | `PlayerKitScenes/SceneShortVideo` | 短视频场景 |
-| `SceneLive` | `PlayerKitScenes/SceneLive` | 直播场景 |
+| `SceneLive` | `PlayerKitScenes/SceneLive` | 直播场景。**额外依赖 `DemoSettings` 模块**（Demo 级配置存储），单独集成时需一并拷贝 `DemoSettings/` 目录，否则 `pod install` 会失败 |
 | `ScenePlaylist` | `PlayerKitScenes/ScenePlaylist` | 列表播放场景 |
+| `SceneAiEducation` | `PlayerKitScenes/SceneAiEducation` | AI 教育场景。**额外依赖 `DemoSettings` 模块与第三方库 `GMarkdown (~> 0.1.1)`**（MIT 协议，纯 Swift，基于 swift-markdown + MPITextKit，最低 iOS 13.0），用于 Markdown 渲染，`pod install` 时自动拉取 |
+
+> **SceneAiEducation 依赖说明**：
+>
+> - 该场景包含 Swift 源码（`swift_version 5.1`），集成方需使用支持 Swift 的现代 Xcode，Podfile 需启用 `use_frameworks!`。
+> - iOS ≥ 12.2 系统内置 Swift runtime，无额外体积成本；更低版本由 Xcode 自动内嵌 runtime。
+> - 默认 subspec 集包含该场景，即默认集成会引入 `GMarkdown` 依赖，并需要 Swift 运行时（iOS 13.0+）。若不需要 AI 教育场景，可在 Podfile 中仅显式引用所需 subspec（不含 `SceneAiEducation`），即不会引入 `GMarkdown`，也无需编译 Swift。
+> - 其他 subspec 与 PlayerKit 核心库保持纯 Objective-C，不受影响。
 
 > **跨平台对齐**：场景模块命名与 Android 端对齐（`scene-longvideo`、`scene-shortvideo`、`scene-live`、`scene-playlist`）。各场景的业务能力和 UI 交互在多端间保持一致。
 
@@ -288,7 +298,9 @@ AliPlayerKit 依赖以下底层 SDK：
 
 **问题**：播放器报 License 错误或播放黑屏
 
-请确认 License 已正确获取与配置，详见 [管理 License](https://help.aliyun.com/zh/vod/developer-reference/license-authorization-and-management)。常见原因包括：证书文件未正确添加到工程、License Key 不匹配、Bundle ID 与 License 绑定的包名不一致、License 已过期等。
+请确认 License 已正确获取与配置，如未正确配置将导致播放器无法正常工作，详见 [License相关常见问题](https://help.aliyun.com/zh/vod/developer-reference/faqs-for-sdk-license)。
+
+常见原因包括：证书文件未正确添加到工程、License Key 不匹配、Bundle ID 与 License 绑定的包名不一致、License 已过期等。
 
 ### **6.2 依赖冲突问题**
 
@@ -308,7 +320,7 @@ AliPlayerKit 依赖以下底层 SDK：
 **排查步骤**：
 
 1. 确认在 `AppDelegate` 的 `application:didFinishLaunchingWithOptions:` 中调用
-2. 确认 License 已正确配置（详见 [管理 License](https://help.aliyun.com/zh/vod/developer-reference/license-authorization-and-management)）
+2. 确认 License 已正确配置
 3. 通过 `[AliPlayerKit isInitialized]` 确认初始化成功
 4. `setup` 内置幂等保护（`dispatch_once`），重复调用不会抛异常
 5. 如需注入全局 SDK 配置，确认 `setOnGlobalInitBlock:` 在 `setup` 之前设置

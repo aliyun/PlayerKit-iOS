@@ -33,7 +33,7 @@ SceneType 是告知播放器「当前运行在什么业务场景中」的枚举�
 
 ### **2.1 场景概览**
 
-AliPlayerKit 内置 5 种场景类型，覆盖绝大多数播放业务：
+AliPlayerKit 内置 6 种场景类型，覆盖绝大多数播放业务：
 
 | 场景 | 枚举值 | 说明 | 适用业务 | 与 VOD 的差异 |
 |------|--------|------|---------|---------------|
@@ -42,6 +42,7 @@ AliPlayerKit 内置 5 种场景类型，覆盖绝大多数播放业务：
 | 视频列表 | `SceneTypeVideoList` | 禁用垂直手势，避免与列表滚动冲突 | 信息流、短视频列表 | 禁用音量/亮度垂直手势；其余与 VOD 一致 |
 | 受限播放 | `SceneTypeRestricted` | 防跳播，确保用户完整观看 | 考试监控、培训课程 | 禁用进度拖拽/倍速；隐藏封面图 |
 | 极简模式 | `SceneTypeMinimal` | 纯净画面，所有控制需自行实现 | 背景播放、完全自定义 UI | 隐藏所有控制组件和手势 |
+| AI 点播 | `SceneTypeAIVod` | AI 增强点播，基于 VOD 增加章节导航与 AI 内容理解能力 | AI 课程、知识视频 | 新增章节数据模型和章节导航插槽；其余与 VOD 一致 |
 
 ### **2.2 枚举定义**
 
@@ -62,6 +63,9 @@ typedef NS_ENUM(NSInteger, SceneType) {
 
     /** 极简播放页场景 */
     SceneTypeMinimal = 4,
+
+    /** AI 视频点播场景 */
+    SceneTypeAIVod = 5,
 };
 ```
 
@@ -73,38 +77,40 @@ typedef NS_ENUM(NSInteger, SceneType) {
 
 插槽系统根据场景类型自动控制组件可见性。以下矩阵反映 `DefaultSlotFactory.defaultConfigs` 的默认规则：
 
-| 插槽 | VOD | Live | VideoList | Restricted | Minimal |
-|------|-----|------|-----------|------------|---------|
-| `PlayerSurface` | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `GestureControl` | ✓ | ✓ | ✓ | ✓ | ✗ |
-| `LandscapeHint` | ✓ | ✓ | ✓ | ✓ | ✗ |
-| `Cover` | ✓ | ✗ | ✓ | ✗ | ✗ |
-| `CenterDisplay` | ✓ | ✓ | ✓ | ✓ | ✗ |
-| `PlayState` | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `LogPanel` | ✓ | ✓ | ✓ | ✓ | ✗ |
-| `TopBar` | ✓ | ✓ | ✓ | ✓ | ✗ |
-| `BottomBar` | ✓ | ✓ | ✓ | ✓ | ✗ |
-| `SettingMenu` | ✓ | ✓ | ✓ | ✓ | ✗ |
-| `OptionPanel` | ✓ | ✓ | ✓ | ✓ | ✗ |
+| 插槽 | VOD | Live | VideoList | Restricted | Minimal | AI_VOD |
+|------|-----|------|-----------|------------|---------|--------|
+| `PlayerSurface` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `GestureControl` | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| `LandscapeHint` | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| `Cover` | ✓ | ✗ | ✓ | ✗ | ✗ | ✓ |
+| `CenterDisplay` | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| `SeekThumbnail` | ✓ | ✗ | ✓ | ✗ | ✗ | ✓ |
+| `PlayState` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `LogPanel` | 可配置 | 可配置 | 可配置 | 可配置 | ✗ | 可配置 |
+| `TopBar` | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| `BottomBar` | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| `SettingMenu` | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| `OptionPanel` | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| `ChapterPanel` | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
 
 **可见性规则说明**：
 
 - `PlayerSurface` 和 `PlayState`：所有场景可见（无 `excludedScenes` 配置）
-- `Cover`：在 `Live`、`Restricted`、`Minimal` 场景中不可见
-- 其余插槽（`GestureControl`、`LandscapeHint`、`CenterDisplay`、`LogPanel`、`TopBar`、`BottomBar`、`SettingMenu`、`OptionPanel`）：仅在 `Minimal` 场景中不可见
+- `Cover` 和 `SeekThumbnail`：在 `Live`、`Restricted`、`Minimal` 场景中不可见
+- 其余插槽（`GestureControl`、`LandscapeHint`、`CenterDisplay`、`LogPanel`、`TopBar`、`BottomBar`、`SettingMenu`、`OptionPanel`、`ChapterPanel`）：仅在 `Minimal` 场景中不可见
 
 ### **3.2 手势行为差异**
 
 `GestureControlSlot` 内部根据 `currentSceneType` 在各手势处理方法中进行场景过滤：
 
-| 手势 | VOD | Live | VideoList | Restricted | Minimal |
-|------|-----|------|-----------|------------|---------|
-| 单击（显示/隐藏控制栏） | ✓ | ✓ | ✓ | ✓ | ✗ |
-| 双击（播放/暂停） | ✓ | ✓ | ✓ | ✓ | ✗ |
-| 长按（倍速播放） | ✓ | ✗ | ✓ | ✗ | ✗ |
-| 水平拖动（进度跳转） | ✓ | ✗ | ✓ | ✗ | ✗ |
-| 左侧垂直拖动（亮度） | ✓ | ✓ | ✗ | ✓ | ✗ |
-| 右侧垂直拖动（音量） | ✓ | ✓ | ✗ | ✓ | ✗ |
+| 手势 | VOD | Live | VideoList | Restricted | Minimal | AI_VOD |
+|------|-----|------|-----------|------------|---------|--------|
+| 单击（显示/隐藏控制栏） | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| 双击（播放/暂停） | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| 长按（倍速播放） | ✓ | ✗ | ✓ | ✗ | ✗ | ✓ |
+| 水平拖动（进度跳转） | ✓ | ✗ | ✓ | ✗ | ✗ | ✓ |
+| 左侧垂直拖动（亮度） | ✓ | ✓ | ✗ | ✓ | ✗ | ✓ |
+| 右侧垂直拖动（音量） | ✓ | ✓ | ✗ | ✓ | ✗ | ✓ |
 
 **过滤逻辑说明**：
 
@@ -245,6 +251,25 @@ model.sceneType = SceneTypeMinimal;
 // 例如：[controller play]; [controller pause]; [controller seekTo:position];
 ```
 
+#### **4.2.6 AI_VOD — AI 点播场景**
+
+**适用场景**：在线教育、知识视频等需要 AI 章节理解与导航的场景。
+
+**与 VOD 的关键差异**：
+- **新增**：`ChapterPanelSlot` 章节面板，支持章节导航
+- **新增**：章节数据模型（`chapters`），从 AI 服务获取章节结构化数据
+- **保留**：其余所有插槽可见性与手势行为与 VOD 完全一致
+
+```objc
+AliPlayerModel *model = [[AliPlayerModel alloc] initWithVideoSource:source];
+model.sceneType = SceneTypeAIVod;
+model.videoTitle = @"AI 课程视频";
+model.chapters = chaptersFromServer;  // 从 AI 服务获取的章节数据
+model.autoPlay = YES;
+
+[controller configure:model];
+```
+
 ---
 
 ## **5. 自定义开发**
@@ -347,19 +372,22 @@ SlotConfig *coverConfig = [SlotConfig configWithSlotType:SlotTypeCover
                    ├── 是 → SceneTypeVideoList
                    └── 否 → 需要防止用户跳播吗？
                              ├── 是 → SceneTypeRestricted
-                             └── 否 → SceneTypeVOD（默认）
+                             └── 否 → 需要 AI 章节导航能力吗？
+                                       ├── 是 → SceneTypeAIVod
+                                       └── 否 → SceneTypeVOD（默认）
 ```
 
 ### **6.2 场景选择汇总表**
 
 | 业务需求 | 推荐场景 | 关键理由 |
-|---------|---------|---------|
+|---------|---------|--------|
 | 常规视频播放 | `SceneTypeVOD` | 默认场景，全功能支持 |
 | 直播/赛事实时流 | `SceneTypeLive` | 自动禁用无意义的进度操作 |
 | UIScrollView 嵌入视频 | `SceneTypeVideoList` | 自动规避垂直手势冲突 |
 | 培训/考试/版权保护 | `SceneTypeRestricted` | 自动禁止跳播和倍速 |
 | 完全自定义 UI | `SceneTypeMinimal` | 纯净画布，零内置 UI 干扰 |
 | 后台/画中画播放 | `SceneTypeMinimal` | 无需 UI 控制组件 |
+| AI 课程/知识视频 | `SceneTypeAIVod` | 内置章节导航，AI 增强内容理解 |
 
 ---
 
@@ -374,6 +402,7 @@ SlotConfig *coverConfig = [SlotConfig configWithSlotType:SlotTypeCover
 | `SceneTypeVideoList` | 2 | 视频列表/短视频流场景 |
 | `SceneTypeRestricted` | 3 | 受限播放场景 |
 | `SceneTypeMinimal` | 4 | 极简播放页场景 |
+| `SceneTypeAIVod` | 5 | AI 视频点播场景 |
 
 ### **7.2 SlotConfig**
 

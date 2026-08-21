@@ -127,7 +127,6 @@ static const NSInteger kSourceOptionCount = 3;
 
 - (void)playWithSource:(VideoSource *)source {
     AliPlayerModel *model = [[AliPlayerModel alloc] initWithVideoSource:source];
-    model.videoTitle = @"视频源使用示例";
 
     [self.playerController configure:model];
     [self.playerView attach:self.playerController];

@@ -15,7 +15,6 @@
 #import "SettingItem.h"
 #import "SettingConstants.h"
 #import "SlotElements.h"
-#import "SlotActionNotificationDispatcher.h"
 #import "OptionPanelSlot.h"
 #import "PlayerColor.h"
 #import "PlayerFont.h"
@@ -28,8 +27,6 @@
 #import "TrackUtil.h"
 #import "Log.h"
 
-static const NSTimeInterval kAnimDuration = 0.3;
-static const CGFloat kDimmingAlpha = 0.5;
 static const CGFloat kTitleFontSize = 17.0;
 static const CGFloat kTitleHeight = 56.0;
 
@@ -49,7 +46,6 @@ static const CGFloat kLandscapePaddingBottom = 24.0;
 
 @interface SettingMenuSlot () <PlayerNotificationDelegate>
 
-@property (nonatomic, strong) UIView *dimmingView;
 @property (nonatomic, strong) UIView *contentPanel;
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UIScrollView *scrollView;
@@ -58,11 +54,10 @@ static const CGFloat kLandscapePaddingBottom = 24.0;
 @property (nonatomic, strong) NSArray<SettingItem *> *items;
 @property (nonatomic, strong) NSMutableDictionary<NSNumber *, id<SettingItemViewProtocol>> *itemViews;
 
-@property (nonatomic, assign) BOOL isAnimating;
 @property (nonatomic, assign) BOOL isFullscreen;
 @property (nonatomic, assign) CGFloat currentPortraitPanelHeight;
 
-// Portrait: popup container added to VC.view
+// 面板与蒙层的承载容器，挂载在窗口上（见 panelHostView）
 @property (nonatomic, strong) UIView *popupContainer;
 
 @end
@@ -77,7 +72,6 @@ static const CGFloat kLandscapePaddingBottom = 24.0;
         _itemViews = [NSMutableDictionary dictionary];
         self.backgroundColor = [UIColor clearColor];
         self.clipsToBounds = YES;
-        self.deferContentCreation = YES;
     }
     return self;
 }
@@ -91,7 +85,7 @@ static const CGFloat kLandscapePaddingBottom = 24.0;
 }
 
 - (void)setupContentView {
-    // Views are created lazily in showMenu depending on fullscreen state
+    // 面板视图形态取决于横竖屏，因此不在此创建，而是每次显示时由 onPrepareForShow 按当前形态构建
 }
 
 - (void)onAttach:(id<SlotHost>)host {
@@ -111,11 +105,6 @@ static const CGFloat kLandscapePaddingBottom = 24.0;
 
 - (void)onDetach {
     [self teardownCurrentViews];
-    self.isAnimating = NO;
-
-    if (_slotActionDispatcher) {
-        [_slotActionDispatcher removeObserver:self];
-    }
 
     [[NSNotificationCenter defaultCenter] removeObserver:self
                                                     name:LocaleDidChangeNotification
@@ -133,30 +122,14 @@ static const CGFloat kLandscapePaddingBottom = 24.0;
 }
 
 - (void)onUnbindData {
-    [self teardownCurrentViews];
+    // 面板的强制收起（无动画）由基类完成，并经 onPanelHidden 链路销毁当前视图
+    [super onUnbindData];
 
     self.items = nil;
     [self.itemViews removeAllObjects];
-    self.isAnimating = NO;
-
-    [super onUnbindData];
 }
 
 #pragma mark - Public Methods
-
-- (void)setSlotActionDispatcher:(SlotActionNotificationDispatcher *)slotActionDispatcher {
-    if (_slotActionDispatcher == slotActionDispatcher) {
-        return;
-    }
-    if (_slotActionDispatcher) {
-        [_slotActionDispatcher removeObserver:self];
-    }
-    _slotActionDispatcher = slotActionDispatcher;
-    if (_slotActionDispatcher) {
-        [_slotActionDispatcher addObserver:self];
-        SLOGI(@"Registered as slot action notification observer");
-    }
-}
 
 - (void)toggleMenu {
     if ([self isMenuVisible]) {
@@ -167,20 +140,7 @@ static const CGFloat kLandscapePaddingBottom = 24.0;
 }
 
 - (void)showMenu {
-    if ([self isMenuVisible] || self.isAnimating) {
-        return;
-    }
-    self.isAnimating = YES;
-
-    [self ensureContentReady];
-
-    self.isFullscreen = self.host.viewState.isFullscreen;
-
-    if (self.isFullscreen) {
-        [self showLandscapeMenu];
-    } else {
-        [self showPortraitMenu];
-    }
+    [self showPanel];
 }
 
 - (nullable SettingItem *)settingItemForElement:(SettingMenuElement)element {
@@ -193,23 +153,14 @@ static const CGFloat kLandscapePaddingBottom = 24.0;
 }
 
 - (void)hideMenu {
-    if (![self isMenuVisible] || self.isAnimating) {
-        return;
-    }
-    self.isAnimating = YES;
-
-    if (self.isFullscreen) {
-        [self hideLandscapeMenu];
-    } else {
-        [self hidePortraitMenu];
-    }
+    [self hidePanel];
 }
 
 #pragma mark - SlotActionNotificationDelegate
 
 - (void)slotDidRequestToggleSettingMenu {
-    SLOGI(@"Received toggle setting menu request, visible=%d, animating=%d, fullscreen=%d",
-          [self isMenuVisible], self.isAnimating, self.host.viewState.isFullscreen);
+    SLOGI(@"Received toggle setting menu request, visible=%d, fullscreen=%d",
+          self.isPanelShowing, self.host.viewState.isFullscreen);
     [self toggleMenu];
 }
 
@@ -301,95 +252,133 @@ static const CGFloat kLandscapePaddingBottom = 24.0;
 #pragma mark - Private Methods - Menu Visibility
 
 - (BOOL)isMenuVisible {
-    if (self.popupContainer.superview) {
-        return YES;
-    }
-    if (self.dimmingView.superview == self && !self.hidden) {
-        return YES;
-    }
-    return NO;
+    return self.isPanelShowing;
 }
 
-#pragma mark - Private Methods - Portrait (Bottom Sheet on VC)
+#pragma mark - BasePanelSlot Overrides
 
-- (void)showPortraitMenu {
+/**
+ * 竖屏时播放器只占据屏幕顶部一小块区域，底部弹窗必须覆盖整个屏幕，
+ * 因此面板与蒙层统一承载在挂到窗口上的 popupContainer 内，而非插槽自身的视图层级。
+ * 该容器每次显示时重建、每次隐藏后销毁（见 onPrepareForShow / onPanelHidden）。
+ */
+- (UIView *)panelHostView {
+    return self.popupContainer ?: self;
+}
+
+- (nullable UIView *)panelView {
+    return self.contentPanel;
+}
+
+/// 横屏为右侧抽屉，竖屏为底部弹窗
+- (PanelSlideEdge)panelSlideEdge {
+    return self.isFullscreen ? PanelSlideEdgeRight : PanelSlideEdgeBottom;
+}
+
+/// 面板 frame 由 mountPopupContainerInWindow: 手动设定，这里直接给出对应的确定尺寸
+- (CGSize)panelSize {
+    CGSize hostSize = self.popupContainer.bounds.size;
+    if (self.isFullscreen) {
+        return CGSizeMake(kLandscapePanelWidth, hostSize.height);
+    }
+    return CGSizeMake(hostSize.width, self.currentPortraitPanelHeight);
+}
+
+/// 动画期间容器已禁用交互，此处放开触摸以免阻塞其他手势
+- (UIViewAnimationOptions)showAnimationOptions {
+    return [super showAnimationOptions] | UIViewAnimationOptionAllowUserInteraction;
+}
+
+- (UIViewAnimationOptions)hideAnimationOptions {
+    return [super hideAnimationOptions] | UIViewAnimationOptionAllowUserInteraction;
+}
+
+/// 按当前横竖屏形态重建视图与设置项；无可用窗口或无设置项时取消本次显示
+- (BOOL)onPrepareForShow {
+    // 形态可能已切换，先彻底清理上一次的残留视图
     [self teardownCurrentViews];
 
+    UIWindow *window = [self resolveWindow];
+    if (!window) {
+        SLOGW(@"No window available, ignoring show request");
+        return NO;
+    }
+
+    self.isFullscreen = self.host.viewState.isFullscreen;
+    if (self.isFullscreen) {
+        [self buildLandscapeViews];
+    } else {
+        [self buildPortraitViews];
+    }
+    [self rebuildItemsForFullscreen:self.isFullscreen];
+
+    if (self.stackView.arrangedSubviews.count == 0) {
+        SLOGW(@"No setting item available, ignoring show request");
+        [self teardownCurrentViews];
+        return NO;
+    }
+
+    [self mountPopupContainerInWindow:window];
+
+    SLOGI(@"Show menu (%@)", self.isFullscreen ? @"landscape right panel" : @"portrait bottom sheet");
+    return YES;
+}
+
+- (void)onPanelShown {
+    self.popupContainer.userInteractionEnabled = YES;
+}
+
+/// 退场动画期间先冻结交互，避免面板在滑出过程中被再次点击
+- (void)onPerformHideAnimation {
+    self.popupContainer.userInteractionEnabled = NO;
+    [super onPerformHideAnimation];
+}
+
+- (void)onPanelHidden {
+    [super onPanelHidden];
+    [self teardownCurrentViews];
+    SLOGI(@"Hide menu");
+}
+
+#pragma mark - Private Methods - Panel Mounting
+
+/// 优先取宿主视图所在窗口，其次退化到应用主窗口
+- (nullable UIWindow *)resolveWindow {
     UIWindow *window = [self.host hostView].window;
     if (!window) {
         window = UIApplication.sharedApplication.keyWindow;
     }
-    if (!window) {
-        self.isAnimating = NO;
-        return;
-    }
+    return window;
+}
 
-    [self buildPortraitViews];
-    [self rebuildItemsForFullscreen:NO];
-
-    if (self.stackView.arrangedSubviews.count == 0) {
-        [self teardownCurrentViews];
-        self.isAnimating = NO;
-        return;
-    }
-
+/**
+ * 把承载容器铺满窗口并挂载，同时把面板摆到"已显示"的终态位置。
+ * 隐藏态由基类通过 transform 平移到屏外，因此这里无需预置屏外 frame。
+ */
+- (void)mountPopupContainerInWindow:(UIWindow *)window {
     CGRect windowBounds = window.bounds;
-    CGFloat panelHeight = self.currentPortraitPanelHeight;
 
     self.popupContainer.frame = windowBounds;
+    // 进场动画结束后再放开交互（见 onPanelShown）
+    self.popupContainer.userInteractionEnabled = NO;
     [window addSubview:self.popupContainer];
 
-    self.dimmingView.frame = windowBounds;
-    self.contentPanel.frame = CGRectMake(0, windowBounds.size.height, windowBounds.size.width, panelHeight);
-
-    self.dimmingView.alpha = 0;
-    self.popupContainer.userInteractionEnabled = NO;
-
-    [UIView animateWithDuration:kAnimDuration
-                          delay:0
-                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
-                     animations:^{
-        self.dimmingView.alpha = kDimmingAlpha;
-        self.contentPanel.frame = CGRectMake(0, windowBounds.size.height - panelHeight, windowBounds.size.width, panelHeight);
-    } completion:^(BOOL finished) {
-        self.isAnimating = NO;
-        self.popupContainer.userInteractionEnabled = YES;
-    }];
-
-    SLOGI(@"Show menu (portrait bottom sheet)");
+    if (self.isFullscreen) {
+        self.contentPanel.frame = CGRectMake(windowBounds.size.width - kLandscapePanelWidth, 0,
+                                            kLandscapePanelWidth, windowBounds.size.height);
+    } else {
+        CGFloat panelHeight = self.currentPortraitPanelHeight;
+        self.contentPanel.frame = CGRectMake(0, windowBounds.size.height - panelHeight,
+                                            windowBounds.size.width, panelHeight);
+    }
 }
 
-- (void)hidePortraitMenu {
-    self.popupContainer.userInteractionEnabled = NO;
-
-    CGRect bounds = self.popupContainer.bounds;
-    CGFloat panelHeight = self.currentPortraitPanelHeight;
-
-    [UIView animateWithDuration:kAnimDuration
-                          delay:0
-                        options:UIViewAnimationOptionCurveEaseIn | UIViewAnimationOptionAllowUserInteraction
-                     animations:^{
-        self.dimmingView.alpha = 0;
-        self.contentPanel.frame = CGRectMake(0, bounds.size.height, bounds.size.width, panelHeight);
-    } completion:^(BOOL finished) {
-        [self teardownCurrentViews];
-        self.isAnimating = NO;
-    }];
-
-    SLOGI(@"Hide menu (portrait bottom sheet)");
-}
+#pragma mark - Private Methods - Portrait (Bottom Sheet)
 
 - (void)buildPortraitViews {
+    // 蒙层由基类持有，并在显示时插入到 panelHostView（即 popupContainer）的最底层
     self.popupContainer = [[UIView alloc] init];
     self.popupContainer.backgroundColor = [UIColor clearColor];
-
-    self.dimmingView = [[UIView alloc] init];
-    self.dimmingView.backgroundColor = [UIColor blackColor];
-    self.dimmingView.alpha = 0;
-    [self.popupContainer addSubview:self.dimmingView];
-
-    UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(dimmingViewTapped)];
-    [self.dimmingView addGestureRecognizer:tap];
 
     self.contentPanel = [[UIView alloc] init];
     self.contentPanel.backgroundColor = [PlayerColor settingPanelBackground];
@@ -418,82 +407,12 @@ static const CGFloat kLandscapePaddingBottom = 24.0;
     ]];
 }
 
-#pragma mark - Private Methods - Landscape (Right Panel on Self)
-
-- (void)showLandscapeMenu {
-    [self teardownCurrentViews];
-
-    UIWindow *window = [self.host hostView].window;
-    if (!window) {
-        window = UIApplication.sharedApplication.keyWindow;
-    }
-    if (!window) {
-        self.isAnimating = NO;
-        return;
-    }
-
-    [self buildLandscapeViews];
-    [self rebuildItemsForFullscreen:YES];
-
-    CGRect windowBounds = window.bounds;
-    CGFloat windowWidth = windowBounds.size.width;
-    CGFloat windowHeight = windowBounds.size.height;
-
-    self.popupContainer.frame = windowBounds;
-    [window addSubview:self.popupContainer];
-
-    self.dimmingView.frame = windowBounds;
-    self.contentPanel.frame = CGRectMake(windowWidth, 0, kLandscapePanelWidth, windowHeight);
-
-    self.dimmingView.alpha = 0;
-    self.popupContainer.userInteractionEnabled = NO;
-
-    [UIView animateWithDuration:kAnimDuration
-                          delay:0
-                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
-                     animations:^{
-        self.dimmingView.alpha = kDimmingAlpha;
-        self.contentPanel.frame = CGRectMake(windowWidth - kLandscapePanelWidth, 0, kLandscapePanelWidth, windowHeight);
-    } completion:^(BOOL finished) {
-        self.isAnimating = NO;
-        self.popupContainer.userInteractionEnabled = YES;
-    }];
-
-    SLOGI(@"Show menu (landscape right panel)");
-}
-
-- (void)hideLandscapeMenu {
-    self.popupContainer.userInteractionEnabled = NO;
-
-    CGRect bounds = self.popupContainer.bounds;
-    CGFloat windowWidth = bounds.size.width;
-    CGFloat windowHeight = bounds.size.height;
-
-    [UIView animateWithDuration:kAnimDuration
-                          delay:0
-                        options:UIViewAnimationOptionCurveEaseIn | UIViewAnimationOptionAllowUserInteraction
-                     animations:^{
-        self.dimmingView.alpha = 0;
-        self.contentPanel.frame = CGRectMake(windowWidth, 0, kLandscapePanelWidth, windowHeight);
-    } completion:^(BOOL finished) {
-        [self teardownCurrentViews];
-        self.isAnimating = NO;
-    }];
-
-    SLOGI(@"Hide menu (landscape right panel)");
-}
+#pragma mark - Private Methods - Landscape (Right Panel)
 
 - (void)buildLandscapeViews {
+    // 蒙层由基类持有，并在显示时插入到 panelHostView（即 popupContainer）的最底层
     self.popupContainer = [[UIView alloc] init];
     self.popupContainer.backgroundColor = [UIColor clearColor];
-
-    self.dimmingView = [[UIView alloc] init];
-    self.dimmingView.backgroundColor = [UIColor blackColor];
-    self.dimmingView.alpha = 0;
-    [self.popupContainer addSubview:self.dimmingView];
-
-    UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(dimmingViewTapped)];
-    [self.dimmingView addGestureRecognizer:tap];
 
     self.contentPanel = [[UIView alloc] init];
     self.contentPanel.backgroundColor = [PlayerColor settingPanelBackground];
@@ -565,11 +484,6 @@ static const CGFloat kLandscapePaddingBottom = 24.0;
         self.popupContainer = nil;
     }
 
-    if (self.dimmingView) {
-        [self.dimmingView.layer removeAllAnimations];
-        [self.dimmingView removeFromSuperview];
-        self.dimmingView = nil;
-    }
     if (self.contentPanel) {
         [self.contentPanel.layer removeAllAnimations];
         [self.contentPanel removeFromSuperview];
@@ -823,14 +737,6 @@ static const CGFloat kLandscapePaddingBottom = 24.0;
     }
 }
 
-- (void)dimmingViewTapped {
-    [self hideMenu];
-}
-
-- (void)bringToFront {
-    [self.superview bringSubviewToFront:self];
-}
-
 #pragma mark - Notification Handlers
 
 - (void)onLocaleDidChange:(NSNotification *)notification {
@@ -840,10 +746,8 @@ static const CGFloat kLandscapePaddingBottom = 24.0;
 }
 
 - (void)onAppDidEnterBackground:(NSNotification *)notification {
-    if ([self isMenuVisible]) {
-        [self teardownCurrentViews];
-        self.isAnimating = NO;
-    }
+    // 进入后台时动画不会执行，直接无动画收起，避免面板残留在窗口上
+    [self hidePanelAnimated:NO];
 }
 
 @end

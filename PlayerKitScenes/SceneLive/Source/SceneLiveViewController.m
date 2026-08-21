@@ -93,7 +93,6 @@
     // 3. 配置播放器组件数据
     VideoSource *source = [VideoSource urlSourceWithUrl:liveUrl];
     AliPlayerModel *model = [[AliPlayerModel alloc] initWithVideoSource:source];
-    model.videoTitle = @"Live Stream";
     model.sceneType = SceneTypeLive;
 
     // 4. 配置播放源并将控制器挂载到视图（挂载后自动开始播放）

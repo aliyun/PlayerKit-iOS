@@ -51,7 +51,7 @@
 
 ### **2.2 内置插槽类型**
 
-AliPlayerKit 内置 11 种插槽类型，按 Z-Order 从底到顶排列：
+AliPlayerKit 内置 13 种插槽类型，按 Z-Order 从底到顶排列：
 
 | 插槽类型 | 枚举值 | 说明 | 默认实现 |
 |---------|--------|------|---------|
@@ -63,9 +63,11 @@ AliPlayerKit 内置 11 种插槽类型，按 Z-Order 从底到顶排列：
 | 播放状态 | `SlotTypePlayState` (60) | 显示加载中/错误/播放完成等 | `PlayStateSlot` |
 | 日志面板 | `SlotTypeLogPanel` (70) | 调试时显示播放器日志 | `LogPanelSlot` |
 | 顶部控制栏 | `SlotTypeTopBar` (80) | 返回按钮/标题/设置按钮 | `TopBarSlot` |
+| 拖动预览 | `SlotTypeSeekThumbnail` (85) | 拖动进度条时显示缩略图预览 | `SeekThumbnailSlot` |
 | 底部控制栏 | `SlotTypeBottomBar` (90) | 播放暂停/进度条/全屏按钮 | `BottomBarSlot` |
 | 设置菜单 | `SlotTypeSettingMenu` (100) | 倍速/清晰度/镜像/旋转 | `SettingMenuSlot` |
 | 选项面板 | `SlotTypeOptionPanel` (110) | 倍速/清晰度选项弹出面板（最顶层） | `OptionPanelSlot` |
+| 章节面板 | `SlotTypeChapterPanel` (115) | 章节导航与 AI 内容展示面板 | `ChapterPanelSlot` |
 
 > **说明**：枚举值间隔为 10，以便后续插入新类型时不影响现有排序。枚举值同时决定了插槽的 Z 轴顺序（值越小越靠下）。通过 `SlotTypeName()` 函数可获取插槽类型的可读名称，`SlotTypeAllBuiltinTypes()` 函数可获取所有内置类型的有序数组。
 
@@ -73,11 +75,15 @@ AliPlayerKit 内置 11 种插槽类型，按 Z-Order 从底到顶排列：
 
 ```text
 ┌────────────────────────────────────────┐  ← 最顶层
+│       ChapterPanel (章节面板)          │  Z=115
+├────────────────────────────────────────┤
 │       OptionPanel (选项面板)            │  Z=110
 ├────────────────────────────────────────┤
 │       SettingMenu (设置菜单)            │  Z=100
 ├────────────────────────────────────────┤
 │       BottomBar (底部控制栏)            │  Z=90
+├────────────────────────────────────────┤
+│     SeekThumbnail (拖动预览)           │  Z=85
 ├────────────────────────────────────────┤
 │       TopBar (顶部控制栏)              │  Z=80
 ├────────────────────────────────────────┤
@@ -99,7 +105,7 @@ AliPlayerKit 内置 11 种插槽类型，按 Z-Order 从底到顶排列：
 
 ### **2.4 场景适配**
 
-AliPlayerKit 定义了 5 种播放场景，不同场景下插槽的可见性和行为自动适配。场景适配通过 `SlotConfig` 实现，`DefaultSlotFactory` 预置了所有内置插槽的默认配置。
+AliPlayerKit 定义了 6 种播放场景，不同场景下插槽的可见性和行为自动适配。场景适配通过 `SlotConfig` 实现，`DefaultSlotFactory` 预置了所有内置插槽的默认配置。
 
 | 场景 | 枚举值 | 说明 | 典型应用 |
 |-----|--------|------|---------|
@@ -108,33 +114,36 @@ AliPlayerKit 定义了 5 种播放场景，不同场景下插槽的可见性和�
 | VIDEO_LIST | `SceneTypeVideoList` | 列表播放场景，禁用垂直手势 | 信息流、短视频列表 |
 | RESTRICTED | `SceneTypeRestricted` | 受限播放场景，限制跳跃播放 | 教育培训、考试监控 |
 | MINIMAL | `SceneTypeMinimal` | 最小化播放场景，仅显示视频画面 | 背景视频、装饰视频 |
+| AI_VOD | `SceneTypeAIVod` | AI 视频点播场景，支持所有 VOD 功能 | AI 教育、互动点播 |
 
 **插槽可见性规则**（由 `DefaultSlotFactory.defaultConfigs` 定义）：
 
-| 插槽 | VOD | LIVE | VIDEO_LIST | RESTRICTED | MINIMAL |
-|------|-----|------|------------|------------|---------|
-| PlayerSurface | ✓ | ✓ | ✓ | ✓ | ✓ |
-| GestureControl | ✓ | ✓ | ✓ | ✓ | ✗ |
-| LandscapeHint | ✓ | ✓ | ✓ | ✓ | ✗ |
-| Cover | ✓ | ✗ | ✓ | ✗ | ✗ |
-| CenterDisplay | ✓ | ✓ | ✓ | ✓ | ✗ |
-| PlayState | ✓ | ✓ | ✓ | ✓ | ✓ |
-| LogPanel | 可配置 | 可配置 | 可配置 | 可配置 | ✗ |
-| TopBar | ✓ | ✓ | ✓ | ✓ | ✗ |
-| BottomBar | ✓ | ✓ | ✓ | ✓ | ✗ |
-| SettingMenu | ✓ | ✓ | ✓ | ✓ | ✗ |
-| OptionPanel | ✓ | ✓ | ✓ | ✓ | ✗ |
+| 插槽 | VOD | LIVE | VIDEO_LIST | RESTRICTED | MINIMAL | AI_VOD |
+|------|-----|------|------------|------------|---------|--------|
+| PlayerSurface | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| GestureControl | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| LandscapeHint | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| Cover | ✓ | ✗ | ✓ | ✗ | ✗ | ✓ |
+| CenterDisplay | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| PlayState | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| LogPanel | 可配置 | 可配置 | 可配置 | 可配置 | ✗ | 可配置 |
+| TopBar | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| SeekThumbnail | ✓ | ✗ | ✓ | ✗ | ✗ | ✓ |
+| BottomBar | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| SettingMenu | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| OptionPanel | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| ChapterPanel | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
 
 **手势行为差异**：
 
-| 手势 | VOD | LIVE | VIDEO_LIST | RESTRICTED | MINIMAL |
-|------|-----|------|------------|------------|---------|
-| 单击 | 显示/隐藏控制栏 | 显示/隐藏控制栏 | 显示/隐藏控制栏 | 显示/隐藏控制栏 | 禁用 |
-| 双击 | 切换播放/暂停 | 切换播放/暂停 | 切换播放/暂停 | 切换播放/暂停 | 禁用 |
-| 长按 | 2倍速播放 | 禁用 | 2倍速播放 | 禁用 | 禁用 |
-| 水平拖动 | 进度跳转 | 禁用 | 进度跳转 | 禁用 | 禁用 |
-| 左侧垂直拖动 | 亮度调节 | 亮度调节 | 禁用 | 亮度调节 | 禁用 |
-| 右侧垂直拖动 | 音量调节 | 音量调节 | 禁用 | 音量调节 | 禁用 |
+| 手势 | VOD | LIVE | VIDEO_LIST | RESTRICTED | MINIMAL | AI_VOD |
+|------|-----|------|------------|------------|---------|--------|
+| 单击 | 显示/隐藏控制栏 | 显示/隐藏控制栏 | 显示/隐藏控制栏 | 显示/隐藏控制栏 | 禁用 | 显示/隐藏控制栏 |
+| 双击 | 切换播放/暂停 | 切换播放/暂停 | 切换播放/暂停 | 切换播放/暂停 | 禁用 | 切换播放/暂停 |
+| 长按 | 2倍速播放 | 禁用 | 2倍速播放 | 禁用 | 禁用 | 2倍速播放 |
+| 水平拖动 | 进度跳转 | 禁用 | 进度跳转 | 禁用 | 禁用 | 进度跳转 |
+| 左侧垂直拖动 | 亮度调节 | 亮度调节 | 禁用 | 亮度调节 | 禁用 | 亮度调节 |
+| 右侧垂直拖动 | 音量调节 | 音量调节 | 禁用 | 音量调节 | 禁用 | 音量调节 |
 
 ---
 
@@ -287,11 +296,11 @@ SlotConfig *coverConfig = [SlotConfig configWithSlotType:SlotTypeCover
                                          excludedScenes:[NSSet setWithObjects:@(SceneTypeLive), @(SceneTypeRestricted), nil]];
 [slotManager registerSlotConfig:coverConfig];
 
-// 使用 visibilityCondition 进行动态可见性控制
+// 使用 visibilityCondition 进行动态可见性控制（LogPanel 默认创建也受此开关控制，见 DefaultSlotFactory）
 SlotConfig *logConfig = [SlotConfig configWithSlotType:SlotTypeLogPanel
                                        excludedScenes:[NSSet setWithObject:@(SceneTypeMinimal)]
                                   visibilityCondition:^BOOL{
-    return [AliPlayerKit isDebugModeEnabled];
+    return [AliPlayerKit isLogPanelEnabled];
 }];
 [slotManager registerSlotConfig:logConfig];
 
@@ -738,13 +747,13 @@ Slot → Command → Controller（命令上行，只发）
 
 ### **7.4 底部控制栏场景差异**
 
-| 控件 | VOD | LIVE | VIDEO_LIST | RESTRICTED | MINIMAL |
-|------|-----|------|------------|------------|--------|
-| 播放/暂停按钮 | ✓ | ✓ | ✓ | ✓ | ✗ |
-| 进度条 | 可拖拽 | 不可拖拽 | 可拖拽 | 不可拖拽 | ✗ |
-| 时间显示 | ✓ | ✓ | ✓ | ✓ | ✗ |
-| 刷新按钮 | ✗ | ✓ | ✗ | ✗ | ✗ |
-| 全屏按钮 | ✓ | ✓ | ✓ | ✓ | ✗ |
+| 控件 | VOD | LIVE | VIDEO_LIST | RESTRICTED | MINIMAL | AI_VOD |
+|------|-----|------|------------|------------|--------|--------|
+| 播放/暂停按钮 | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| 进度条 | 可拖拽 | 不可拖拽 | 可拖拽 | 不可拖拽 | ✗ | 可拖拽 |
+| 时间显示 | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| 刷新按钮 | ✗ | ✓ | ✗ | ✗ | ✗ | ✗ |
+| 全屏按钮 | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
 
 ---
 
