@@ -12,7 +12,7 @@
 NSString * const AiContentAppServerBaseURL = @"https://vodappserver-gwzwacvbyf.cn-shanghai.fcapp.run";
 
 // 默认演示视频 MediaId
-NSString * const AiContentDefaultMediaId = @"30158cf1907c71f180176723a78f0102";
+NSString * const AiContentDefaultMediaId = @"2042d63ea5c771f19a6b4531859c0102";
 
 // 接口参数名常量
 NSString * const AiContentParamVideoId    = @"videoId";
