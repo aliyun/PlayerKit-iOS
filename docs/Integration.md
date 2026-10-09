@@ -21,7 +21,7 @@ AliPlayerKit 采用分层架构设计，根据集成深度提供两种方案：
 
 > **说明**：场景层依赖组件层。若选择场景层集成，需先完成组件层集成。
 
-![Integration](https://alivc-demo-cms.alicdn.com/versionProduct/installPackage/AliPlayerKit/iOS/Integration.png)
+![Integration](_media/Integration.png)
 
 ---
 

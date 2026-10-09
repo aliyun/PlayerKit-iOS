@@ -21,7 +21,7 @@ AliPlayerKit adopts a layered architecture design, offering two integration opti
 
 > **Note**: The scene layer depends on the component layer. If you choose scene layer integration, you must complete the component layer integration first.
 
-![Integration](https://alivc-demo-cms.alicdn.com/versionProduct/installPackage/AliPlayerKit/iOS/Integration-EN.png)
+![Integration](_media/Integration-EN.png)
 
 ---
 

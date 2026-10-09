@@ -30,7 +30,7 @@ AliPlayerKit is designed to provide developers with an **out-of-the-box yet high
 
 Architecturally, **AliPlayerKit sits above the player engine**, providing a unified UI component system and playback scenario abstraction that carries common capabilities across different playback use cases:
 
-![ProductArchitecture](https://alivc-demo-cms.alicdn.com/versionProduct/installPackage/AliPlayerKit/iOS/ProductArchitecture-EN.png)
+![ProductArchitecture](_media/ProductArchitecture-EN.png)
 
 | Layer | Positioning | Module Location | Responsibilities |
 |-------|------------|-----------------|-----------------|
@@ -54,7 +54,7 @@ AliPlayerKit adopts a **"3 + 1" core architecture design** to build the player f
 
 ### **2.2 Architecture Diagram**
 
-![InterfaceDesign](https://alivc-demo-cms.alicdn.com/versionProduct/installPackage/AliPlayerKit/iOS/InterfaceDesign-EN.png)
+![InterfaceDesign](_media/InterfaceDesign-EN.png)
 
 ### **2.3 Component Responsibilities**
 
@@ -261,7 +261,7 @@ classDiagram
 
 ### **2.6 Call Sequence**
 
-![CallSequence](https://alivc-demo-cms.alicdn.com/versionProduct/installPackage/AliPlayerKit/iOS/CallSequence-EN.png)
+![CallSequence](_media/CallSequence-EN.png)
 
 > **Quick Integration**: For the complete integration steps, see [Quick Start](./QuickStart-EN.md).
 

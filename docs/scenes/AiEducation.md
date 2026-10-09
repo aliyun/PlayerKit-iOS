@@ -10,7 +10,7 @@
 
 无论是在线课程、职业培训、企业学习，还是知识付费和学术讲座，都可以借助该方案提升学习效率和观看体验，盘活存量视频内容，并降低播放器与 AI 功能的接入和建设成本。
 
-![AiEducation](https://alivc-demo-cms.alicdn.com/versionProduct/resources/ai_education/ai-education-ui-preview.png)
+![AiEducation](../_media/ai_education/ai-education-ui-preview.png)
 
 ---
 
@@ -92,7 +92,7 @@ AI 教育场景由客户端、App Server、ICE / AI 工作流和 VOD 服务共�
 
 其中，VOD 负责媒资及 AI 分析结果的统一存储；ICE / AI 工作流负责内容理解和结构化分析；App Server 对服务端能力进行封装，并向客户端提供统一接口。
 
-![ProductArchitecture](https://alivc-demo-cms.alicdn.com/versionProduct/resources/ai_education/ProductArchitecture.png)
+![ProductArchitecture](../_media/ai_education/ProductArchitecture.png)
 
 ### **5.2 客户端交互流程**
 
@@ -100,7 +100,7 @@ AI 教育场景由客户端、App Server、ICE / AI 工作流和 VOD 服务共�
 
 页面初始化时，客户端依次获取播放凭证和 AI 分析结果；数据加载完成后，用户可以通过章节内容面板查看章节、摘要和知识点，并跳转到对应的视频位置。
 
-![CallSequence](https://alivc-demo-cms.alicdn.com/versionProduct/resources/ai_education/CallSequence.png)
+![CallSequence](../_media/ai_education/CallSequence.png)
 
 当 AI 分析接口请求失败或结果为空时，客户端仍可使用播放凭证完成普通视频播放，但不展示章节和 AI 分析面板。
 
@@ -110,7 +110,7 @@ AI 教育场景由客户端、App Server、ICE / AI 工作流和 VOD 服务共�
 
 场景层负责页面编排、数据加载和 AI 内容展示；PlayerKit 通过 Slot 机制提供播放器控制栏入口及面板扩展能力；底层播放器 SDK 负责媒资播放、进度控制和播放状态回调。
 
-![LayeredArchitecture](https://alivc-demo-cms.alicdn.com/versionProduct/resources/ai_education/LayeredArchitecture-iOS.png)
+![LayeredArchitecture](../_media/ai_education/LayeredArchitecture-iOS.png)
 
 ---
 

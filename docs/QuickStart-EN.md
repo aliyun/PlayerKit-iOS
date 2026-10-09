@@ -18,7 +18,7 @@ Get video playback up and running in just a few steps!
 
 The diagram below shows the basic flow for **Component Layer integration**:
 
-![QuickStart](https://alivc-demo-cms.alicdn.com/versionProduct/installPackage/AliPlayerKit/iOS/QuickStart-EN.png)
+![QuickStart](_media/QuickStart-EN.png)
 
 ---
 

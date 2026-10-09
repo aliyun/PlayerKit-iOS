@@ -1,10 +1,10 @@
 Language: 中文简体 | [English](README-EN.md)
 
-![alibaba_cloud_logo](https://alivc-demo-cms.alicdn.com/versionProduct/installPackage/AliPlayerKit/AlibabaCloud.svg)
+![alibaba_cloud_logo](./docs/_media/AlibabaCloud.svg)
 
 # **AliPlayerKit iOS**
 
-[![Platform](https://img.shields.io/badge/Platform-iOS%209.0%2B-blue.svg)](https://developer.apple.com/ios/) [![Language](https://img.shields.io/badge/Language-Objective--C-orange.svg)](https://developer.apple.com/documentation/objectivec) [![CocoaPods](https://img.shields.io/badge/CocoaPods-compatible-green.svg)](https://cocoapods.org/) [![website](https://img.shields.io/badge/Product-VOD-FF6A00)](https://www.aliyun.com/product/vod)
+[![Release](https://img.shields.io/github/v/release/aliyun/PlayerKit-iOS?logo=github)](https://github.com/aliyun/PlayerKit-iOS/releases) [![Platform](https://img.shields.io/badge/Platform-iOS%209.0%2B-blue.svg)](https://developer.apple.com/ios/) [![Language](https://img.shields.io/badge/Language-Objective--C-orange.svg)](https://developer.apple.com/documentation/objectivec) [![CocoaPods](https://img.shields.io/badge/CocoaPods-compatible-green.svg)](https://cocoapods.org/) [![website](https://img.shields.io/badge/Product-VOD-FF6A00)](https://www.aliyun.com/product/vod)
 
 ---
 
@@ -14,7 +14,7 @@ Language: 中文简体 | [English](README-EN.md)
 
 <p align="center">
   <img
-    src="https://alivc-demo-cms.alicdn.com/versionProduct/installPackage/AliPlayerKit/playerkit-ui-preview.png"
+    src="./docs/_media/playerkit-ui-preview.png"
     alt="AliPlayerKit UI 组件预览"
     width="100%"
   />
@@ -49,7 +49,7 @@ Language: 中文简体 | [English](README-EN.md)
 
 在架构层级上，**AliPlayerKit 位于播放器内核之上**，通过统一的 UI 组件体系与播放场景抽象，承载不同播放业务的共性能力：
 
-![ProductArchitecture](https://alivc-demo-cms.alicdn.com/versionProduct/installPackage/AliPlayerKit/iOS/ProductArchitecture.png)
+![ProductArchitecture](./docs/_media/ProductArchitecture.png)
 
 项目模块结构如下：
 
@@ -100,7 +100,7 @@ AliPlayerKit 采用 **分层架构设计**，提供两种接入方式，您可�
 
 只需几步，您就可以轻松实现视频播放功能！下图展示了 **组件层接入** 的流程：
 
-![QuickStart](https://alivc-demo-cms.alicdn.com/versionProduct/installPackage/AliPlayerKit/iOS/QuickStart.png)
+![QuickStart](./docs/_media/QuickStart.png)
 
 > **详细步骤**：请参阅 [快速开始](./docs/QuickStart.md)。如需了解更多内容，请参考 [文档目录](./docs/README.md)。
 
@@ -154,7 +154,7 @@ pod install
 
 使用手机扫描以下二维码，即可快速下载并安装演示包：
 
-![Demo QR Code](https://alivc-demo-cms.alicdn.com/versionProduct/installPackage/AliPlayerKit/demo-qr-code.png)
+![Demo QR Code](./docs/_media/demo-qr-code.png)
 
 > **注意**：二维码链接指向最新版本的演示包，请确保您的设备已开启允许安装第三方应用的权限。
 
@@ -173,7 +173,7 @@ AliPlayerKit 基于阿里云音视频能力构建，建议结合云产品使用�
 
 ## **9. 联系我们**
 
-- 📘 **官方文档**：[播放器帮助中心](https://help.aliyun.com/zh/vod/)
+- 📘 **官方文档**：[播放器含 UI 集成方案](https://help.aliyun.com/zh/vod/developer-reference/playerkit-ios-project-introduction)
 - 🔍 **控制台**：[视频点播控制台](https://vod.console.aliyun.com)
 - 📝 **提交工单**：[阿里云官方技术支持](https://smartservice.console.aliyun.com/service/create-ticket)
 - 💬 **GitHub Issues**：[欢迎提交反馈与建议](https://github.com/aliyun/PlayerKit-iOS/issues)

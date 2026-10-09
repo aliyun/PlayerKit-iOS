@@ -1,10 +1,10 @@
 Language: [中文简体](README.md) | English
 
-![alibaba_cloud_logo](https://alivc-demo-cms.alicdn.com/versionProduct/installPackage/AliPlayerKit/AlibabaCloud.svg)
+![alibaba_cloud_logo](./docs/_media/AlibabaCloud.svg)
 
 # **AliPlayerKit iOS**
 
-[![Platform](https://img.shields.io/badge/Platform-iOS%209.0%2B-blue.svg)](https://developer.apple.com/ios/) [![Language](https://img.shields.io/badge/Language-Objective--C-orange.svg)](https://developer.apple.com/documentation/objectivec) [![CocoaPods](https://img.shields.io/badge/CocoaPods-compatible-green.svg)](https://cocoapods.org/) [![website](https://img.shields.io/badge/Product-VOD-FF6A00)](https://www.alibabacloud.com/en/product/apsaravideo-for-vod)
+[![Release](https://img.shields.io/github/v/release/aliyun/PlayerKit-iOS?logo=github)](https://github.com/aliyun/PlayerKit-iOS/releases) [![Platform](https://img.shields.io/badge/Platform-iOS%209.0%2B-blue.svg)](https://developer.apple.com/ios/) [![Language](https://img.shields.io/badge/Language-Objective--C-orange.svg)](https://developer.apple.com/documentation/objectivec) [![CocoaPods](https://img.shields.io/badge/CocoaPods-compatible-green.svg)](https://cocoapods.org/) [![website](https://img.shields.io/badge/Product-VOD-FF6A00)](https://www.alibabacloud.com/en/product/apsaravideo-for-vod)
 
 ---
 
@@ -14,7 +14,7 @@ Language: [中文简体](README.md) | English
 
 <p align="center">
   <img
-    src="https://alivc-demo-cms.alicdn.com/versionProduct/installPackage/AliPlayerKit/playerkit-ui-preview.png"
+    src="./docs/_media/playerkit-ui-preview.png"
     alt="AliPlayerKit UI preview"
     width="100%"
   />
@@ -49,7 +49,7 @@ By encapsulating player capabilities and UI interactions, it enables rapid devel
 
 In terms of architecture, **AliPlayerKit sits on top of the player core**, providing a unified UI component system and playback scenario abstraction to host the common capabilities of various playback businesses:
 
-![ProductArchitecture](https://alivc-demo-cms.alicdn.com/versionProduct/installPackage/AliPlayerKit/iOS/ProductArchitecture-EN.png)
+![ProductArchitecture](./docs/_media/ProductArchitecture-EN.png)
 
 The project module structure is as follows:
 
@@ -100,7 +100,7 @@ AliPlayerKit adopts a **layered architecture design** and provides two integrati
 
 In just a few steps, you can easily implement video playback. The diagram below shows the **component layer integration** flow:
 
-![QuickStart](https://alivc-demo-cms.alicdn.com/versionProduct/installPackage/AliPlayerKit/iOS/QuickStart-EN.png)
+![QuickStart](./docs/_media/QuickStart-EN.png)
 
 > **Detailed Steps**: See [Quick Start](./docs/QuickStart-EN.md). For more information, refer to the [Documentation Index](./docs/README-EN.md).
 
@@ -154,7 +154,7 @@ To help developers quickly experience the features of AliPlayerKit, we have buil
 
 Scan the following QR code with your phone to quickly download and install the demo:
 
-![Demo QR Code](https://alivc-demo-cms.alicdn.com/versionProduct/installPackage/AliPlayerKit/demo-qr-code_en.png)
+![Demo QR Code](./docs/_media/demo-qr-code_en.png)
 
 > **Note**: The QR code points to the latest version of the demo. Please ensure that your device allows the installation of third-party applications.
 
@@ -173,7 +173,7 @@ AliPlayerKit is built on top of Alibaba Cloud's audio and video capabilities. We
 
 ## **9. Contact Us**
 
-- 📘 **Official Documentation**: [Player Help Center](https://www.alibabacloud.com/help/en/apsara-video-sdk/)
+- 📘 **Official Documentation**: [Player UI Integration Solution](https://www.alibabacloud.com/help/en/vod/developer-reference/playerkit-ios-project-introduction)
 - 🔍 **Console**: [ApsaraVideo for VOD Console](https://vod.console.alibabacloud.com)
 - 📝 **Submit a Ticket**: [Alibaba Cloud Official Technical Support](https://smartservice.console.alibabacloud.com/service/create-ticket)
 - 💬 **GitHub Issues**: [Feedback and suggestions are welcome](https://github.com/aliyun/PlayerKit-iOS/issues)

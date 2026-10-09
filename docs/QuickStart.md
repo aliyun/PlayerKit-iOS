@@ -18,7 +18,7 @@
 
 下图展示了 **组件层接入** 的基本流程：
 
-![QuickStart](https://alivc-demo-cms.alicdn.com/versionProduct/installPackage/AliPlayerKit/iOS/QuickStart.png)
+![QuickStart](_media/QuickStart.png)
 
 ---
 

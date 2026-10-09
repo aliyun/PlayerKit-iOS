@@ -30,7 +30,7 @@ AliPlayerKit 的设计目标是为开发者提供一套**开箱即用且高度�
 
 在架构层级上，**AliPlayerKit 位于播放器内核之上**，通过统一的 UI 组件体系与播放场景抽象，承载不同播放业务的共性能力：
 
-![ProductArchitecture](https://alivc-demo-cms.alicdn.com/versionProduct/installPackage/AliPlayerKit/iOS/ProductArchitecture.png)
+![ProductArchitecture](_media/ProductArchitecture.png)
 
 | 层级 | 定位 | 模块位置 | 职责 |
 |------|------|---------|------|
@@ -54,7 +54,7 @@ AliPlayerKit 采用 **「3 + 1」核心架构设计** 构建播放器框架：
 
 ### **2.2 架构关系图**
 
-![InterfaceDesign](https://alivc-demo-cms.alicdn.com/versionProduct/installPackage/AliPlayerKit/iOS/InterfaceDesign.png)
+![InterfaceDesign](_media/InterfaceDesign.png)
 
 ### **2.3 组件职责**
 
@@ -261,7 +261,7 @@ classDiagram
 
 ### **2.6 调用时序**
 
-![CallSequence](https://alivc-demo-cms.alicdn.com/versionProduct/installPackage/AliPlayerKit/iOS/CallSequence.png)
+![CallSequence](_media/CallSequence.png)
 
 > **快速接入**：完整接入步骤请参阅 [快速开始](./QuickStart.md)。
 

@@ -10,7 +10,7 @@ It uses the player as a unified entry point, with ApsaraVideo VOD providing vide
 
 Whether for online courses, professional training, corporate learning, knowledge-based subscriptions, or academic lectures, this solution improves learning efficiency and viewing experience, revitalizes existing video content, and reduces the cost of integrating player and AI capabilities.
 
-![AiEducation](https://alivc-demo-cms.alicdn.com/versionProduct/resources/ai_education/ai-education-ui-preview.png)
+![AiEducation](../_media/ai_education/ai-education-ui-preview.png)
 
 ---
 
@@ -92,7 +92,7 @@ The global business flow describes the complete pipeline from AI analysis result
 
 VOD is responsible for unified storage of media assets and AI analysis results; ICE/AI workflow handles content understanding and structured analysis; App Server encapsulates server-side capabilities and provides unified interfaces to the client.
 
-![ProductArchitecture](https://alivc-demo-cms.alicdn.com/versionProduct/resources/ai_education/ProductArchitecture-EN.png)
+![ProductArchitecture](../_media/ai_education/ProductArchitecture-EN.png)
 
 ### **5.2 Client Interaction Flow**
 
@@ -100,7 +100,7 @@ The client interaction flow describes the calling relationships between the clie
 
 During page initialization, the client sequentially obtains play credentials and AI analysis results; after data loading completes, users can view chapters, summaries, and knowledge points through the chapter content panel and jump to corresponding video positions.
 
-![CallSequence](https://alivc-demo-cms.alicdn.com/versionProduct/resources/ai_education/CallSequence-EN.png)
+![CallSequence](../_media/ai_education/CallSequence-EN.png)
 
 When the AI analysis request fails or returns empty results, the client can still use play credentials for normal video playback without displaying the chapter and AI analysis panel.
 
@@ -110,7 +110,7 @@ The client adopts a layered design with the Scene layer, PlayerKit capability la
 
 The Scene layer handles page orchestration, data loading, and AI content display; PlayerKit provides player control bar entry and panel extension capabilities through the Slot mechanism; the underlying Player SDK handles media playback, progress control, and playback state callbacks.
 
-![LayeredArchitecture](https://alivc-demo-cms.alicdn.com/versionProduct/resources/ai_education/LayeredArchitecture-iOS-EN.png)
+![LayeredArchitecture](../_media/ai_education/LayeredArchitecture-iOS-EN.png)
 
 ---
 
