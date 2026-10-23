@@ -144,10 +144,10 @@ NS_ASSUME_NONNULL_BEGIN
 /**
  * @brief 章节信息列表，默认为 nil。
  *
- * @discussion 仅在 SceneTypeAIVod 场景下使用，
- *             由 AI 内容理解服务返回的章节划分结果注入，
- *             供章节入口按钮与章节面板等 UI 组件按需读取。
- *             其他场景下设置此属性不产生任何效果。
+ * @discussion 章节为通用能力：非 LIVE/MINIMAL 场景下且此列表非空时生效，
+ *             供章节 Chip、章节标记点与章节面板等 UI 组件按需读取。
+ *             LIVE/MINIMAL 场景下设置此属性不产生任何效果；
+ *             RESTRICTED 场景下章节仅只读展示，点击不发起跳转。
  *
  * @see ChapterInfo
  * @see SceneType

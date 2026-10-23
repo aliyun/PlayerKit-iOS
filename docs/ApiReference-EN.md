@@ -224,7 +224,7 @@ AliPlayerKit provides a rich set of APIs that allow developers to directly contr
 | `allowScreenSleep` | `BOOL` | `NO` | Whether to allow screen sleep |
 | `disableScreenshot` | `BOOL` | `NO` | Whether to disable screenshot/screen recording (iOS-specific) |
 | `onPlayerConfigBlock` | `void (^)(id<MediaPlayer>)` | `nil` | Instance-level custom configuration callback |
-| `chapters` | `NSArray<ChapterInfo *> *` (nullable) | `nil` | Chapter information list (only effective in SceneTypeAIVod scene) |
+| `chapters` | `NSArray<ChapterInfo *> *` (nullable) | `nil` | Chapter information list (effective in non-LIVE/MINIMAL scenes with non-empty data; read-only under RESTRICTED scene) |
 
 ### **5.2 Creation Methods**
 

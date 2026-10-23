@@ -224,7 +224,7 @@ AliPlayerKit 提供了丰富的 API 接口，方便开发者直接控制播放�
 | `allowScreenSleep` | `BOOL` | `NO` | 是否允许屏幕休眠 |
 | `disableScreenshot` | `BOOL` | `NO` | 是否禁止截屏/录屏（iOS 特有） |
 | `onPlayerConfigBlock` | `void (^)(id<MediaPlayer>)` | `nil` | 实例级自定义配置回调 |
-| `chapters` | `NSArray<ChapterInfo *> *`（nullable） | `nil` | 章节信息列表（仅 SceneTypeAIVod 场景有效） |
+| `chapters` | `NSArray<ChapterInfo *> *`（nullable） | `nil` | 章节信息列表（非 LIVE/MINIMAL 场景且非空时生效；RESTRICTED 场景仅只读展示） |
 
 ### **5.2 创建方法**
 

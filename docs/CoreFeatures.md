@@ -449,7 +449,7 @@ AliPlayerKit 在播放器 prepared 后自动从云端 MediaInfo 中提取以下�
 | `BottomBarSlot` 章节标记 | 进度条上直观展示视频内容结构的拆分点 |
 | `ChapterPanelSlot` | 全屏右侧滑入结构化内容导航面板，支持点击快速跳转到目标片段 |
 
-**场景限定：** 仅在 `SceneTypeAIVod` 场景下生效。
+**生效条件：** 非 LIVE/MINIMAL 场景且章节数据非空。RESTRICTED 场景下章节仅只读展示：全局禁止 Seek（含进度条拖拽、章节跳转等，请求在命令层被拦截并记录日志），章节点击不发起跳转。
 
 ### **3.13 场景类型**
 

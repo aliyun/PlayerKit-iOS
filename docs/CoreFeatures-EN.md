@@ -449,7 +449,7 @@ Intelligently splits long videos into multiple chapter segments based on content
 | `BottomBarSlot` chapter markers | Intuitively displays content structure split points on the progress bar |
 | `ChapterPanelSlot` | Fullscreen right-side slide-in structured content navigation panel with tap-to-seek to target segment |
 
-**Scene Restriction:** Only takes effect under the `SceneTypeAIVod` scene.
+**Effective Conditions:** Non-LIVE/MINIMAL scene with non-empty chapter data. Under the RESTRICTED scene, chapters are read-only: Seek is disabled globally (including progress bar dragging and chapter jumps; requests are intercepted and logged at the command layer), and chapter taps do not trigger seeking.
 
 ### **3.13 Scene Types**
 
