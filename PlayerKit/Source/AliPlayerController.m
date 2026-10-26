@@ -164,8 +164,22 @@
 }
 
 - (void)seekTo:(NSInteger)position {
+    // 场景门卫：直播/受限播放场景禁止 Seek，直接拦截，不透传至底层播放器。
+    if ([self isSeekDisabledScene]) {
+        SLOGW(@"[LC][seekTo] Seek is disabled in current scene (type=%ld), "
+              "ignored, position=%ldms",
+              (long)self.playerModel.sceneType, (long)position);
+        return;
+    }
+
     if (!self.mediaPlayer) return;
     [self.mediaPlayer seekTo:position];
+}
+
+// 禁止 Seek 的场景：直播（无固定时长）与受限播放（只读防拖动）。
+- (BOOL)isSeekDisabledScene {
+    SceneType sceneType = self.playerModel.sceneType;
+    return sceneType == SceneTypeLive || sceneType == SceneTypeRestricted;
 }
 
 - (void)setRate:(float)rate {

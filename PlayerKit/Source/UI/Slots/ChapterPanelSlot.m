@@ -333,13 +333,15 @@ static NSString *const kChapterCellIdentifier = @"ChapterPanelCell";
 - (void)onBindData:(AliPlayerModel *)model {
     [super onBindData:model];
 
-    if (model.sceneType == SceneTypeAIVod && model.chapters.count >= 2) {
+    // 章节能力：非 LIVE/MINIMAL 场景且章节数据非空（章节为通用能力）
+    SceneType sceneType = model.sceneType;
+    if (sceneType != SceneTypeLive && sceneType != SceneTypeMinimal &&
+        model.chapters.count > 0) {
         self.chapters = model.chapters;
-        self.currentChapterIndex = -1;
     } else {
         self.chapters = nil;
-        self.currentChapterIndex = -1;
     }
+    self.currentChapterIndex = -1;
 }
 
 - (void)onUnbindData {

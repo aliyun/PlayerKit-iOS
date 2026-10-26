@@ -95,7 +95,6 @@ static const CGFloat kChapterChipViewHeight = 40.0;
 @property (nonatomic, strong) ChapterChipView *chapterChipView;
 @property (nonatomic, strong) NSLayoutConstraint *chapterChipBottomPortrait;
 @property (nonatomic, assign) NSInteger lastChapterIndex;
-@property (nonatomic, assign) BOOL chapterFeaturesEnabled;
 
 // 全屏章节文本导航（横屏：当前章节文本 + 下一章按钮）
 @property (nonatomic, strong) UIStackView *chapterNavStack;
@@ -178,29 +177,29 @@ static const CGFloat kChapterChipViewHeight = 40.0;
     [super onBindData:model];
     [self resetProgressUI];
     [self updatePlayPauseState];
-    [self updateLayoutForFullscreen:self.host.viewState.isFullscreen];
     AliPlayerController *controller = self.host.controller;
     [controller setControlsVisible:YES];
 
-    // AI_VOD 章节功能初始化
-    if (model.sceneType == SceneTypeAIVod && model.chapters.count >= 2) {
+    // 章节功能初始化：非 LIVE/MINIMAL 场景且章节数据非空（章节为通用能力）
+    SceneType sceneType = [self currentSceneType];
+    if (sceneType != SceneTypeLive && sceneType != SceneTypeMinimal &&
+        model.chapters.count > 0) {
         self.chapters = model.chapters;
-        self.chapterFeaturesEnabled = YES;
         self.lastChapterIndex = -1;
         [self setupChapterViewsIfNeeded];
         [self.chapterChipView setChapters:self.chapters duration:0];
-    } else {
-        self.chapterFeaturesEnabled = NO;
-        self.chapters = nil;
-        self.lastChapterIndex = -1;
+        // 换源重绑：隐藏两套标记点，清理横屏章节标题，
+        // 防止新视频 Prepared 前误用旧视频的章节状态
         self.chapterMarkerView.hidden = YES;
         self.chapterMarkerViewLandscape.hidden = YES;
-        self.chapterChipView.hidden = YES;
-
-        if (self.chapterNavStack) {
-            self.chapterNavStack.hidden = YES;
-        }
+        [self.chapterTextButton setTitle:nil forState:UIControlStateNormal];
+    } else {
+        // 无章节数据：清理全部章节 UI
+        [self clearChapterState];
     }
+
+    // 按当前全屏状态同步布局与章节视图（容器切换、横屏导航创建、Chip 可见性）
+    [self updateLayoutForFullscreen:self.host.viewState.isFullscreen];
 }
 
 - (void)onUnbindData {
@@ -274,7 +273,7 @@ static const CGFloat kChapterChipViewHeight = 40.0;
     }
 
     // 章节导航条点击检测（竖屏/横屏均需响应）
-    if (self.chapterFeaturesEnabled && self.chapterChipView && !self.chapterChipView.hidden) {
+    if ([self isChapterAvailable] && self.chapterChipView && !self.chapterChipView.hidden) {
         CGPoint chipPoint = [self.chapterChipView convertPoint:point fromView:self];
 
         if ([self.chapterChipView pointInside:chipPoint withEvent:event]) {
@@ -288,7 +287,7 @@ static const CGFloat kChapterChipViewHeight = 40.0;
 
     if (self.isLandscapeLayout) {
         // 全屏章节导航文本点击优先级提升（对齐竖屏 chapterChipView 的处理逻辑）
-        if (self.chapterFeaturesEnabled && self.chapterNavStack && !self.chapterNavStack.hidden) {
+        if ([self isChapterAvailable] && self.chapterNavStack && !self.chapterNavStack.hidden) {
             CGPoint navPoint = [self.chapterNavStack convertPoint:point fromView:self];
 
             if ([self.chapterNavStack pointInside:navPoint withEvent:event]) {
@@ -326,7 +325,7 @@ static const CGFloat kChapterChipViewHeight = 40.0;
 
 - (void)playerDidPreparedWithDuration:(NSInteger)duration {
     // 章节标记需要 duration 信息，延迟到收到 duration 后再应用
-    if (self.chapterFeaturesEnabled && duration > 0) {
+    if ([self isChapterAvailable] && duration > 0) {
         [self applyChapterMarkers:duration];
     }
 }
@@ -367,8 +366,8 @@ static const CGFloat kChapterChipViewHeight = 40.0;
     self.bufferProgressViewLandscape.progress = buffer;
     self.timeLabelLandscape.text = timeText;
 
-    // AI_VOD: 更新章节高亮
-    if (self.chapterFeaturesEnabled) {
+    // 更新章节高亮
+    if ([self isChapterAvailable]) {
         [self updateChapterHighlight:position];
     }
 }
@@ -453,8 +452,8 @@ static const CGFloat kChapterChipViewHeight = 40.0;
     self.timeLabel.text = timeText;
     self.timeLabelLandscape.text = timeText;
 
-    // AI_VOD: 拖动时实时更新章节高亮
-    if (self.chapterFeaturesEnabled) {
+    // 拖动时实时更新章节高亮
+    if ([self isChapterAvailable]) {
         [self updateChapterHighlight:position];
     }
 
@@ -543,7 +542,7 @@ static const CGFloat kChapterChipViewHeight = 40.0;
     }
 
     // 章节导航：竖屏显示 ChipView，全屏显示文本导航
-    if (self.chapterFeaturesEnabled) {
+    if ([self isChapterAvailable]) {
         self.chapterChipView.hidden = isFullscreen;
 
         if (isFullscreen) {
@@ -907,6 +906,36 @@ static const CGFloat kChapterChipViewHeight = 40.0;
 
 #pragma mark - Chapter Methods
 
+// 章节能力是否可用：非 LIVE/MINIMAL 场景且章节数据非空。
+- (BOOL)isChapterAvailable {
+    SceneType sceneType = [self currentSceneType];
+    return sceneType != SceneTypeLive && sceneType != SceneTypeMinimal &&
+           self.chapters.count > 0;
+}
+
+// 是否允许章节跳转：非 LIVE/RESTRICTED 场景（RESTRICTED 只读展示）。
+- (BOOL)isChapterSeekEnabled {
+    SceneType sceneType = [self currentSceneType];
+    return sceneType != SceneTypeLive && sceneType != SceneTypeRestricted;
+}
+
+// 清理全部章节 UI 与状态，防止旧视频的章节 UI 残留。
+- (void)clearChapterState {
+    self.chapters = nil;
+    self.lastChapterIndex = -1;
+    self.chapterMarkerView.hidden = YES;
+    self.chapterMarkerViewLandscape.hidden = YES;
+    self.chapterChipView.hidden = YES;
+
+    if (self.chapterNavStack) {
+        self.chapterNavStack.hidden = YES;
+    }
+
+    if (self.chapterTextButton) {
+        [self.chapterTextButton setTitle:nil forState:UIControlStateNormal];
+    }
+}
+
 - (void)setupChapterViewsIfNeeded {
     if (self.chapterMarkerView) {
         self.chapterMarkerView.hidden = NO;
@@ -942,6 +971,11 @@ static const CGFloat kChapterChipViewHeight = 40.0;
         __strong typeof(weakSelf) strongSelf = weakSelf;
 
         if (!strongSelf) {
+            return;
+        }
+
+        // RESTRICTED 只读：点击不发起跳转
+        if (![strongSelf isChapterSeekEnabled]) {
             return;
         }
 
@@ -1036,6 +1070,11 @@ static const CGFloat kChapterChipViewHeight = 40.0;
     }
 
     if (positions.count == 0) {
+        // 位置为空时清除并隐藏两套残留标记，防止旧视频标记跳错位置
+        [self.chapterMarkerView setMarkerPositions:@[]];
+        self.chapterMarkerView.hidden = YES;
+        [self.chapterMarkerViewLandscape setMarkerPositions:@[]];
+        self.chapterMarkerViewLandscape.hidden = YES;
         return;
     }
 
@@ -1055,6 +1094,11 @@ static const CGFloat kChapterChipViewHeight = 40.0;
 
     NSInteger index = [ChapterInfo findIndexByPosition:self.chapters positionMs:positionMs];
 
+    // 章节空隙（区间不连续）：保留最近有效索引，供「下一章」顺延推进
+    if (index < 0) {
+        return;
+    }
+
     if (index == self.lastChapterIndex) {
         return;
     }
@@ -1062,39 +1106,40 @@ static const CGFloat kChapterChipViewHeight = 40.0;
     self.lastChapterIndex = index;
 
     [self.chapterChipView updateCurrentIndex:index];
+    [self.chapterChipView scrollToIndex:index animated:YES];
 
-    if (index >= 0) {
-        [self.chapterChipView scrollToIndex:index animated:YES];
-
-        // 更新全屏文本导航
-        if (self.chapterTextButton && index < (NSInteger)self.chapters.count) {
-            ChapterInfo *chapter = self.chapters[index];
-            [self.chapterTextButton setTitle:LocalizedFormat(LocaleKeyChapterNavFormat, (long)(index + 1), chapter.title)
-                                    forState:UIControlStateNormal];
-        }
+    // 更新全屏文本导航
+    if (self.chapterTextButton && index < (NSInteger)self.chapters.count) {
+        ChapterInfo *chapter = self.chapters[index];
+        [self.chapterTextButton setTitle:LocalizedFormat(LocaleKeyChapterNavFormat, (long)(index + 1), chapter.title)
+                                forState:UIControlStateNormal];
     }
 }
 
 - (void)onNextChapterTapped {
-    if (!self.chapterFeaturesEnabled) {
+    if (![self isChapterAvailable]) {
         return;
     }
 
-    if (!self.chapters || self.chapters.count == 0) {
+    // RESTRICTED 只读：点击不发起跳转
+    if (![self isChapterSeekEnabled]) {
         return;
     }
 
-    if (self.lastChapterIndex < 0) {
+    // 单章无推进目标
+    if (self.chapters.count <= 1) {
         return;
     }
 
-    if (self.lastChapterIndex >= (NSInteger)self.chapters.count - 1) {
+    // 索引顺延：未定位过（-1）视为第一章
+    NSInteger nextIndex = self.lastChapterIndex < 0 ? 0 : self.lastChapterIndex + 1;
+    if (nextIndex >= (NSInteger)self.chapters.count) {
         // 已是最后一章，不执行 seek
         SLOGW(@"Positioned to the final chapter");
         return;
     }
 
-    ChapterInfo *nextChapter = self.chapters[self.lastChapterIndex + 1];
+    ChapterInfo *nextChapter = self.chapters[nextIndex];
     [self.host.controller seekTo:nextChapter.startMs];
     [self updateChapterHighlight:nextChapter.startMs];
 }
@@ -1104,7 +1149,7 @@ static const CGFloat kChapterChipViewHeight = 40.0;
 }
 
 - (void)showChapterPanel {
-    if (!self.chapterFeaturesEnabled || !self.chapters) {
+    if (![self isChapterAvailable]) {
         return;
     }
 
@@ -1149,7 +1194,7 @@ static const CGFloat kChapterChipViewHeight = 40.0;
 - (void)layoutSubviews {
     [super layoutSubviews];
 
-    if (self.chapterFeaturesEnabled) {
+    if ([self isChapterAvailable]) {
         [self layoutChapterMarkerViews];
     }
 

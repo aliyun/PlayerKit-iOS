@@ -109,6 +109,9 @@ NS_ASSUME_NONNULL_BEGIN
  * @brief 跳转到指定位置。
  *
  * @param position 目标位置，单位毫秒。
+ *
+ * @discussion 直播（LIVE）与受限播放（RESTRICTED）场景下请求会被拦截，
+ *             不透传至播放器；起播位置请通过 AliPlayerModel.startTime 配置。
  */
 - (void)seekTo:(NSInteger)position;
 
