@@ -147,8 +147,11 @@ AliPlayerKit provides a rich set of APIs that allow developers to directly contr
 | `lifecycleStrategy` | `id<PlayerLifecycleStrategy>` (readonly) | Current lifecycle strategy |
 | `autoLifecycleManagement` | `BOOL` | Whether to automatically manage foreground/background lifecycle (default YES) |
 | `controlsVisibilityLocked` | `BOOL` | Controls visibility lock flag |
+| `chapters` | `NSArray<ChapterInfo *> *` (nullable, copy) | Single source of truth for chapter data, readable/writable at any time; broadcasts `playerDidUpdateChapters` on write |
 
 > **Note**: When `controlsVisibilityLocked` is set to `YES`, `setControlsVisible:NO` requests will be ignored and the control bar will remain visible. This is used in interaction scenarios such as progress bar dragging where the control bar must always be displayed.
+>
+> **Note**: `chapters` enables lazy loading. `configure:` seeds it from `AliPlayerModel.chapters`; at runtime you may set it at any time (synchronous or asynchronous loading), and chapter UIs will show / update / hide automatically on broadcast. The property is intentionally not locked for read performance; the caller is responsible for thread safety when writing from multiple threads. Data is cleared after `destroy`.
 
 ### **4.2 Constructors**
 
@@ -224,7 +227,7 @@ AliPlayerKit provides a rich set of APIs that allow developers to directly contr
 | `allowScreenSleep` | `BOOL` | `NO` | Whether to allow screen sleep |
 | `disableScreenshot` | `BOOL` | `NO` | Whether to disable screenshot/screen recording (iOS-specific) |
 | `onPlayerConfigBlock` | `void (^)(id<MediaPlayer>)` | `nil` | Instance-level custom configuration callback |
-| `chapters` | `NSArray<ChapterInfo *> *` (nullable) | `nil` | Chapter information list (effective in non-LIVE/MINIMAL scenes with non-empty data; read-only under RESTRICTED scene) |
+| `chapters` | `NSArray<ChapterInfo *> *` (nullable) | `nil` | Chapter information list (effective in non-LIVE/MINIMAL scenes with non-empty data; read-only under RESTRICTED scene). Used as the initial value only during `configure:`; use `AliPlayerController.chapters` for runtime updates |
 
 ### **5.2 Creation Methods**
 
@@ -321,6 +324,12 @@ Player state change callback protocol; all methods are `@optional`.
 | Method | Parameters | Description |
 |--------|------------|-------------|
 | `- playerDidRetrieveThumbnail:image:` | `int64_t` positionMs, `UIImage *` image | Thumbnail retrieved successfully |
+
+**Chapters**
+
+| Method | Parameters | Description |
+|--------|------------|-------------|
+| `- playerDidUpdateChapters` | - | Chapters added, removed, updated or cleared; pull the latest data from `AliPlayerController.chapters` |
 
 ### **6.2 GestureNotificationDelegate (Gesture Notification Delegate)**
 

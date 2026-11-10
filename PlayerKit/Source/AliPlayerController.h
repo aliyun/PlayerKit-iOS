@@ -17,6 +17,7 @@
 @class TrackQuality;
 
 @class AliPlayerModel;
+@class ChapterInfo;
 @class PlayerStateStore;
 @class StrategyManager;
 
@@ -49,6 +50,28 @@ NS_ASSUME_NONNULL_BEGIN
 
 /** @brief 状态存储，提供对当前播放状态的只读访问。 */
 @property (nonatomic, strong, readonly, nullable) PlayerStateStore *stateStore;
+
+/**
+ * @brief 章节信息列表，默认为 nil。
+ *
+ * @discussion 章节数据的唯一存储点，可在控制器生命周期内任意时刻设置或读取，
+ *             章节数据的加载时机由业务方自行管理（同步 / 异步均可）。
+ *             configure: 时会用 AliPlayerModel.chapters 写入此属性作为初始值。
+ *
+ *             每次写入（设置、替换、增删、清空）都会通过 PlayerNotificationDelegate 的
+ *             playerDidUpdateChapters 通知观察者，UI 层收到通知后读取此属性刷新展示。
+ *             destroy 后此属性被清空。
+ *
+ *             数组按值拷贝，但元素 ChapterInfo 仍为引用对象：直接修改元素的属性不会
+ *             经过此属性，也不会触发通知；需要 UI 生效时请重新赋值此属性。
+ *
+ * @warning 为保证读取性能，此属性不做加锁保护。
+ *          多线程异步写入时的线程安全由调用方自行保证。
+ *
+ * @see ChapterInfo
+ * @see AliPlayerModel.chapters
+ */
+@property (nonatomic, copy, nullable) NSArray<ChapterInfo *> *chapters;
 
 /**
  * @brief 策略管理器，负责协调绑定到此控制器的所有播放策略。

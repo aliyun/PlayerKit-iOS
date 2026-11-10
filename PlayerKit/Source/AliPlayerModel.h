@@ -148,8 +148,11 @@ NS_ASSUME_NONNULL_BEGIN
  *             供章节 Chip、章节标记点与章节面板等 UI 组件按需读取。
  *             LIVE/MINIMAL 场景下设置此属性不产生任何效果；
  *             RESTRICTED 场景下章节仅只读展示，点击不发起跳转。
+ *             此属性仅在 configure: 时作为初始配置生效，数据最终收敛到
+ *             AliPlayerController.chapters；运行期增删改请直接写 controller.chapters。
  *
  * @see ChapterInfo
+ * @see AliPlayerController.chapters
  * @see SceneType
  */
 @property (nonatomic, copy, nullable) NSArray<ChapterInfo *> *chapters;

@@ -333,14 +333,8 @@ static NSString *const kChapterCellIdentifier = @"ChapterPanelCell";
 - (void)onBindData:(AliPlayerModel *)model {
     [super onBindData:model];
 
-    // 章节能力：非 LIVE/MINIMAL 场景且章节数据非空（章节为通用能力）
-    SceneType sceneType = model.sceneType;
-    if (sceneType != SceneTypeLive && sceneType != SceneTypeMinimal &&
-        model.chapters.count > 0) {
-        self.chapters = model.chapters;
-    } else {
-        self.chapters = nil;
-    }
+    // 章节数据统一从 controller 拉取（章节为通用能力，非 LIVE/MINIMAL 场景且数据非空时生效）
+    [self syncChaptersFromController];
     self.currentChapterIndex = -1;
 }
 
@@ -348,6 +342,13 @@ static NSString *const kChapterCellIdentifier = @"ChapterPanelCell";
     self.chapters = nil;
     self.currentChapterIndex = -1;
     [super onUnbindData];
+}
+
+- (void)onDetach {
+    // 章节数据归属 controller：解绑时清理自持快照，避免槽位复用时残留
+    self.chapters = nil;
+    self.currentChapterIndex = -1;
+    [super onDetach];
 }
 
 #pragma mark - Layout
@@ -372,6 +373,30 @@ static NSString *const kChapterCellIdentifier = @"ChapterPanelCell";
 }
 
 #pragma mark - PlayerNotificationDelegate
+
+// 章节数据变化：从 controller 重新拉取最新快照，数据不可用时收起面板
+- (void)playerDidUpdateChapters {
+    // 内容尚未创建时不处理：ensureContentReady 会回放 onBindData: 统一同步
+    if (!self.host || !self.contentReady) {
+        return;
+    }
+
+    [self syncChaptersFromController];
+
+    if (self.chapters.count == 0) {
+        [self hidePanelAnimated:NO];
+        return;
+    }
+
+    // 列表可能整体替换（数量不变也会换章），仅做越界检查会保留错位的旧索引：
+    // 以当前位置重算，避免暂停状态下没有进度回调来纠正高亮与滚动位置
+    self.currentChapterIndex = [ChapterInfo findIndexByPosition:self.chapters
+                                                     positionMs:self.host.controller.currentPosition];
+
+    if (self.isPanelShowing) {
+        [self reloadChapterData];
+    }
+}
 
 - (void)playerDidUpdateCurrentPosition:(NSInteger)position
                               duration:(NSInteger)duration
@@ -412,6 +437,27 @@ static NSString *const kChapterCellIdentifier = @"ChapterPanelCell";
 
 #pragma mark - Private
 
+// 从 controller 同步章节快照：LIVE/MINIMAL 场景或数据为空时视为不可用
+- (void)syncChaptersFromController {
+    AliPlayerController *controller = self.host.controller;
+    NSArray<ChapterInfo *> *chapters = controller.chapters;
+    SceneType sceneType = [self currentSceneType];
+
+    if (sceneType == SceneTypeLive || sceneType == SceneTypeMinimal ||
+        chapters.count == 0) {
+        self.chapters = nil;
+        self.currentChapterIndex = -1;
+        return;
+    }
+
+    self.chapters = chapters;
+
+    // 章节删减后原索引可能越界，置为未知，由播放进度回调重新定位
+    if (self.currentChapterIndex >= (NSInteger)self.chapters.count) {
+        self.currentChapterIndex = -1;
+    }
+}
+
 - (void)reloadChapterData {
     self.chapterCountLabel.text = LocalizedFormat(@"ai_education_chapter_count_format", (long)self.chapters.count);
     [self.tableView reloadData];
@@ -419,6 +465,15 @@ static NSString *const kChapterCellIdentifier = @"ChapterPanelCell";
     // 滚动到当前章节
     if (self.currentChapterIndex >= 0 && self.currentChapterIndex < (NSInteger)self.chapters.count) {
         dispatch_async(dispatch_get_main_queue(), ^{
+            // 排队期间章节列表可能被清空或删减，执行时必须重新校验。
+            // 上界必须取表格已加载的行数而不是数据源长度：数据源变化但未 reloadData 时，
+            // 表格内部行数仍是旧值，按数据源放行会滚动到不存在的行并抛出异常
+            NSInteger loadedRows = [self.tableView numberOfRowsInSection:0];
+
+            if (self.currentChapterIndex < 0 || self.currentChapterIndex >= loadedRows) {
+                return;
+            }
+
             NSIndexPath *indexPath = [NSIndexPath indexPathForRow:self.currentChapterIndex inSection:0];
             [self.tableView scrollToRowAtIndexPath:indexPath
                                   atScrollPosition:UITableViewScrollPositionMiddle

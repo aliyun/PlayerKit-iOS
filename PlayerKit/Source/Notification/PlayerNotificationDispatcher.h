@@ -112,6 +112,16 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)dispatchDidTrackReady:(NSArray<TrackQuality *> *)tracks;
 - (void)dispatchDidTrackChanged:(TrackQuality *)quality;
 
+#pragma mark - Chapter Dispatch
+
+/**
+ * @brief 分发章节数据变化通知。
+ *
+ * @discussion 在主线程上向所有实现了 @c playerDidUpdateChapters 的观察者分发回调。
+ *             观察者应通过 AliPlayerController.chapters 拉取最新章节数据。
+ */
+- (void)dispatchDidUpdateChapters;
+
 #pragma mark - Display Mode Dispatch
 
 - (void)dispatchDidChangeMirrorMode:(MirrorMode)mirrorMode;

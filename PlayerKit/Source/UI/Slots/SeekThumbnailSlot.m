@@ -157,8 +157,8 @@ static NSString *const kTimeTextFormat = @"%@ / %@";
         [self.host.controller requestThumbnailAtPosition:targetPositionMs];
     }
 
-    // 章节标题显示（仅 AI_VOD 场景）
-    NSArray<ChapterInfo *> *chapters = self.host.model.chapters;
+    // 章节标题显示（章节数据统一由 controller 存储，可能晚于绑定到达）
+    NSArray<ChapterInfo *> *chapters = self.host.controller.chapters;
     if (chapters.count >= 2) {
         NSInteger chapterIndex = [ChapterInfo findIndexByPosition:chapters
                                                        positionMs:(NSInteger)targetPositionMs];

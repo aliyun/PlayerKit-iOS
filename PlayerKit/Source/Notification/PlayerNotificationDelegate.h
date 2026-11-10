@@ -251,6 +251,20 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (void)playerDidReadyVideoTitle:(NSString *)videoTitle;
 
+#pragma mark - Chapters
+
+/**
+ * @brief 章节数据发生变化时调用。
+ *
+ * @discussion 由 AliPlayerController.chapters 的写入触发：设置、替换、增删或清空章节列表
+ *             均会派发此回调。观察者应在回调中通过 controller.chapters 拉取最新数据，
+ *             据此显示 / 更新 / 隐藏章节相关 UI。
+ *             章节数据不做加锁保护，写入线程的线程安全由调用方保证。
+ *
+ * @see AliPlayerController.chapters
+ */
+- (void)playerDidUpdateChapters;
+
 #pragma mark - Track
 
 /**

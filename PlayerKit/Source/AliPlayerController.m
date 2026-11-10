@@ -113,6 +113,10 @@
 
     self.playerModel = model;
 
+    // 章节数据统一收敛到 controller（model.chapters 仅作为配置入口）：
+    // 重新配置时即使内容相同也会广播，确保已挂载的 UI 随数据源切换刷新
+    self.chapters = model.chapters;
+
     // 通过生命周期策略获取播放器（可能是新建或复用的实例）
     id<PlayerLifecycleStrategy> strategy = self.lifecycleStrategy;
     NSString *uniqueId = model.videoSource.uniqueId;
@@ -226,6 +230,18 @@
         }
     }];
 }
+
+#pragma mark - Chapters
+
+// 章节数据唯一存储点：仅落值并广播，不做加锁。
+// 章节数据的加载时机由业务方管理，同步 / 异步写入均可；多线程写入的线程安全由调用方保证。
+- (void)setChapters:(nullable NSArray<ChapterInfo *> *)chapters {
+    _chapters = [chapters copy];
+
+    [self.notificationDispatcher dispatchDidUpdateChapters];
+}
+
+#pragma mark - Fullscreen
 
 - (void)setFullscreen:(BOOL)fullscreen {
     [self setFullscreen:fullscreen animated:YES];
@@ -341,6 +357,9 @@
     }
     self.playerModel = nil;
     self.wasPlayingBeforePause = NO;
+    // 章节数据随控制器销毁清空：此处不补发广播（异步派发会丢失），
+    // 章节 UI 由各 slot 在 onDetach 时主动清理
+    _chapters = nil;
     [self.notificationDispatcher removeAllObservers];
 }
 

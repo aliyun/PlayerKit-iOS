@@ -14,11 +14,13 @@ NS_ASSUME_NONNULL_BEGIN
  * @brief 视频章节信息模型。
  *
  * @discussion 描述视频中单个章节的时间区间与展示信息，
- *             由 AliPlayerModel.chapters 注入使用。
+ *             可在 AliPlayerModel.chapters 中作为初始配置注入，最终由
+ *             AliPlayerController.chapters 统一存储，并支持运行期随时增删改。
  *             章节为通用能力：非 LIVE/MINIMAL 场景下且章节数据非空时生效；
  *             RESTRICTED 场景下仅只读展示，点击不发起跳转。
  *             章节区间为 [startMs, endMs)，即包含起始时间、不包含结束时间。
  *
+ * @see AliPlayerController
  * @see AliPlayerModel
  */
 @interface ChapterInfo : NSObject

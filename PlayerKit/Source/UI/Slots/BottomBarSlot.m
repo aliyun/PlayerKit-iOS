@@ -170,6 +170,8 @@ static const CGFloat kChapterChipViewHeight = 40.0;
     [[NSNotificationCenter defaultCenter] removeObserver:self
                                                     name:LocaleDidChangeNotification
                                                   object:nil];
+    // 章节数据归属 controller：解绑时清理自持快照与章节 UI，避免复用残留
+    [self clearChapterState];
     [super onDetach];
 }
 
@@ -180,23 +182,8 @@ static const CGFloat kChapterChipViewHeight = 40.0;
     AliPlayerController *controller = self.host.controller;
     [controller setControlsVisible:YES];
 
-    // 章节功能初始化：非 LIVE/MINIMAL 场景且章节数据非空（章节为通用能力）
-    SceneType sceneType = [self currentSceneType];
-    if (sceneType != SceneTypeLive && sceneType != SceneTypeMinimal &&
-        model.chapters.count > 0) {
-        self.chapters = model.chapters;
-        self.lastChapterIndex = -1;
-        [self setupChapterViewsIfNeeded];
-        [self.chapterChipView setChapters:self.chapters duration:0];
-        // 换源重绑：隐藏两套标记点，清理横屏章节标题，
-        // 防止新视频 Prepared 前误用旧视频的章节状态
-        self.chapterMarkerView.hidden = YES;
-        self.chapterMarkerViewLandscape.hidden = YES;
-        [self.chapterTextButton setTitle:nil forState:UIControlStateNormal];
-    } else {
-        // 无章节数据：清理全部章节 UI
-        [self clearChapterState];
-    }
+    // 章节功能初始化：统一从 controller 拉取（章节为通用能力，非 LIVE/MINIMAL 场景且数据非空时生效）
+    [self reloadChapterStateFromController];
 
     // 按当前全屏状态同步布局与章节视图（容器切换、横屏导航创建、Chip 可见性）
     [self updateLayoutForFullscreen:self.host.viewState.isFullscreen];
@@ -332,6 +319,31 @@ static const CGFloat kChapterChipViewHeight = 40.0;
 
 - (void)playerDidChangeFullscreen:(BOOL)isFullscreen {
     [self updateLayoutForFullscreen:isFullscreen];
+}
+
+// 章节数据变化：controller 为唯一数据源，收到广播后重新拉取并刷新章节 UI
+- (void)playerDidUpdateChapters {
+    // 已解绑或内容尚未创建时不处理：解绑后由 clearChapterState 清理，
+    // 延迟创建场景由 ensureContentReady 回放 onBindData: 统一同步
+    if (!self.host || !self.contentReady) {
+        return;
+    }
+
+    [self reloadChapterStateFromController];
+
+    if ([self isChapterAvailable]) {
+        AliPlayerController *controller = self.host.controller;
+
+        // 标记点依赖总时长；章节晚于 Prepared 到达时需在此补绘
+        if (controller.duration > 0) {
+            [self applyChapterMarkers:controller.duration];
+        }
+
+        [self updateChapterHighlight:controller.currentPosition];
+    }
+
+    // 章节数据变化会改变横屏导航的创建与显隐，必须走统一布局裁决入口
+    [self updateLayoutForFullscreen:self.host.viewState.isFullscreen];
 }
 
 - (void)playerDidChangeControlsVisible:(BOOL)visible {
@@ -917,6 +929,31 @@ static const CGFloat kChapterChipViewHeight = 40.0;
 - (BOOL)isChapterSeekEnabled {
     SceneType sceneType = [self currentSceneType];
     return sceneType != SceneTypeLive && sceneType != SceneTypeRestricted;
+}
+
+// 从 controller 拉取最新章节数据并重建章节 UI 状态（数据绑定与运行期更新共用）。
+- (void)reloadChapterStateFromController {
+    AliPlayerController *controller = self.host.controller;
+    NSArray<ChapterInfo *> *chapters = controller.chapters;
+    SceneType sceneType = [self currentSceneType];
+
+    if (sceneType == SceneTypeLive || sceneType == SceneTypeMinimal ||
+        chapters.count == 0) {
+        // 场景不支持或数据为空：清理全部章节 UI
+        [self clearChapterState];
+        return;
+    }
+
+    self.chapters = chapters;
+    self.lastChapterIndex = -1;
+    [self setupChapterViewsIfNeeded];
+    [self.chapterChipView setChapters:self.chapters duration:0];
+
+    // 换源重绑 / 章节变更：隐藏两套标记点并清理横屏章节标题，
+    // 待拿到新的时长与播放位置后再刷新，避免误用旧章节状态
+    self.chapterMarkerView.hidden = YES;
+    self.chapterMarkerViewLandscape.hidden = YES;
+    [self.chapterTextButton setTitle:nil forState:UIControlStateNormal];
 }
 
 // 清理全部章节 UI 与状态，防止旧视频的章节 UI 残留。

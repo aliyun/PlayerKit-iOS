@@ -216,6 +216,15 @@
     }];
 }
 
+#pragma mark - Chapter Dispatch
+
+- (void)dispatchDidUpdateChapters {
+    [self notifyObservers:@selector(playerDidUpdateChapters)
+                withBlock:^(id<PlayerNotificationDelegate> observer) {
+        [observer playerDidUpdateChapters];
+    }];
+}
+
 #pragma mark - Display Mode Dispatch
 
 - (void)dispatchDidChangeMirrorMode:(MirrorMode)mirrorMode {

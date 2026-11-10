@@ -147,8 +147,11 @@ AliPlayerKit 提供了丰富的 API 接口，方便开发者直接控制播放�
 | `lifecycleStrategy` | `id<PlayerLifecycleStrategy>`（readonly） | 当前生命周期策略 |
 | `autoLifecycleManagement` | `BOOL` | 是否自动管理前后台生命周期（默认 YES） |
 | `controlsVisibilityLocked` | `BOOL` | 控制栏可见性锁定标志 |
+| `chapters` | `NSArray<ChapterInfo *> *`（nullable, copy） | 章节数据唯一存储点，可随时读写；写入后广播 `playerDidUpdateChapters` |
 
 > **说明**：`controlsVisibilityLocked` 设为 `YES` 时，`setControlsVisible:NO` 请求会被忽略，控制栏持续保持可见状态。用于进度条拖动等需要操作栏始终显示的交互场景。
+>
+> **说明**：`chapters` 为懒加载能力。`configure:` 时以 `AliPlayerModel.chapters` 作为初始值写入；运行期可在任意时刻设置该属性（同步或异步加载均可），章节 UI 会随广播自动显示 / 更新 / 隐藏。为保证读取性能，该属性不加锁，多线程写入的线程安全由调用方保证。`destroy` 后数据被清空。
 
 ### **4.2 构造方法**
 
@@ -224,7 +227,7 @@ AliPlayerKit 提供了丰富的 API 接口，方便开发者直接控制播放�
 | `allowScreenSleep` | `BOOL` | `NO` | 是否允许屏幕休眠 |
 | `disableScreenshot` | `BOOL` | `NO` | 是否禁止截屏/录屏（iOS 特有） |
 | `onPlayerConfigBlock` | `void (^)(id<MediaPlayer>)` | `nil` | 实例级自定义配置回调 |
-| `chapters` | `NSArray<ChapterInfo *> *`（nullable） | `nil` | 章节信息列表（非 LIVE/MINIMAL 场景且非空时生效；RESTRICTED 场景仅只读展示） |
+| `chapters` | `NSArray<ChapterInfo *> *`（nullable） | `nil` | 章节信息列表（非 LIVE/MINIMAL 场景且非空时生效；RESTRICTED 场景仅只读展示）。仅 `configure:` 时作为初始值，运行期更新请使用 `AliPlayerController.chapters` |
 
 ### **5.2 创建方法**
 
@@ -321,6 +324,12 @@ iOS 端通过三组独立的通知协议实现分类事件分发：
 | 方法 | 参数 | 说明 |
 |------|------|------|
 | `- playerDidRetrieveThumbnail:image:` | `int64_t` positionMs, `UIImage *` image | 缩略图获取成功 |
+
+**章节**
+
+| 方法 | 参数 | 说明 |
+|------|------|------|
+| `- playerDidUpdateChapters` | - | 章节数据增删改或清空；回调中从 `AliPlayerController.chapters` 拉取最新数据 |
 
 ### **6.2 GestureNotificationDelegate（手势通知代理）**
 
