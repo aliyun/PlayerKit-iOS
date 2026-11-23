@@ -70,21 +70,25 @@ static const CGFloat kButtonSpacing = 10.0;
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
 
-    CGFloat width = self.view.bounds.size.width;
-    CGFloat contentWidth = width - kHorizontalPadding * 2;
-
-    // 播放器视图：16:9 比例置于顶部
-    CGFloat safeTop = 0;
+    CGRect safeBounds = self.view.bounds;
     if (@available(iOS 11.0, *)) {
-        safeTop = self.view.safeAreaInsets.top;
+        safeBounds = UIEdgeInsetsInsetRect(self.view.bounds, self.view.safeAreaInsets);
     }
-    CGFloat playerHeight = width * 9.0 / 16.0;
-    self.playerView.frame = CGRectMake(0, safeTop, width, playerHeight);
+    CGFloat width = MAX(0, CGRectGetWidth(safeBounds));
+    CGFloat availableHeight = MAX(0, CGRectGetHeight(safeBounds));
+    CGFloat contentWidth = MAX(0, width - kHorizontalPadding * 2);
+
+    // 宽矮窗口保留下方操作区，画面比例仍由播放器渲染模式控制。
+    CGFloat playerHeight = MIN(width * 9.0 / 16.0, availableHeight * 0.5);
+    CGRect embeddedPlayerFrame = CGRectMake(CGRectGetMinX(safeBounds), CGRectGetMinY(safeBounds), width, playerHeight);
+    if (self.playerView.superview == self.view) {
+        self.playerView.frame = embeddedPlayerFrame;
+    }
 
     // 播放器下方的主滚动视图
-    CGFloat scrollTop = CGRectGetMaxY(self.playerView.frame);
-    CGFloat scrollHeight = self.view.bounds.size.height - scrollTop;
-    self.mainScrollView.frame = CGRectMake(0, scrollTop, width, scrollHeight);
+    CGFloat scrollTop = CGRectGetMaxY(embeddedPlayerFrame);
+    CGFloat scrollHeight = MAX(0, CGRectGetMaxY(safeBounds) - scrollTop);
+    self.mainScrollView.frame = CGRectMake(CGRectGetMinX(safeBounds), scrollTop, width, scrollHeight);
 
     CGFloat top = kSectionSpacing;
 
@@ -95,7 +99,7 @@ static const CGFloat kButtonSpacing = 10.0;
 
     // 控制按钮（一行两列）
     CGFloat buttonSpacing = kButtonSpacing;
-    CGFloat buttonWidth = (contentWidth - buttonSpacing) / 2.0;
+    CGFloat buttonWidth = MAX(0, (contentWidth - buttonSpacing) / 2.0);
 
     self.playPauseButton.frame = CGRectMake(kHorizontalPadding, top, buttonWidth, kButtonHeight);
     self.clearLogButton.frame = CGRectMake(kHorizontalPadding + buttonWidth + buttonSpacing, top, buttonWidth, kButtonHeight);
@@ -146,12 +150,15 @@ static const CGFloat kButtonSpacing = 10.0;
 
 // 创建所有 UI 元素
 - (void)setupUI {
-    // 播放器视图（16:9 比例，置于顶部）
+    // 播放器视图（置于顶部）
     self.playerView = [[AliPlayerView alloc] init];
     [self.view addSubview:self.playerView];
 
     // 播放器下方的主滚动视图
     self.mainScrollView = [[UIScrollView alloc] init];
+    if (@available(iOS 11.0, *)) {
+        self.mainScrollView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
+    }
     [self.view addSubview:self.mainScrollView];
 
     // 区域：描述

@@ -34,6 +34,7 @@ static NSString *const kTimeTextFormat = @"%@ / %@";
 @property (nonatomic, strong) UIImageView *thumbnailImageView;
 @property (nonatomic, strong) UILabel *timeLabel;
 @property (nonatomic, strong) UILabel *chapterTitleLabel;
+@property (nonatomic, strong) NSLayoutConstraint *containerBottomConstraint;
 
 // 双源初始化标志位：外部 URL 优先于媒体信息自动提取，多道检查防重复初始化
 @property (nonatomic, assign) BOOL externalUrlUsed;
@@ -70,19 +71,28 @@ static NSString *const kTimeTextFormat = @"%@ / %@";
     self.timeLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.containerView addSubview:self.timeLabel];
 
+    self.containerBottomConstraint = [self.containerView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-kContainerBottomMargin];
+    NSLayoutConstraint *placeholderWidth = [self.thumbnailImageView.widthAnchor constraintGreaterThanOrEqualToConstant:kThumbnailPlaceholderSize];
+    NSLayoutConstraint *placeholderHeight = [self.thumbnailImageView.heightAnchor constraintGreaterThanOrEqualToConstant:kThumbnailPlaceholderSize];
+    placeholderWidth.priority = UILayoutPriorityDefaultLow;
+    placeholderHeight.priority = UILayoutPriorityDefaultLow;
+
     [NSLayoutConstraint activateConstraints:@[
         [self.containerView.centerXAnchor constraintEqualToAnchor:self.centerXAnchor],
-        [self.containerView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-kContainerBottomMargin],
+        self.containerBottomConstraint,
+        [self.containerView.topAnchor constraintGreaterThanOrEqualToAnchor:self.topAnchor],
+        [self.containerView.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.leadingAnchor],
+        [self.containerView.trailingAnchor constraintLessThanOrEqualToAnchor:self.trailingAnchor],
 
-        // 图片尺寸随内容等比变化：上限 200pt，占位下限 112pt
+        // 空间不足时允许缩小图片占位，优先保留时间和章节文本
         [self.thumbnailImageView.topAnchor constraintEqualToAnchor:self.containerView.topAnchor],
         [self.thumbnailImageView.centerXAnchor constraintEqualToAnchor:self.containerView.centerXAnchor],
         [self.thumbnailImageView.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.containerView.leadingAnchor],
         [self.thumbnailImageView.trailingAnchor constraintLessThanOrEqualToAnchor:self.containerView.trailingAnchor],
         [self.thumbnailImageView.widthAnchor constraintLessThanOrEqualToConstant:kThumbnailMaxSize],
         [self.thumbnailImageView.heightAnchor constraintLessThanOrEqualToConstant:kThumbnailMaxSize],
-        [self.thumbnailImageView.widthAnchor constraintGreaterThanOrEqualToConstant:kThumbnailPlaceholderSize],
-        [self.thumbnailImageView.heightAnchor constraintGreaterThanOrEqualToConstant:kThumbnailPlaceholderSize],
+        placeholderWidth,
+        placeholderHeight,
 
         [self.timeLabel.topAnchor constraintEqualToAnchor:self.thumbnailImageView.bottomAnchor constant:kTimeLabelTopMargin],
         [self.timeLabel.centerXAnchor constraintEqualToAnchor:self.containerView.centerXAnchor],
@@ -202,6 +212,19 @@ static NSString *const kTimeTextFormat = @"%@ / %@";
 - (void)playerDidRetrieveThumbnail:(int64_t)positionMs
                              image:(UIImage *)image {
     self.thumbnailImageView.image = image;
+}
+
+#pragma mark - Layout
+
+- (void)layoutSubviews {
+    // 高度不足时缩小底距，为图片占位和文本预留空间
+    CGFloat textHeight = self.timeLabel.intrinsicContentSize.height + kTimeLabelTopMargin
+                       + self.chapterTitleLabel.intrinsicContentSize.height + kChapterTitleTopMargin;
+    CGFloat bottomMargin = MIN(kContainerBottomMargin, MAX(0, CGRectGetHeight(self.bounds) - textHeight - kThumbnailPlaceholderSize));
+    if (self.containerBottomConstraint.constant != -bottomMargin) {
+        self.containerBottomConstraint.constant = -bottomMargin;
+    }
+    [super layoutSubviews];
 }
 
 #pragma mark - Private Methods

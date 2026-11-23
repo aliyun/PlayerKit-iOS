@@ -42,7 +42,7 @@ static const NSInteger kSourceOptionCount = 3;
 
 @interface UsageVideoSourceViewController ()
 
-@property (nonatomic, strong) UIView *selectionContainer;
+@property (nonatomic, strong) UIScrollView *selectionContainer;
 @property (nonatomic, strong) AliPlayerView *playerView;
 @property (nonatomic, strong) AliPlayerController *playerController;
 
@@ -67,8 +67,37 @@ static const NSInteger kSourceOptionCount = 3;
 #pragma mark - UI Setup
 
 - (void)setupSelectionView {
-    self.selectionContainer = [[UIView alloc] initWithFrame:self.view.bounds];
+    self.selectionContainer = [[UIScrollView alloc] init];
+    self.selectionContainer.translatesAutoresizingMaskIntoConstraints = NO;
     [self.view addSubview:self.selectionContainer];
+
+    NSLayoutYAxisAnchor *contentTop = self.selectionContainer.topAnchor;
+    NSLayoutXAxisAnchor *contentLeading = self.selectionContainer.leadingAnchor;
+    NSLayoutXAxisAnchor *contentTrailing = self.selectionContainer.trailingAnchor;
+    NSLayoutYAxisAnchor *contentBottom = self.selectionContainer.bottomAnchor;
+    NSLayoutDimension *viewportWidth = self.selectionContainer.widthAnchor;
+    if (@available(iOS 11.0, *)) {
+        self.selectionContainer.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
+        UILayoutGuide *safeArea = self.view.safeAreaLayoutGuide;
+        [NSLayoutConstraint activateConstraints:@[
+            [self.selectionContainer.topAnchor constraintEqualToAnchor:safeArea.topAnchor],
+            [self.selectionContainer.leadingAnchor constraintEqualToAnchor:safeArea.leadingAnchor],
+            [self.selectionContainer.trailingAnchor constraintEqualToAnchor:safeArea.trailingAnchor],
+            [self.selectionContainer.bottomAnchor constraintEqualToAnchor:safeArea.bottomAnchor],
+        ]];
+        contentTop = self.selectionContainer.contentLayoutGuide.topAnchor;
+        contentLeading = self.selectionContainer.contentLayoutGuide.leadingAnchor;
+        contentTrailing = self.selectionContainer.contentLayoutGuide.trailingAnchor;
+        contentBottom = self.selectionContainer.contentLayoutGuide.bottomAnchor;
+        viewportWidth = self.selectionContainer.frameLayoutGuide.widthAnchor;
+    } else {
+        [NSLayoutConstraint activateConstraints:@[
+            [self.selectionContainer.topAnchor constraintEqualToAnchor:self.topLayoutGuide.bottomAnchor],
+            [self.selectionContainer.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+            [self.selectionContainer.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+            [self.selectionContainer.bottomAnchor constraintEqualToAnchor:self.bottomLayoutGuide.topAnchor],
+        ]];
+    }
 
     UILabel *descLabel = [[UILabel alloc] init];
     descLabel.text =
@@ -84,10 +113,14 @@ static const NSInteger kSourceOptionCount = 3;
     descLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.selectionContainer addSubview:descLabel];
 
+    // 内容宽度跟随可视区域，纵向约束决定滚动高度。
+    NSLayoutConstraint *contentWidth = [descLabel.widthAnchor constraintEqualToAnchor:viewportWidth constant:-48];
+    contentWidth.priority = UILayoutPriorityRequired - 1;
     [NSLayoutConstraint activateConstraints:@[
-        [descLabel.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:100],
-        [descLabel.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:24],
-        [descLabel.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-24],
+        [descLabel.topAnchor constraintEqualToAnchor:contentTop constant:16],
+        [descLabel.leadingAnchor constraintEqualToAnchor:contentLeading constant:24],
+        [descLabel.trailingAnchor constraintEqualToAnchor:contentTrailing constant:-24],
+        contentWidth,
     ]];
 
     // 创建三个视频源按钮
@@ -108,17 +141,19 @@ static const NSInteger kSourceOptionCount = 3;
         CGFloat topSpacing = (i == 0) ? 32 : 16;
         [NSLayoutConstraint activateConstraints:@[
             [button.topAnchor constraintEqualToAnchor:previousAnchor.bottomAnchor constant:topSpacing],
-            [button.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:24],
-            [button.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-24],
+            [button.leadingAnchor constraintEqualToAnchor:descLabel.leadingAnchor],
+            [button.trailingAnchor constraintEqualToAnchor:descLabel.trailingAnchor],
         ]];
         previousAnchor = button;
     }
+    [previousAnchor.bottomAnchor constraintEqualToAnchor:contentBottom constant:-24].active = YES;
 }
 
 #pragma mark - PlayerKit Methods
 
 - (void)setupPlayerView {
     self.playerView = [[AliPlayerView alloc] initWithFrame:self.view.bounds];
+    self.playerView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     self.playerView.hidden = YES;
     [self.view addSubview:self.playerView];
 

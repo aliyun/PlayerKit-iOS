@@ -16,6 +16,8 @@
 #import "SettingConstants.h"
 #import "SlotElements.h"
 #import "OptionPanelSlot.h"
+#import "BottomBarSlot.h"
+#import "../../Utils/PlayerLayout+Private.h"
 #import "PlayerColor.h"
 #import "PlayerFont.h"
 #import "LocaleMacros.h"
@@ -275,13 +277,17 @@ static const CGFloat kLandscapePaddingBottom = 24.0;
     return self.isFullscreen ? PanelSlideEdgeRight : PanelSlideEdgeBottom;
 }
 
-/// 面板 frame 由 mountPopupContainerInWindow: 手动设定，这里直接给出对应的确定尺寸
+// 动画位移与当前布局区域内的实际面板尺寸保持一致
 - (CGSize)panelSize {
-    CGSize hostSize = self.popupContainer.bounds.size;
-    if (self.isFullscreen) {
-        return CGSizeMake(kLandscapePanelWidth, hostSize.height);
-    }
-    return CGSizeMake(hostSize.width, self.currentPortraitPanelHeight);
+    return [self shownPanelFrame].size;
+}
+
+- (CGRect)shownPanelFrame {
+    CGRect bounds = [self panelLayoutBounds];
+    CGSize preferredSize = self.isFullscreen
+        ? CGSizeMake(kLandscapePanelWidth, CGRectGetHeight(bounds))
+        : CGSizeMake(CGRectGetWidth(bounds), self.currentPortraitPanelHeight);
+    return [self panelFrameForSize:preferredSize];
 }
 
 /// 动画期间容器已禁用交互，此处放开触摸以免阻塞其他手势
@@ -351,25 +357,38 @@ static const CGFloat kLandscapePaddingBottom = 24.0;
     return window;
 }
 
-/**
- * 把承载容器铺满窗口并挂载，同时把面板摆到"已显示"的终态位置。
- * 隐藏态由基类通过 transform 平移到屏外，因此这里无需预置屏外 frame。
- */
+// 窗口容器承载弹层，面板按显示位置布局，隐藏位移由基类管理
 - (void)mountPopupContainerInWindow:(UIWindow *)window {
-    CGRect windowBounds = window.bounds;
-
-    self.popupContainer.frame = windowBounds;
+    self.popupContainer.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     // 进场动画结束后再放开交互（见 onPanelShown）
     self.popupContainer.userInteractionEnabled = NO;
     [window addSubview:self.popupContainer];
+    [self layoutPopupContainer];
+}
 
-    if (self.isFullscreen) {
-        self.contentPanel.frame = CGRectMake(windowBounds.size.width - kLandscapePanelWidth, 0,
-                                            kLandscapePanelWidth, windowBounds.size.height);
-    } else {
-        CGFloat panelHeight = self.currentPortraitPanelHeight;
-        self.contentPanel.frame = CGRectMake(0, windowBounds.size.height - panelHeight,
-                                            windowBounds.size.width, panelHeight);
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    [self layoutPopupContainer];
+}
+
+// 尺寸变化时更新面板，入口变化才重建设置项，保留选择与有效滚动位置
+- (void)layoutPopupContainer {
+    UIView *superview = self.popupContainer.superview;
+    if (!superview) {
+        return;
+    }
+    self.popupContainer.frame = superview.bounds;
+    [self layoutPanelView:self.contentPanel toShownFrame:[self shownPanelFrame]];
+    for (SettingItem *item in self.items) {
+        if (item.element != SettingMenuElementSpeed && item.element != SettingMenuElementTrackInfo) continue;
+        BOOL shouldDisplay = [self shouldDisplayItem:item fullscreen:self.isFullscreen];
+        if (shouldDisplay == (self.itemViews[@(item.element)] != nil)) continue;
+        CGPoint offset = self.scrollView.contentOffset;
+        [self rebuildItemsForFullscreen:self.isFullscreen];
+        [self.contentPanel layoutIfNeeded];
+        offset.y = MIN(offset.y, MAX(0, self.scrollView.contentSize.height - self.scrollView.bounds.size.height));
+        [self.scrollView setContentOffset:offset animated:NO];
+        break;
     }
 }
 
@@ -385,18 +404,19 @@ static const CGFloat kLandscapePaddingBottom = 24.0;
     self.contentPanel.clipsToBounds = YES;
     self.contentPanel.layer.cornerRadius = kPortraitCornerRadius;
     self.contentPanel.layer.maskedCorners = kCALayerMinXMinYCorner | kCALayerMaxXMinYCorner;
-    [self.popupContainer addSubview:self.contentPanel];
+    [self.panelContentHostView addSubview:self.contentPanel];
 
     [self createScrollViewWithMargins:YES];
 
+    UILayoutGuide *contentGuide = [self contentSafeLayoutGuide];
     NSLayoutConstraint *scrollHeightConstraint = [self.scrollView.heightAnchor constraintEqualToAnchor:self.stackView.heightAnchor];
     scrollHeightConstraint.priority = UILayoutPriorityDefaultHigh;
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.scrollView.topAnchor constraintEqualToAnchor:self.contentPanel.topAnchor constant:kPortraitPadding],
-        [self.scrollView.leadingAnchor constraintEqualToAnchor:self.contentPanel.leadingAnchor],
-        [self.scrollView.trailingAnchor constraintEqualToAnchor:self.contentPanel.trailingAnchor],
-        [self.scrollView.bottomAnchor constraintEqualToAnchor:self.contentPanel.bottomAnchor],
+        [self.scrollView.topAnchor constraintEqualToAnchor:contentGuide.topAnchor constant:kPortraitPadding],
+        [self.scrollView.leadingAnchor constraintEqualToAnchor:contentGuide.leadingAnchor],
+        [self.scrollView.trailingAnchor constraintEqualToAnchor:contentGuide.trailingAnchor],
+        [self.scrollView.bottomAnchor constraintEqualToAnchor:contentGuide.bottomAnchor],
         scrollHeightConstraint,
 
         [self.stackView.topAnchor constraintEqualToAnchor:self.scrollView.topAnchor],
@@ -417,7 +437,7 @@ static const CGFloat kLandscapePaddingBottom = 24.0;
     self.contentPanel = [[UIView alloc] init];
     self.contentPanel.backgroundColor = [PlayerColor settingPanelBackground];
     self.contentPanel.clipsToBounds = YES;
-    [self.popupContainer addSubview:self.contentPanel];
+    [self.panelContentHostView addSubview:self.contentPanel];
 
     self.titleLabel = [[UILabel alloc] init];
     self.titleLabel.text = LocalizedString(LocaleKeySettingMenuTitle);
@@ -427,17 +447,18 @@ static const CGFloat kLandscapePaddingBottom = 24.0;
     [self.contentPanel addSubview:self.titleLabel];
 
     [self createScrollViewWithMargins:NO];
+    UILayoutGuide *contentGuide = [self contentSafeLayoutGuide];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.titleLabel.topAnchor constraintEqualToAnchor:self.contentPanel.topAnchor constant:kLandscapePaddingTop],
-        [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.contentPanel.leadingAnchor constant:kLandscapePaddingH],
-        [self.titleLabel.trailingAnchor constraintEqualToAnchor:self.contentPanel.trailingAnchor constant:-kLandscapePaddingH],
+        [self.titleLabel.topAnchor constraintEqualToAnchor:contentGuide.topAnchor constant:kLandscapePaddingTop],
+        [self.titleLabel.leadingAnchor constraintEqualToAnchor:contentGuide.leadingAnchor constant:kLandscapePaddingH],
+        [self.titleLabel.trailingAnchor constraintEqualToAnchor:contentGuide.trailingAnchor constant:-kLandscapePaddingH],
         [self.titleLabel.heightAnchor constraintEqualToConstant:kTitleHeight - kLandscapePaddingTop],
 
         [self.scrollView.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor],
-        [self.scrollView.leadingAnchor constraintEqualToAnchor:self.contentPanel.leadingAnchor],
-        [self.scrollView.trailingAnchor constraintEqualToAnchor:self.contentPanel.trailingAnchor],
-        [self.scrollView.bottomAnchor constraintEqualToAnchor:self.contentPanel.bottomAnchor constant:-kLandscapePaddingBottom],
+        [self.scrollView.leadingAnchor constraintEqualToAnchor:contentGuide.leadingAnchor],
+        [self.scrollView.trailingAnchor constraintEqualToAnchor:contentGuide.trailingAnchor],
+        [self.scrollView.bottomAnchor constraintEqualToAnchor:contentGuide.bottomAnchor constant:-kLandscapePaddingBottom],
 
         [self.stackView.topAnchor constraintEqualToAnchor:self.scrollView.topAnchor],
         [self.stackView.leadingAnchor constraintEqualToAnchor:self.scrollView.leadingAnchor],
@@ -449,10 +470,26 @@ static const CGFloat kLandscapePaddingBottom = 24.0;
 
 #pragma mark - Private Methods - Shared UI
 
+// 窗口承载的面板使用自身安全区，低版本以零边距兼容
+- (UILayoutGuide *)contentSafeLayoutGuide {
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 110000
+    if (@available(iOS 11.0, *)) {
+        return self.contentPanel.safeAreaLayoutGuide;
+    }
+#endif
+    self.contentPanel.layoutMargins = UIEdgeInsetsZero;
+    return self.contentPanel.layoutMarginsGuide;
+}
+
 - (void)createScrollViewWithMargins:(BOOL)useMargins {
     self.scrollView = [[UIScrollView alloc] init];
     self.scrollView.translatesAutoresizingMaskIntoConstraints = NO;
     self.scrollView.showsVerticalScrollIndicator = NO;
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 110000
+    if (@available(iOS 11.0, *)) {
+        self.scrollView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
+    }
+#endif
     [self.contentPanel addSubview:self.scrollView];
 
     self.stackView = [[UIStackView alloc] init];
@@ -499,6 +536,18 @@ static const CGFloat kLandscapePaddingBottom = 24.0;
 
 #pragma mark - Private Methods - Data
 
+- (BOOL)shouldDisplayItem:(SettingItem *)item fullscreen:(BOOL)isFullscreen {
+    if (![item isSupportedInScene:[self currentSceneType]] || ![self isElementVisible:item.element]) {
+        return NO;
+    }
+    UIView<SlotProtocol> *bottomBar = [self.host slotViewForType:SlotTypeBottomBar];
+    BOOL hasExpandedControls = [bottomBar isKindOfClass:[BottomBarSlot class]] &&
+                               PlayerLayoutUsesExpandedControls(isFullscreen, bottomBar.bounds);
+    // 默认底栏采用展开布局时过滤重复入口，不推断自定义底栏
+    return !(hasExpandedControls &&
+             (item.element == SettingMenuElementSpeed || item.element == SettingMenuElementTrackInfo));
+}
+
 - (void)rebuildItemsForFullscreen:(BOOL)isFullscreen {
     for (UIView *view in self.stackView.arrangedSubviews) {
         [self.stackView removeArrangedSubview:view];
@@ -516,14 +565,7 @@ static const CGFloat kLandscapePaddingBottom = 24.0;
 
     NSMutableArray<SettingItem *> *filteredItems = [NSMutableArray array];
     for (SettingItem *item in self.items) {
-        if (![item isSupportedInScene:[self currentSceneType]]) {
-            continue;
-        }
-        if (![self isElementVisible:item.element]) {
-            continue;
-        }
-        if (isFullscreen &&
-            (item.element == SettingMenuElementSpeed || item.element == SettingMenuElementTrackInfo)) {
+        if (![self shouldDisplayItem:item fullscreen:isFullscreen]) {
             continue;
         }
         [filteredItems addObject:item];

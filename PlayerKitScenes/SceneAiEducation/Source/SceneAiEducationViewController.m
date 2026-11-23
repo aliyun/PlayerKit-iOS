@@ -144,6 +144,7 @@ static const NSTimeInterval kExitDelayOnAuthFailure = 1.5;
                           response:(nullable AiAnalysisResponse *)response {
     // 1. 创建播放器组件视图
     self.playerView = [[AliPlayerView alloc] initWithFrame:self.view.bounds];
+    self.playerView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     [self.view addSubview:self.playerView];
 
     // 可选：设置返回键回调（播放器内部返回按钮/手势触发时通知此处）

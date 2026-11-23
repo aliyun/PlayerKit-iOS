@@ -34,6 +34,7 @@ Language: 中文简体 | [English](README-EN.md)
 - **开箱即用的 UI 组件** — 提供可配置的播放器 UI 组件，覆盖基础播放与常见交互能力，支持按需自定义。
 - **All-in-One 播放体验** — 仅需传入视频 VID，即可自动展示封面图、视频标题、Seek 缩略图等完整播放信息，打造一站式播放体验。
 - **场景化解决方案** — 内置中长视频、短视频、直播、列表播放、AI 教育等典型业务场景，快速搭建完整播放体验。
+- **iPhone Duo 自适应体验** — 自动适应内外屏切换与折叠布局，带来连贯自然的播放与交互体验，降低折叠屏适配成本。
 - **高度可扩展的架构设计** — 插槽系统支持 UI 自由组合，策略系统支持业务逻辑灵活扩展。
 - **跨平台统一架构** — 各端共享相同的设计理念与接口语义，降低多端接入与维护成本。
 
@@ -117,7 +118,7 @@ AliPlayerKit 采用 **分层架构设计**，提供两种接入方式，您可�
 | 条件 | 说明 |
 |-----|------|
 | Xcode | 15.0+，推荐最新稳定版 |
-| iOS | 最低 9.0，推荐真机运行 |
+| iOS | Example 最低 15.0（适配当前 Xcode 构建校验）；PlayerKit 核心 Podspec 最低 9.0，AI 教育场景最低 13.0，推荐真机运行 |
 | CocoaPods | 1.13.0+ |
 | License | 已获取播放器 License 授权证书和 License Key，详见 [获取播放器SDK License](https://help.aliyun.com/zh/vod/developer-reference/obtain-the-player-sdk-license) |
 
@@ -133,6 +134,8 @@ pod install
 **步骤 2：打开工程**
 
 使用 Xcode 打开 `Example/Example.xcworkspace`（注意使用 `.xcworkspace` 而非 `.xcodeproj`）。
+
+> Xcode 27.2 的构建校验要求 iOS 15.0+，因此 Example 及其生成的 Pods 使用 15.0 构建下限；Podfile 的集成声明保留 13.0，SDK Podspec 的兼容声明不变。验证 iOS 9/13 兼容性需使用支持相应部署版本的 Xcode 和测试设备，不能以 Example 的 iOS 15 构建产物代替。
 
 **步骤 3：配置 License**
 

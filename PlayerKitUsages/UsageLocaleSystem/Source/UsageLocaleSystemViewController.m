@@ -94,21 +94,25 @@ static const CGFloat kButtonSpacing = 10.0;
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
 
-    CGFloat width = self.view.bounds.size.width;
-    CGFloat contentWidth = width - kHorizontalPadding * 2;
-
-    // 播放器视图 16:9
-    CGFloat safeTop = 0;
+    CGRect safeBounds = self.view.bounds;
     if (@available(iOS 11.0, *)) {
-        safeTop = self.view.safeAreaInsets.top;
+        safeBounds = UIEdgeInsetsInsetRect(self.view.bounds, self.view.safeAreaInsets);
     }
-    CGFloat playerHeight = width * 9.0 / 16.0;
-    self.playerView.frame = CGRectMake(0, safeTop, width, playerHeight);
+    CGFloat width = MAX(0, CGRectGetWidth(safeBounds));
+    CGFloat availableHeight = MAX(0, CGRectGetHeight(safeBounds));
+    CGFloat contentWidth = MAX(0, width - kHorizontalPadding * 2);
+
+    // 宽矮窗口保留下方操作区，画面比例仍由播放器渲染模式控制。
+    CGFloat playerHeight = MIN(width * 9.0 / 16.0, availableHeight * 0.5);
+    CGRect embeddedPlayerFrame = CGRectMake(CGRectGetMinX(safeBounds), CGRectGetMinY(safeBounds), width, playerHeight);
+    if (self.playerView.superview == self.view) {
+        self.playerView.frame = embeddedPlayerFrame;
+    }
 
     // 主滚动视图
-    CGFloat scrollTop = CGRectGetMaxY(self.playerView.frame);
-    CGFloat scrollHeight = self.view.bounds.size.height - scrollTop;
-    self.mainScrollView.frame = CGRectMake(0, scrollTop, width, scrollHeight);
+    CGFloat scrollTop = CGRectGetMaxY(embeddedPlayerFrame);
+    CGFloat scrollHeight = MAX(0, CGRectGetMaxY(safeBounds) - scrollTop);
+    self.mainScrollView.frame = CGRectMake(CGRectGetMinX(safeBounds), scrollTop, width, scrollHeight);
 
     CGFloat top = kSectionSpacing;
 
@@ -119,7 +123,7 @@ static const CGFloat kButtonSpacing = 10.0;
 
     // 语言切换按钮（一行三列）
     CGFloat langButtonSpacing = kButtonSpacing;
-    CGFloat langButtonWidth = (contentWidth - langButtonSpacing * 2) / 3.0;
+    CGFloat langButtonWidth = MAX(0, (contentWidth - langButtonSpacing * 2) / 3.0);
 
     self.chineseButton.frame = CGRectMake(kHorizontalPadding, top, langButtonWidth, kButtonHeight);
     self.englishButton.frame = CGRectMake(kHorizontalPadding + langButtonWidth + langButtonSpacing, top, langButtonWidth, kButtonHeight);
@@ -137,7 +141,7 @@ static const CGFloat kButtonSpacing = 10.0;
 
     // 状态标签
     CGFloat statusPadding = 12.0;
-    CGSize statusSize = [self.statusLabel sizeThatFits:CGSizeMake(contentWidth - statusPadding * 2, CGFLOAT_MAX)];
+    CGSize statusSize = [self.statusLabel sizeThatFits:CGSizeMake(MAX(0, contentWidth - statusPadding * 2), CGFLOAT_MAX)];
     CGFloat statusHeight = MAX(statusSize.height + statusPadding * 2, 100.0);
     self.statusLabel.frame = CGRectMake(kHorizontalPadding, top, contentWidth, statusHeight);
     top += statusHeight + kSectionSpacing;
@@ -167,6 +171,9 @@ static const CGFloat kButtonSpacing = 10.0;
 
     // 主滚动视图
     self.mainScrollView = [[UIScrollView alloc] init];
+    if (@available(iOS 11.0, *)) {
+        self.mainScrollView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
+    }
     [self.view addSubview:self.mainScrollView];
 
     // 描述

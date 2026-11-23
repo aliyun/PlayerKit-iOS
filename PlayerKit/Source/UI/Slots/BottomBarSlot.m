@@ -29,6 +29,7 @@
 #import "ChapterMarkerView.h"
 #import "ChapterChipView.h"
 #import "ChapterInfo.h"
+#import "../../Utils/PlayerLayout+Private.h"
 
 // 从 SceneAiEducation 资源 bundle 加载图片
 static UIImage *SceneAiEducationImageNamed(NSString *name) {
@@ -85,6 +86,7 @@ static const CGFloat kChapterChipViewHeight = 40.0;
 @property (nonatomic, assign) BOOL isSeeking;
 @property (nonatomic, assign) NSInteger seekSequence;
 @property (nonatomic, assign) BOOL isLandscapeLayout;
+@property (nonatomic, assign) NSUInteger attachmentGeneration;
 @property (nonatomic, copy) NSString *cachedTimeFormat;
 @property (nonatomic, strong) dispatch_block_t autoHideBlock;
 
@@ -152,6 +154,7 @@ static const CGFloat kChapterChipViewHeight = 40.0;
 #pragma mark - Slot Lifecycle
 
 - (void)onAttach:(id<SlotHost>)host {
+    self.attachmentGeneration++;
     [super onAttach:host];
     self.cachedTimeFormat = LocalizedString(LocaleKeyBottomBarTimeFormat);
     [[NSNotificationCenter defaultCenter] addObserver:self
@@ -161,6 +164,7 @@ static const CGFloat kChapterChipViewHeight = 40.0;
 }
 
 - (void)onDetach {
+    self.attachmentGeneration++;
     [self cancelAutoHide];
 
     if (_gestureDispatcher) {
@@ -187,6 +191,13 @@ static const CGFloat kChapterChipViewHeight = 40.0;
 
     // 按当前全屏状态同步布局与章节视图（容器切换、横屏导航创建、Chip 可见性）
     [self updateLayoutForFullscreen:self.host.viewState.isFullscreen];
+
+    // 绑定晚于准备完成时补齐进度视图，准备中避免使用旧时长
+    PlayerState state = controller.playerState;
+    if (state == PlayerStatePrepared || state == PlayerStatePlaying ||
+        state == PlayerStatePaused || state == PlayerStateCompleted) {
+        [self playerDidPreparedWithDuration:controller.duration];
+    }
 }
 
 - (void)onUnbindData {
@@ -479,13 +490,16 @@ static const CGFloat kChapterChipViewHeight = 40.0;
 }
 
 - (void)sliderTouchUp:(UISlider *)slider {
+    // 忽略已取消拖动的松手回调，避免提交预览位置
+    if (!self.isDragging) {
+        return;
+    }
     if ([self currentSceneType] == SceneTypeLive || [self currentSceneType] == SceneTypeRestricted) {
         return;
     }
 
     self.isDragging = NO;
     self.host.controller.controlsVisibilityLocked = NO;
-    // 派发拖动预览结束事件（含 touch cancel），预览浮层随之隐藏
     [self.slotActionDispatcher notifyObservers:^(id<SlotActionNotificationDelegate> observer) {
         if (observer && [observer respondsToSelector:@selector(slotDidEndSeekPreview)]) {
             [observer slotDidEndSeekPreview];
@@ -505,6 +519,41 @@ static const CGFloat kChapterChipViewHeight = 40.0;
             weakSelf.isSeeking = NO;
         }
     });
+}
+
+- (void)sliderTouchCancelled:(nullable UISlider *)slider {
+    (void)slider;
+    // 取消滑块触摸跟踪和点击识别，避免尺寸变化后按新坐标跳转
+    NSArray<UIGestureRecognizer *> *recognizers = [(self.progressSlider.gestureRecognizers ?: @[])
+        arrayByAddingObjectsFromArray:self.progressSliderLandscape.gestureRecognizers ?: @[]];
+    for (UIGestureRecognizer *recognizer in recognizers) {
+        if (recognizer.enabled) {
+            recognizer.enabled = NO;
+            recognizer.enabled = YES;
+        }
+    }
+    if (!self.isDragging) {
+        return;
+    }
+    self.isDragging = NO;
+    AliPlayerController *controller = self.host.controller;
+    controller.controlsVisibilityLocked = NO;
+    [self.slotActionDispatcher notifyObservers:^(id<SlotActionNotificationDelegate> observer) {
+        if ([observer respondsToSelector:@selector(slotDidEndSeekPreview)]) {
+            [observer slotDidEndSeekPreview];
+        }
+    }];
+    CGFloat progress = controller.duration > 0 ? (CGFloat)controller.currentPosition / controller.duration : 0;
+    self.progressSlider.value = progress;
+    self.progressSliderLandscape.value = progress;
+    NSString *timeText = [self formatTimeString:controller.currentPosition duration:controller.duration];
+    self.timeLabel.text = timeText;
+    self.timeLabelLandscape.text = timeText;
+    [self updateChapterHighlight:controller.currentPosition];
+    [self resetAutoHide];
+    // 两套滑块均需取消跟踪，避免切换布局后残留触摸
+    [self.progressSlider cancelTrackingWithEvent:nil];
+    [self.progressSliderLandscape cancelTrackingWithEvent:nil];
 }
 
 - (void)sliderTapped:(UITapGestureRecognizer *)recognizer {
@@ -542,31 +591,75 @@ static const CGFloat kChapterChipViewHeight = 40.0;
 
 #pragma mark - Layout Switching
 
-- (void)updateLayoutForFullscreen:(BOOL)isFullscreen {
-    self.isLandscapeLayout = isFullscreen;
-    self.portraitContainer.hidden = isFullscreen;
-    self.landscapeContainer.hidden = !isFullscreen;
-    self.landscapeGradientLayer.hidden = !isFullscreen;
+- (void)setFrame:(CGRect)frame {
+    if (!CGRectEqualToRect(self.frame, frame)) {
+        [self sliderTouchCancelled:nil];
+    }
+    [super setFrame:frame];
+}
 
-    if (isFullscreen) {
-        [self.progressSliderLandscape setThumbImage:[self thumbImageWithSize:kThumbSizeLandscape] forState:UIControlStateNormal];
-        [self.progressSliderLandscape setThumbImage:[self thumbImageWithSize:kThumbSizeLandscape * kThumbHighlightScale] forState:UIControlStateHighlighted];
+- (void)setBounds:(CGRect)bounds {
+    if (!CGRectEqualToRect(self.bounds, bounds)) {
+        [self sliderTouchCancelled:nil];
+    }
+    [super setBounds:bounds];
+}
+
+- (void)updateLayoutForFullscreen:(BOOL)isFullscreen {
+    // 容器未创建时跳过布局，避免误判可见性而反复调度
+    if (!self.portraitContainer || !self.landscapeContainer) {
+        return;
     }
 
-    // 章节导航：竖屏显示 ChipView，全屏显示文本导航
-    if ([self isChapterAvailable]) {
-        self.chapterChipView.hidden = isFullscreen;
+    // 全屏状态与控件组合分离，窄或矮区域沿用单行布局
+    BOOL useLandscapeLayout = PlayerLayoutUsesExpandedControls(isFullscreen, self.bounds);
+    BOOL layoutChanged = self.isLandscapeLayout != useLandscapeLayout ||
+                         self.portraitContainer.hidden != useLandscapeLayout ||
+                         self.landscapeContainer.hidden != !useLandscapeLayout;
+    if (layoutChanged) {
+        [self sliderTouchCancelled:nil];
+        self.isLandscapeLayout = useLandscapeLayout;
+        self.portraitContainer.hidden = useLandscapeLayout;
+        self.landscapeContainer.hidden = !useLandscapeLayout;
+        self.landscapeGradientLayer.hidden = !useLandscapeLayout;
+        if (useLandscapeLayout) {
+            [self.progressSliderLandscape setThumbImage:[self thumbImageWithSize:kThumbSizeLandscape] forState:UIControlStateNormal];
+            [self.progressSliderLandscape setThumbImage:[self thumbImageWithSize:kThumbSizeLandscape * kThumbHighlightScale] forState:UIControlStateHighlighted];
+        }
+    }
 
-        if (isFullscreen) {
+    // 章节数据可异步到达，布局未切换时仍需同步入口
+    BOOL chapterNavCreated = [self isChapterAvailable] && useLandscapeLayout && !self.chapterNavStack;
+    if ([self isChapterAvailable]) {
+        self.chapterChipView.hidden = useLandscapeLayout;
+        if (useLandscapeLayout) {
             [self setupLandscapeChapterNavIfNeeded];
         }
+        self.chapterNavStack.hidden = !useLandscapeLayout;
+        // 拖动或等待跳转时保留预览章节高亮
+        if (!self.isDragging && !self.isSeeking) {
+            [self updateChapterHighlight:self.host.controller.currentPosition];
+        }
+    } else {
+        self.chapterChipView.hidden = YES;
+        self.chapterNavStack.hidden = YES;
+    }
 
-        self.chapterNavStack.hidden = !isFullscreen;
-
-        // 延迟一个 runloop 确保 container 布局完成后再计算 marker 位置
+    // 布局切换或章节导航新建后延迟刷新，避免每轮布局重复调度
+    if (layoutChanged || chapterNavCreated) {
+        __weak typeof(self) weakSelf = self;
+        __weak id<SlotHost> weakHost = self.host;
+        NSUInteger attachmentGeneration = self.attachmentGeneration;
         dispatch_async(dispatch_get_main_queue(), ^{
-            [self setNeedsLayout];
-            [self layoutIfNeeded];
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            id<SlotHost> host = weakHost;
+            // 校验挂载批次，防止解绑或同宿主重挂后执行旧布局任务
+            if (!strongSelf || !host || strongSelf.host != host ||
+                strongSelf.attachmentGeneration != attachmentGeneration) {
+                return;
+            }
+            [strongSelf setNeedsLayout];
+            [strongSelf layoutIfNeeded];
         });
     }
 }
@@ -839,7 +932,7 @@ static const CGFloat kChapterChipViewHeight = 40.0;
     [slider addTarget:self action:@selector(sliderTouchDown:) forControlEvents:UIControlEventTouchDown];
     [slider addTarget:self action:@selector(sliderTouchUp:) forControlEvents:UIControlEventTouchUpInside];
     [slider addTarget:self action:@selector(sliderTouchUp:) forControlEvents:UIControlEventTouchUpOutside];
-    [slider addTarget:self action:@selector(sliderTouchUp:) forControlEvents:UIControlEventTouchCancel];
+    [slider addTarget:self action:@selector(sliderTouchCancelled:) forControlEvents:UIControlEventTouchCancel];
 
     UITapGestureRecognizer *tapGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(sliderTapped:)];
     tapGesture.cancelsTouchesInView = NO;
@@ -1229,6 +1322,7 @@ static const CGFloat kChapterChipViewHeight = 40.0;
 }
 
 - (void)layoutSubviews {
+    [self updateLayoutForFullscreen:self.host.viewState.isFullscreen];
     [super layoutSubviews];
 
     if ([self isChapterAvailable]) {

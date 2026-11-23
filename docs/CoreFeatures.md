@@ -466,6 +466,14 @@ AliPlayerKit 在播放器 prepared 后自动从云端 MediaInfo 中提取以下�
 
 详见 [场景类型](./advanced/SceneType.md)。
 
+### **3.14 iPhone Duo 适配**
+
+**iPhone Duo 适配** 将内外屏切换、动态尺寸变化和折叠区域避让收敛到播放器 UI 层，减少业务方重复适配控制栏、手势与面板的成本。默认界面沿用现有风格，按实际可用空间调整布局，不为每种设备姿态另建界面。
+
+宿主仍负责播放器容器的尺寸与页面布局；自定义 UI 可通过插槽扩展。系统保留区能力需使用包含 iOS 27.1 API 的 SDK 构建并在支持的系统上运行，旧环境保留常规布局与 Safe Area 适配。
+
+详见 [iPhone Duo 播放器适配最佳实践](./advanced/iPhoneDuo.md)。
+
 ---
 
 通过以上介绍，您已经了解了 AliPlayerKit 的核心组件和整体架构设计。

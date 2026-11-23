@@ -39,10 +39,14 @@ static const CGFloat kAlphaHidden = 0.0;
 
 @property (nonatomic, weak, readwrite, nullable) id<SlotHost> host;
 @property (nonatomic, assign, readwrite) BOOL contentReady;
+@property (nonatomic, assign) BOOL hasOcclusionOverride;
 
 @end
 
 @implementation BaseSlot
+
+@synthesize safeAreaEdges = _safeAreaEdges;
+@synthesize avoidsOcclusion = _avoidsOcclusion;
 
 // ==================== 插槽生命周期 ====================
 //
@@ -141,6 +145,38 @@ static const CGFloat kAlphaHidden = 0.0;
 - (void)onUnbindData {
     // 子类重写以响应数据解绑，将 UI 重置为默认状态
     SLOT_LOG(@"[onUnbindData] <%@: %p>", NSStringFromClass([self class]), self);
+}
+
+#pragma mark - Layout Policy
+
+- (void)setSafeAreaEdges:(SlotSafeAreaEdge)safeAreaEdges {
+    if (_safeAreaEdges == safeAreaEdges) return;
+    _safeAreaEdges = safeAreaEdges;
+    [[self.host hostView] setNeedsLayout];
+}
+
+- (BOOL)avoidsOcclusion {
+    return self.hasOcclusionOverride ? _avoidsOcclusion : self.safeAreaEdges != SlotSafeAreaEdgeNone;
+}
+
+- (void)setAvoidsOcclusion:(BOOL)avoidsOcclusion {
+    if (self.hasOcclusionOverride && _avoidsOcclusion == avoidsOcclusion) return;
+    self.hasOcclusionOverride = YES;
+    _avoidsOcclusion = avoidsOcclusion;
+    [[self.host hostView] setNeedsLayout];
+}
+
+- (CGRect)contentLayoutBounds {
+    id<SlotHost> host = self.host;
+    if ([host respondsToSelector:@selector(readableContentBoundsForSlot:)]) {
+        return [host readableContentBoundsForSlot:self];
+    }
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 110000
+    if (@available(iOS 11.0, *)) {
+        return self.safeAreaLayoutGuide.layoutFrame;
+    }
+#endif
+    return self.bounds;
 }
 
 #pragma mark - Public Methods

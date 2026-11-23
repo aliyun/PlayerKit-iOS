@@ -306,7 +306,13 @@ static UIImage *AiEducationImageNamed(NSString *name) {
     [super layoutSubviews];
     self.backgroundBlurView.frame = self.bounds;
     [self layoutControlsForSize:self.bounds.size];
-    [self refreshGraphicHeaderForWidth:self.bounds.size.width];
+    [self refreshGraphicHeaderForWidth:CGRectGetWidth(self.graphicTableView.bounds)];
+}
+
+// 安全区变化后重新布局，避免内容沿用旧的可用区域。
+- (void)safeAreaInsetsDidChange {
+    [super safeAreaInsetsDidChange];
+    [self setNeedsLayout];
 }
 
 #pragma mark - Public Methods
@@ -494,8 +500,16 @@ static UIImage *AiEducationImageNamed(NSString *name) {
         return;
     }
 
+    // 头部重建后按新的滚动范围恢复原位置，避免尺寸变化导致位置重置或越界。
+    CGPoint offset = self.graphicTableView.contentOffset;
     self.headerLayoutWidth = width;
     self.graphicTableView.tableHeaderView = [self buildSummaryHeaderViewForWidth:width];
+    [self.graphicTableView layoutIfNeeded];
+    CGFloat minOffset = -self.graphicTableView.contentInset.top;
+    CGFloat maxOffset = MAX(minOffset, self.graphicTableView.contentSize.height -
+                            CGRectGetHeight(self.graphicTableView.bounds) + self.graphicTableView.contentInset.bottom);
+    offset.y = MAX(minOffset, MIN(offset.y, maxOffset));
+    [self.graphicTableView setContentOffset:offset animated:NO];
 }
 
 // 图解分析头部：ParagraphSummary + Tags 徽标行 + MarkdownContent
@@ -506,10 +520,10 @@ static UIImage *AiEducationImageNamed(NSString *name) {
         return nil;
     }
 
-    CGFloat cardMargin = 16;
-    CGFloat cardPadding = 12;
-    CGFloat cardWidth = width - cardMargin * 2;
-    CGFloat innerWidth = cardWidth - cardPadding * 2;
+    CGFloat cardMargin = MIN(16, width / 4);
+    CGFloat cardWidth = MAX(0, width - cardMargin * 2);
+    CGFloat cardPadding = MIN(12, cardWidth / 4);
+    CGFloat innerWidth = MAX(0, cardWidth - cardPadding * 2);
 
     UIView *header = [[UIView alloc] initWithFrame:CGRectMake(0, 0, width, 10)];
 
@@ -601,23 +615,29 @@ static UIImage *AiEducationImageNamed(NSString *name) {
 
 // 标题与 Tab 顺次排布，列表控件占据剩余区域（自身已铺满外部容器）
 - (void)layoutControlsForSize:(CGSize)size {
-    CGFloat width = size.width;
-    CGFloat height = size.height;
-    CGFloat contentTop = 20;
+    UIEdgeInsets safeArea = UIEdgeInsetsZero;
+    if (@available(iOS 11.0, *)) {
+        safeArea = self.safeAreaInsets;
+    }
+    CGFloat width = MAX(0, size.width - safeArea.left - safeArea.right);
+    CGFloat height = MAX(0, size.height);
+    CGFloat horizontalPadding = MIN(20, width / 4);
+    CGFloat contentTop = MAX(20, safeArea.top);
 
     CGFloat titleHeight = 22;
-    CGFloat closeSize = 26;
-    CGFloat closeX = width - 20 - closeSize;
+    CGFloat closeSize = MIN(26, width - horizontalPadding * 2);
+    CGFloat closeX = safeArea.left + width - horizontalPadding - closeSize;
 
     self.closeButton.frame = CGRectMake(closeX,
                                         contentTop + (titleHeight - closeSize) / 2,
                                         closeSize,
                                         closeSize);
-    self.panelTitleLabel.frame = CGRectMake(20, contentTop, closeX - 20 - 12, titleHeight);
+    CGFloat titleX = safeArea.left + horizontalPadding;
+    self.panelTitleLabel.frame = CGRectMake(titleX, contentTop, MAX(0, closeX - titleX - 12), titleHeight);
     contentTop += titleHeight + 12;
 
     if (!self.tabBar.hidden) {
-        self.tabBar.frame = CGRectMake(0, contentTop, width, 48);
+        self.tabBar.frame = CGRectMake(safeArea.left, contentTop, width, 48);
         self.tabSeparator.frame = CGRectMake(0, 47, width, 1);
 
         CGFloat tabWidth = width / 2;
@@ -630,24 +650,31 @@ static UIImage *AiEducationImageNamed(NSString *name) {
 
     contentTop += 8;
 
-    CGRect listFrame = CGRectMake(0, contentTop, width, height - contentTop);
+    CGFloat previousTextWidth = CGRectGetWidth(self.textAnalysisTableView.bounds);
+    CGRect listFrame = CGRectMake(safeArea.left, MIN(contentTop, height), width, MAX(0, height - contentTop));
     self.chapterTableView.frame = listFrame;
     self.textAnalysisTableView.frame = listFrame;
     self.graphicTableView.frame = listFrame;
 
-    CGFloat safeAreaBottom = 0;
-
-    if (@available(iOS 11.0, *)) {
-        safeAreaBottom = self.safeAreaInsets.bottom;
-    }
-
-    UIEdgeInsets bottomInset = UIEdgeInsetsMake(0, 0, 20 + safeAreaBottom, 0);
+    UIEdgeInsets bottomInset = UIEdgeInsetsMake(0, 0, 20 + safeArea.bottom, 0);
     self.chapterTableView.contentInset = bottomInset;
     self.chapterTableView.scrollIndicatorInsets = bottomInset;
     self.textAnalysisTableView.contentInset = bottomInset;
     self.textAnalysisTableView.scrollIndicatorInsets = bottomInset;
     self.graphicTableView.contentInset = bottomInset;
     self.graphicTableView.scrollIndicatorInsets = bottomInset;
+
+    // Markdown 在 cell 绑定时按宽度测高；宽度变化后重新绑定，不能沿用旧行高。
+    if (previousTextWidth != width && width > 0) {
+        CGPoint offset = self.textAnalysisTableView.contentOffset;
+        [self.textAnalysisTableView reloadData];
+        [self.textAnalysisTableView layoutIfNeeded];
+        CGFloat minOffset = -self.textAnalysisTableView.contentInset.top;
+        CGFloat maxOffset = MAX(minOffset, self.textAnalysisTableView.contentSize.height -
+                                CGRectGetHeight(self.textAnalysisTableView.bounds) + self.textAnalysisTableView.contentInset.bottom);
+        offset.y = MAX(minOffset, MIN(offset.y, maxOffset));
+        [self.textAnalysisTableView setContentOffset:offset animated:NO];
+    }
 }
 
 #pragma mark - Private Methods - Actions
@@ -700,8 +727,9 @@ static UIImage *AiEducationImageNamed(NSString *name) {
 
     CGFloat tabWidth = width / 2;
     NSInteger selectedIndex = selected0 ? 0 : 1;
-    CGFloat indicatorX = tabWidth * selectedIndex + (tabWidth - 64) / 2;
-    self.tabIndicator.frame = CGRectMake(indicatorX, 48 - 3, 64, 3);
+    CGFloat indicatorWidth = MIN(64, tabWidth);
+    CGFloat indicatorX = tabWidth * selectedIndex + (tabWidth - indicatorWidth) / 2;
+    self.tabIndicator.frame = CGRectMake(indicatorX, 48 - 3, indicatorWidth, 3);
 }
 
 // 只刷新高亮变化的行
@@ -805,7 +833,7 @@ static UIImage *AiEducationImageNamed(NSString *name) {
 
     // 渲染预组装的 Markdown 内容：按列表宽度扣除卡片与内边距后的可用宽度
     if (item.contentMarkdown.length > 0) {
-        CGFloat mdWidth = tableView.bounds.size.width - 16 * 2 - 12 * 2;
+        CGFloat mdWidth = MAX(0, CGRectGetWidth(tableView.bounds) - 16 * 2 - 12 * 2);
         CGFloat mdHeight = [[AiEducationMarkdownRenderer sharedRenderer] renderMarkdown:item.contentMarkdown
                                                                                intoView:cell.markdownView
                                                                                   width:mdWidth];

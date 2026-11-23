@@ -403,10 +403,20 @@ static const CGFloat kTitleShadowRadius = 2.0;
     }
 }
 
+// 窄全屏区域沿用紧凑边距，尺寸变化时重新评估
 - (void)updatePaddingForFullscreen:(BOOL)isFullscreen {
-    CGFloat padding = isFullscreen ? kPaddingLandscape : kPaddingPortrait;
-    self.backIconLeadingConstraint.constant = padding;
-    self.settingTrailingConstraint.constant = -padding;
+    CGFloat padding = isFullscreen && CGRectGetWidth(self.bounds) >= 320.0 ? kPaddingLandscape : kPaddingPortrait;
+    if (self.backIconLeadingConstraint.constant != padding) {
+        self.backIconLeadingConstraint.constant = padding;
+    }
+    if (self.settingTrailingConstraint.constant != -padding) {
+        self.settingTrailingConstraint.constant = -padding;
+    }
+}
+
+- (void)layoutSubviews {
+    [self updatePaddingForFullscreen:self.host.viewState.isFullscreen];
+    [super layoutSubviews];
 }
 
 #pragma mark - PlayerNotificationDelegate

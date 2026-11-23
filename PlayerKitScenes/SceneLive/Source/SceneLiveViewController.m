@@ -75,6 +75,7 @@
 - (void)setupPlayerKit {
     // 1. 创建播放器组件视图
     self.playerView = [[AliPlayerView alloc] initWithFrame:self.view.bounds];
+    self.playerView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     [self.view addSubview:self.playerView];
 
     // 2. 创建播放器组件控制器

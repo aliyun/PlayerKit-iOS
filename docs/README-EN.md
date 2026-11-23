@@ -40,5 +40,6 @@ After completing the basics, refer to these based on your business needs:
 | [Localization](./advanced/Locale-EN.md) | Support multi-language switching and custom language packs |
 | [Video Sources](./advanced/VideoSource-EN.md) | Configure VidAuth, VidSts, URL and other video source types |
 | [Scene Type](./advanced/SceneType-EN.md) | Specify different scenes to automatically adapt UI behavior, gesture control, and slot visibility |
+| [iPhone Duo Best Practices](./advanced/iPhoneDuo-EN.md) | Understand foldable adaptation, PlayerKit integration boundaries, and custom UI guidance for player SDK users |
 
 ---

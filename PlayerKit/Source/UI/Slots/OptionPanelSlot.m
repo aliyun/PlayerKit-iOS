@@ -18,6 +18,8 @@ static const CGFloat kItemFontSize = 14.0;
 @interface OptionPanelSlot ()
 
 @property (nonatomic, strong) UIView *contentPanel;
+@property (nonatomic, strong) UIScrollView *optionsScrollView;
+@property (nonatomic, strong) UIView *optionsContentView;
 @property (nonatomic, strong) UIStackView *optionsStack;
 
 @property (nonatomic, copy) NSArray<NSString *> *displayTexts;
@@ -40,9 +42,18 @@ static const CGFloat kItemFontSize = 14.0;
     return PanelSlideEdgeRight;
 }
 
-/// 宽度由约束固定为 kPanelWidth，直接给出确定尺寸，不依赖布局是否已结算
+// 动画位移采用实际面板尺寸，适应窄区域
 - (CGSize)panelSize {
-    return CGSizeMake(kPanelWidth, self.bounds.size.height);
+    return [self shownPanelFrame].size;
+}
+
+- (CGRect)shownPanelFrame {
+    return [self panelFrameForSize:CGSizeMake(kPanelWidth, CGRectGetHeight([self panelLayoutBounds]))];
+}
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    [self layoutPanelView:self.contentPanel toShownFrame:[self shownPanelFrame]];
 }
 
 - (NSTimeInterval)animationDuration {
@@ -95,30 +106,67 @@ static const CGFloat kItemFontSize = 14.0;
 - (void)createContentPanel {
     self.contentPanel = [[UIView alloc] init];
     self.contentPanel.backgroundColor = [PlayerColor settingPanelBackground];
-    self.contentPanel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.contentPanel.layoutMargins = UIEdgeInsetsZero;
     self.contentPanel.clipsToBounds = YES;
-    [self addSubview:self.contentPanel];
+    // 使用基类内容承载视图，统一面板布局与动画坐标
+    [self.panelContentHostView addSubview:self.contentPanel];
 }
 
 - (void)createOptionsStack {
+    self.optionsScrollView = [[UIScrollView alloc] init];
+    self.optionsScrollView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.optionsScrollView.showsVerticalScrollIndicator = NO;
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 110000
+    if (@available(iOS 11.0, *)) {
+        self.optionsScrollView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
+    }
+#endif
+    [self.contentPanel addSubview:self.optionsScrollView];
+
+    self.optionsContentView = [[UIView alloc] init];
+    self.optionsContentView.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.optionsScrollView addSubview:self.optionsContentView];
+
     self.optionsStack = [[UIStackView alloc] init];
     self.optionsStack.axis = UILayoutConstraintAxisVertical;
     self.optionsStack.alignment = UIStackViewAlignmentFill;
     self.optionsStack.spacing = 0;
     self.optionsStack.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.contentPanel addSubview:self.optionsStack];
+    [self.optionsContentView addSubview:self.optionsStack];
 }
 
 - (void)setupConstraints {
-    [NSLayoutConstraint activateConstraints:@[
-        [self.contentPanel.topAnchor constraintEqualToAnchor:self.topAnchor],
-        [self.contentPanel.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
-        [self.contentPanel.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
-        [self.contentPanel.widthAnchor constraintEqualToConstant:kPanelWidth],
+    // 可视区域使用面板自身安全区，避免叠加自动滚动内边距
+    UILayoutGuide *contentGuide = self.contentPanel.layoutMarginsGuide;
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 110000
+    if (@available(iOS 11.0, *)) {
+        contentGuide = self.contentPanel.safeAreaLayoutGuide;
+    }
+#endif
 
-        [self.optionsStack.centerYAnchor constraintEqualToAnchor:self.contentPanel.centerYAnchor],
-        [self.optionsStack.leadingAnchor constraintEqualToAnchor:self.contentPanel.leadingAnchor],
-        [self.optionsStack.trailingAnchor constraintEqualToAnchor:self.contentPanel.trailingAnchor],
+    // 短列表保持居中，长列表可滚动，避免低高度区域裁切选项
+    NSLayoutConstraint *preferredHeight = [self.optionsContentView.heightAnchor
+        constraintEqualToAnchor:self.optionsScrollView.heightAnchor];
+    preferredHeight.priority = UILayoutPriorityDefaultLow;
+    [NSLayoutConstraint activateConstraints:@[
+        [self.optionsScrollView.topAnchor constraintEqualToAnchor:contentGuide.topAnchor],
+        [self.optionsScrollView.bottomAnchor constraintEqualToAnchor:contentGuide.bottomAnchor],
+        [self.optionsScrollView.leadingAnchor constraintEqualToAnchor:contentGuide.leadingAnchor],
+        [self.optionsScrollView.trailingAnchor constraintEqualToAnchor:contentGuide.trailingAnchor],
+
+        [self.optionsContentView.topAnchor constraintEqualToAnchor:self.optionsScrollView.topAnchor],
+        [self.optionsContentView.bottomAnchor constraintEqualToAnchor:self.optionsScrollView.bottomAnchor],
+        [self.optionsContentView.leadingAnchor constraintEqualToAnchor:self.optionsScrollView.leadingAnchor],
+        [self.optionsContentView.trailingAnchor constraintEqualToAnchor:self.optionsScrollView.trailingAnchor],
+        [self.optionsContentView.widthAnchor constraintEqualToAnchor:self.optionsScrollView.widthAnchor],
+        [self.optionsContentView.heightAnchor constraintGreaterThanOrEqualToAnchor:self.optionsScrollView.heightAnchor],
+        preferredHeight,
+
+        [self.optionsStack.centerYAnchor constraintEqualToAnchor:self.optionsContentView.centerYAnchor],
+        [self.optionsStack.leadingAnchor constraintEqualToAnchor:self.optionsContentView.leadingAnchor],
+        [self.optionsStack.trailingAnchor constraintEqualToAnchor:self.optionsContentView.trailingAnchor],
+        [self.optionsStack.topAnchor constraintGreaterThanOrEqualToAnchor:self.optionsContentView.topAnchor],
+        [self.optionsStack.bottomAnchor constraintLessThanOrEqualToAnchor:self.optionsContentView.bottomAnchor],
     ]];
 }
 

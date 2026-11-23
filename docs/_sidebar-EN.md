@@ -14,6 +14,7 @@
   - [Localization](./advanced/Locale-EN.md)
   - [Scene Type](./advanced/SceneType-EN.md)
   - [Video Sources](./advanced/VideoSource-EN.md)
+  - [iPhone Duo Best Practices](./advanced/iPhoneDuo-EN.md)
 - **Scenes**
   - [AI Education](./scenes/AiEducation-EN.md)
 - [Changelog](./CHANGELOG-EN.md)

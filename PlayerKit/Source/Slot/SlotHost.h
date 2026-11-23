@@ -151,6 +151,25 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (void)notifyBackPressed;
 
+@optional
+
+/**
+ * @brief 返回插槽自身坐标系内用于布局交互内容的连续矩形。
+ *
+ * @discussion 插槽须已挂载到本宿主且布局可用；应在布局变化后重新读取。
+ *             避让宿主全部安全区边缘及系统提供的折叠区、内部遮挡，结果限制在插槽 bounds 内，
+ *             不改变根视图布局。不支持保留区时仅应用安全区避让。
+ *             此接口为可选接口，调用前须检查 @c respondsToSelector:。
+ *
+ * @param slotView 本宿主已挂载的插槽视图，不可为 nil。
+ * @return 插槽自身坐标系内的内容矩形；无可用空间时为空矩形。
+ *
+ * @warning 必须在主线程调用。
+ * @see hostView
+ * @see BaseSlot.contentLayoutBounds
+ */
+- (CGRect)readableContentBoundsForSlot:(UIView<SlotProtocol> *)slotView;
+
 @end
 
 NS_ASSUME_NONNULL_END

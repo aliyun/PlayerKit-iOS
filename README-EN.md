@@ -34,6 +34,7 @@ By encapsulating player capabilities and UI interactions, it enables rapid devel
 - **Ready-to-Use UI Components** — Configurable player UI components covering essential playback and common interactions, with support for on-demand customization.
 - **All-in-One Playback Experience** — Simply pass a video VID to automatically display cover images, video titles, seek thumbnails, and other complete playback information for a one-stop playback experience.
 - **Scenario-Based Solutions** — Built-in support for typical business scenarios such as mid/long-form video, short video, live streaming, playlist, and AI Education to quickly build complete playback experiences.
+- **Adaptive iPhone Duo Experience** — Automatically adapts to inner/outer display switching and foldable layouts for a seamless playback and interaction experience, reducing foldable-device adaptation costs.
 - **Highly Extensible Architecture** — A slot system for flexible UI composition and a strategy system for extensible business logic.
 - **Cross-Platform Unified Architecture** — All platforms share the same design philosophy and API semantics, reducing multi-platform integration and maintenance costs.
 
@@ -117,7 +118,7 @@ Before running the project, ensure the following requirements are met:
 | Requirement | Description |
 |-----|------|
 | Xcode | 15.0+, latest stable version recommended |
-| iOS | Minimum 9.0, real device recommended |
+| iOS | Example requires 15.0+ for current Xcode build validation; the PlayerKit core podspec declares 9.0+ and AI Education requires 13.0+, real device recommended |
 | CocoaPods | 1.13.0+ |
 | License | Player License certificate and License Key obtained. See [Obtain an ApsaraVideo Player SDK license](https://www.alibabacloud.com/help/en/vod/developer-reference/obtain-the-player-sdk-license) |
 
@@ -133,6 +134,8 @@ pod install
 **Step 2: Open the Project**
 
 Open `Example/Example.xcworkspace` with Xcode (use `.xcworkspace`, not `.xcodeproj`).
+
+> Xcode 27.2 requires iOS 15.0+ during build validation, so Example and its generated Pods build with a 15.0 minimum. The Podfile integration declaration remains 13.0, and SDK podspec compatibility declarations are unchanged. Validating iOS 9/13 compatibility requires a toolchain and test devices that support those versions; Example's iOS 15 build is not a substitute.
 
 **Step 3: Configure License**
 

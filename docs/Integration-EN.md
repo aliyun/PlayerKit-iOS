@@ -31,7 +31,7 @@ AliPlayerKit adopts a layered architecture design, offering two integration opti
 
 | Item | Minimum Requirement | Notes |
 |------|---------|------|
-| iOS Deployment Target | 9.0+ | Minimum version declared in podspec |
+| iOS Deployment Target | 9.0+ | PlayerKit core podspec minimum; AI Education and the default scene set require 13.0+. Also check the selected underlying SDK version |
 | Xcode | 15.0+ | Latest stable version recommended |
 | CocoaPods | 1.13.0+ | Dependency management tool |
 | Language | Objective-C | Swift projects can call via bridging |
@@ -196,6 +196,8 @@ YourProject/
 Reference `PlayerKitScenes` via local path in your `Podfile`:
 
 ```ruby
+platform :ios, '13.0' # The default scene set includes AI Education
+
 target 'YourApp' do
   use_frameworks!
 
@@ -223,13 +225,13 @@ end
 | `SceneShortVideo` | `PlayerKitScenes/SceneShortVideo` | Short video scene |
 | `SceneLive` | `PlayerKitScenes/SceneLive` | Live streaming scene. **Additionally depends on the `DemoSettings` module** (demo-level config storage). If integrating this scene standalone, you must also copy the `DemoSettings/` directory, otherwise `pod install` will fail |
 | `ScenePlaylist` | `PlayerKitScenes/ScenePlaylist` | Playlist scene |
-| `SceneAiEducation` | `PlayerKitScenes/SceneAiEducation` | AI Education scene. **Additionally depends on the `DemoSettings` module and the third-party library `GMarkdown (~> 0.1.1)`** (MIT license, pure Swift, based on swift-markdown + MPITextKit, minimum iOS 13.0) for Markdown rendering, automatically fetched during `pod install` |
+| `SceneAiEducation` | `PlayerKitScenes/SceneAiEducation` | AI Education scene (requires iOS 13.0+). **Additionally depends on the `DemoSettings` module and the third-party library `GMarkdown (~> 0.1.1)`** (MIT license, pure Swift, based on swift-markdown + MPITextKit; the library itself supports iOS 13.0+) for Markdown rendering, automatically fetched during `pod install` |
 
 > **SceneAiEducation Dependency Notes**:
 >
 > - This scene contains Swift source code (`swift_version 5.1`). Integrators must use a modern Xcode version with Swift support, and the Podfile must enable `use_frameworks!`.
 > - iOS ≥ 12.2 ships with the Swift runtime built-in, incurring no additional binary size cost; for lower versions, Xcode automatically embeds the runtime.
-> - The default subspec set includes this scene, meaning a default integration will pull in the `GMarkdown` dependency and require the Swift runtime (iOS 13.0+). If you do not need the AI Education scene, explicitly reference only the desired subspecs (excluding `SceneAiEducation`) in your Podfile — this avoids pulling in `GMarkdown` and compiling Swift.
+> - The default subspec set includes this scene, so a default integration pulls in `GMarkdown` and requires iOS 13.0+. To target older versions, explicitly reference only the desired subspecs (excluding `SceneAiEducation`) in your Podfile to avoid `GMarkdown` and Swift compilation. The core and non-AI scene podspecs declare iOS 9.0; the actual minimum must also satisfy the selected underlying SDK and other dependencies.
 > - All other subspecs and the PlayerKit core library remain pure Objective-C and are unaffected.
 
 > **Cross-platform Alignment**: Scene module naming is aligned with the Android counterpart (`scene-longvideo`, `scene-shortvideo`, `scene-live`, `scene-playlist`). Business capabilities and UI interactions for each scene are consistent across platforms.

@@ -31,7 +31,7 @@ AliPlayerKit 采用分层架构设计，根据集成深度提供两种方案：
 
 | 项目 | 最低要求 | 说明 |
 |------|---------|------|
-| iOS Deployment Target | 9.0+ | Podspec 声明的最低版本 |
+| iOS Deployment Target | 9.0+ | PlayerKit 核心 Podspec 最低版本；AI 教育及默认全场景集成需 13.0+，底层 SDK 要求以所选版本为准 |
 | Xcode | 15.0+ | 推荐最新稳定版 |
 | CocoaPods | 1.13.0+ | 依赖管理工具 |
 | 语言 | Objective-C | Swift 项目可通过桥接调用 |
@@ -196,6 +196,8 @@ YourProject/
 在 `Podfile` 中通过本地路径引用 `PlayerKitScenes`：
 
 ```ruby
+platform :ios, '13.0' # 默认场景集包含 AI 教育
+
 target 'YourApp' do
   use_frameworks!
 
@@ -223,13 +225,13 @@ end
 | `SceneShortVideo` | `PlayerKitScenes/SceneShortVideo` | 短视频场景 |
 | `SceneLive` | `PlayerKitScenes/SceneLive` | 直播场景。**额外依赖 `DemoSettings` 模块**（Demo 级配置存储），单独集成时需一并拷贝 `DemoSettings/` 目录，否则 `pod install` 会失败 |
 | `ScenePlaylist` | `PlayerKitScenes/ScenePlaylist` | 列表播放场景 |
-| `SceneAiEducation` | `PlayerKitScenes/SceneAiEducation` | AI 教育场景。**额外依赖 `DemoSettings` 模块与第三方库 `GMarkdown (~> 0.1.1)`**（MIT 协议，纯 Swift，基于 swift-markdown + MPITextKit，最低 iOS 13.0），用于 Markdown 渲染，`pod install` 时自动拉取 |
+| `SceneAiEducation` | `PlayerKitScenes/SceneAiEducation` | AI 教育场景（需 iOS 13.0+）。**额外依赖 `DemoSettings` 模块与第三方库 `GMarkdown (~> 0.1.1)`**（MIT 协议，纯 Swift，基于 swift-markdown + MPITextKit，库自身最低支持 iOS 13.0），用于 Markdown 渲染，`pod install` 时自动拉取 |
 
 > **SceneAiEducation 依赖说明**：
 >
 > - 该场景包含 Swift 源码（`swift_version 5.1`），集成方需使用支持 Swift 的现代 Xcode，Podfile 需启用 `use_frameworks!`。
 > - iOS ≥ 12.2 系统内置 Swift runtime，无额外体积成本；更低版本由 Xcode 自动内嵌 runtime。
-> - 默认 subspec 集包含该场景，即默认集成会引入 `GMarkdown` 依赖，并需要 Swift 运行时（iOS 13.0+）。若不需要 AI 教育场景，可在 Podfile 中仅显式引用所需 subspec（不含 `SceneAiEducation`），即不会引入 `GMarkdown`，也无需编译 Swift。
+> - 默认 subspec 集包含该场景，默认集成会引入 `GMarkdown` 依赖，需 iOS 13.0+。若需兼容更低版本，可在 Podfile 中仅显式引用所需 subspec（不含 `SceneAiEducation`），避免引入 `GMarkdown` 和编译 Swift；核心及非 AI 场景的 Podspec 最低版本为 iOS 9.0，实际下限还需满足所选底层 SDK 及其他依赖的要求。
 > - 其他 subspec 与 PlayerKit 核心库保持纯 Objective-C，不受影响。
 
 > **跨平台对齐**：场景模块命名与 Android 端对齐（`scene-longvideo`、`scene-shortvideo`、`scene-live`、`scene-playlist`）。各场景的业务能力和 UI 交互在多端间保持一致。

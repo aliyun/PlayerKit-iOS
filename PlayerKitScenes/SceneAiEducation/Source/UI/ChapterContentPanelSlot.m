@@ -99,9 +99,9 @@ static const CGFloat kPortraitCornerRadius = 16.0;
     return 0.2;
 }
 
-/// 面板 frame 由 mountPopupContainerInWindow: 手动设定，这里直接给出对应的确定尺寸
+// 动画位移使用实际面板尺寸，与当前可用布局区域保持一致。
 - (CGSize)panelSize {
-    return [self panelSizeForHostBounds:self.popupContainer.bounds];
+    return [self shownPanelFrame].size;
 }
 
 /// 动画期间容器已禁用交互，此处放开触摸以免阻塞其他手势
@@ -210,7 +210,7 @@ static const CGFloat kPortraitCornerRadius = 16.0;
         }
     }
 
-    [self.popupContainer addSubview:contentView];
+    [self.panelContentHostView addSubview:contentView];
     // 显示瞬间即对齐当前进度的高亮，不必等下一次进度回调
     [contentView updateCurrentPosition:self.host.controller.currentPosition];
 }
@@ -220,31 +220,42 @@ static const CGFloat kPortraitCornerRadius = 16.0;
  * 隐藏态由基类通过 transform 平移到屏外，因此这里无需预置屏外 frame。
  */
 - (void)mountPopupContainerInWindow:(UIWindow *)window {
-    CGRect windowBounds = window.bounds;
-    self.popupContainer.frame = windowBounds;
+    self.popupContainer.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     // 进场动画结束后再放开交互（见 onPanelShown）
     self.popupContainer.userInteractionEnabled = NO;
     [window addSubview:self.popupContainer];
-
-    CGSize panelSize = [self panelSizeForHostBounds:windowBounds];
-
-    if (self.isFullscreen) {
-        self.panelContentView.frame = CGRectMake(CGRectGetWidth(windowBounds) - panelSize.width, 0,
-                                                panelSize.width, panelSize.height);
-    } else {
-        self.panelContentView.frame = CGRectMake(0, CGRectGetHeight(windowBounds) - panelSize.height,
-                                                panelSize.width, panelSize.height);
-    }
+    [self layoutPopupContainer];
 }
 
-/// 横屏为定宽右侧抽屉，竖屏为按比例取高的底部弹窗
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    [self layoutPopupContainer];
+}
+
+// 尺寸变化只更新已有视图的布局，保留当前标签、内容和面板显示状态。
+- (void)layoutPopupContainer {
+    UIView *superview = self.popupContainer.superview;
+    if (!superview) {
+        return;
+    }
+    self.popupContainer.frame = superview.bounds;
+    [self layoutPanelView:self.panelContentView toShownFrame:[self shownPanelFrame]];
+}
+
+- (CGRect)shownPanelFrame {
+    CGRect layoutBounds = [self panelLayoutBounds];
+    return [self panelFrameForSize:[self panelSizeForHostBounds:layoutBounds]];
+}
+
+// 全屏态为限宽右侧抽屉，非全屏态按可用高度比例显示底部弹窗。
 - (CGSize)panelSizeForHostBounds:(CGRect)hostBounds {
+    CGFloat width = MAX(0, CGRectGetWidth(hostBounds));
+    CGFloat height = MAX(0, CGRectGetHeight(hostBounds));
     if (self.isFullscreen) {
-        return CGSizeMake(kLandscapePanelWidth, CGRectGetHeight(hostBounds));
+        return CGSizeMake(MIN(kLandscapePanelWidth, width), height);
     }
 
-    return CGSizeMake(CGRectGetWidth(hostBounds),
-                      CGRectGetHeight(hostBounds) * kPortraitPanelHeightRatio);
+    return CGSizeMake(width, MIN(height * kPortraitPanelHeightRatio, height));
 }
 
 #pragma mark - Private Methods - Teardown

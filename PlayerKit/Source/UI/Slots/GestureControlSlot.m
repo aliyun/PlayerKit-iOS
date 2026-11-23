@@ -169,6 +169,41 @@ static inline void TriggerMediumFeedback(GestureControlSlot *slot) {
     return self;
 }
 
+#pragma mark - Layout
+
+- (void)setFrame:(CGRect)frame {
+    if (!CGRectEqualToRect(self.frame, frame)) {
+        [self cancelGestureTracking];
+    }
+    [super setFrame:frame];
+}
+
+- (void)setBounds:(CGRect)bounds {
+    if (!CGRectEqualToRect(self.bounds, bounds)) {
+        [self cancelGestureTracking];
+    }
+    [super setBounds:bounds];
+}
+
+// 尺寸变化或解绑时结束手势，避免沿用旧坐标下的位移
+- (void)cancelGestureTracking {
+    if (self.gestureState == GestureStateLongPressing) {
+        [self finishLongPress];
+    } else if (self.gestureState != GestureStateNone) {
+        [self handlePanEnded:nil];
+    }
+    [self.horizontalTracker startWithPosition:0];
+    [self.verticalTracker startWithPosition:0];
+    self.seekBasePosition = 0;
+    self.accumulatedSeekPercent = 0;
+    for (UIGestureRecognizer *recognizer in self.gestureRecognizers) {
+        if (recognizer.enabled) {
+            recognizer.enabled = NO;
+            recognizer.enabled = YES;
+        }
+    }
+}
+
 #pragma mark - Config
 
 - (void)setConfig:(GestureControlSlotConfig *)config {
@@ -218,7 +253,7 @@ static inline void TriggerMediumFeedback(GestureControlSlot *slot) {
 }
 
 - (void)onUnbindData {
-    self.gestureState = GestureStateNone;
+    [self cancelGestureTracking];
     self.currentBrightness = 0;
     self.currentVolumePercent = 0;
     self.seekBasePosition = 0;
@@ -227,6 +262,7 @@ static inline void TriggerMediumFeedback(GestureControlSlot *slot) {
 }
 
 - (void)onDetach {
+    [self cancelGestureTracking];
     [self removeGestureRecognizers];
     [super onDetach];
 }
@@ -438,33 +474,36 @@ shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherG
         case UIGestureRecognizerStateCancelled: {
             if (self.gestureState != GestureStateLongPressing) return;
 
-            self.gestureState = GestureStateNone;
             TriggerLightFeedback(self);
-            SLOGI(@"Long press ended");
-
-            // 默认行为：恢复长按前的速度
-            AliPlayerController *controller = self.host.controller;
-            if (controller) {
-                float restoreSpeed = self.speedBeforeLongPress > 0 ? self.speedBeforeLongPress : kNormalSpeed;
-                [controller setRate:restoreSpeed];
-                SLOGI(@"Long press end -> speed %.1fx", restoreSpeed);
-            }
-
-            id<GestureControlSlotDelegate> delegate = self.delegate;
-            if (delegate && [delegate respondsToSelector:@selector(gestureControlSlotDidEndLongPress:)]) {
-                [delegate gestureControlSlotDidEndLongPress:self];
-            }
-
-            [self.gestureDispatcher notifyObservers:^(id<GestureNotificationDelegate> observer) {
-                if (observer && [observer respondsToSelector:@selector(gestureDidEndLongPress)]) {
-                    [observer gestureDidEndLongPress];
-                }
-            }];
+            [self finishLongPress];
             break;
         }
         default:
             break;
     }
+}
+
+// 正常结束和取消均恢复长按前倍速，避免尺寸变化或解绑后残留加速状态
+- (void)finishLongPress {
+    if (self.gestureState != GestureStateLongPressing) {
+        return;
+    }
+    self.gestureState = GestureStateNone;
+    AliPlayerController *controller = self.host.controller;
+    if (controller) {
+        float restoreSpeed = self.speedBeforeLongPress > 0 ? self.speedBeforeLongPress : kNormalSpeed;
+        [controller setRate:restoreSpeed];
+        SLOGI(@"Long press end -> speed %.1fx", restoreSpeed);
+    }
+    id<GestureControlSlotDelegate> delegate = self.delegate;
+    if ([delegate respondsToSelector:@selector(gestureControlSlotDidEndLongPress:)]) {
+        [delegate gestureControlSlotDidEndLongPress:self];
+    }
+    [self.gestureDispatcher notifyObservers:^(id<GestureNotificationDelegate> observer) {
+        if ([observer respondsToSelector:@selector(gestureDidEndLongPress)]) {
+            [observer gestureDidEndLongPress];
+        }
+    }];
 }
 
 #pragma mark - Edge Pan (Back)
@@ -532,16 +571,18 @@ shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherG
     }
 }
 
-- (void)handlePanEnded:(UIPanGestureRecognizer *)recognizer {
+- (void)handlePanEnded:(nullable UIPanGestureRecognizer *)recognizer {
     id<GestureControlSlotDelegate> delegate = self.delegate;
+    GestureState endedState = self.gestureState;
+    self.gestureState = GestureStateNone;
 
-    switch (self.gestureState) {
+    switch (endedState) {
         case GestureStateHorizontal: {
             SLOGI(@"Horizontal drag ended");
 
-            // 默认行为：提交 Seek 操作
+            // 仅正常松手提交跳转，取消触摸或尺寸变化只结束拖动
             AliPlayerController *controller = self.host.controller;
-            if (controller && controller.duration > 0) {
+            if (recognizer.state == UIGestureRecognizerStateEnded && controller && controller.duration > 0) {
                 NSInteger seekPosition = self.seekBasePosition + (NSInteger)(self.accumulatedSeekPercent * controller.duration);
                 seekPosition = MAX(0, MIN(seekPosition, controller.duration));
                 [controller seekTo:seekPosition];

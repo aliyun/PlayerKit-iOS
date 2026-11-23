@@ -390,6 +390,8 @@ typedef UIView<SlotProtocol> * _Nullable (^SlotProvider)(UIView *parentView);
 | `host` | `id<SlotHost>` (weak, readonly) | 当前插槽所附属的宿主 |
 | `slotType` | `SlotType` | 当前插槽的类型标识符（由 `SlotHostLayout` 在构建时注入） |
 | `safeAreaEdges` | `SlotSafeAreaEdge` | 需要避让的安全区域边缘（默认 `SlotSafeAreaEdgeAll`） |
+| `avoidsOcclusion` | `BOOL` | 根视图是否额外避让摄像头等遮挡；未显式设置时随 `safeAreaEdges` 变化 |
+| `contentLayoutBounds` | `CGRect` (readonly) | 自身坐标系内避让安全区、折叠区与遮挡的交互内容区域 |
 | `deferContentCreation` | `BOOL` | 延迟内容创建开关 |
 | `contentReady` | `BOOL` (readonly) | 内容是否已创建 |
 | `touchPassthrough` | `BOOL` | 触摸穿透开关（默认 `YES`） |
@@ -422,6 +424,8 @@ typedef NS_OPTIONS(NSUInteger, SlotSafeAreaEdge) {
 ```
 
 `SlotHostLayout` 在 `layoutSubviews` 中根据 `safeAreaEdges` 收缩对应边的 frame，使插槽内部布局直接使用自身锚点即可避开刘海、Home Indicator 等区域。子类可在 `initWithFrame:` 中设置此属性。
+
+在支持系统保留区的环境中，插槽还会避开折叠分区；`SlotSafeAreaEdgeNone` 不代表取消折叠区避让。背景可使用 `bounds`，按钮和文本应在布局回调中重新读取 `contentLayoutBounds`，不要再次叠加宿主的安全区内边距。接入与兼容要求详见 [iPhone Duo 最佳实践](../advanced/iPhoneDuo.md)。
 
 **延迟内容创建 (deferContentCreation)**：
 

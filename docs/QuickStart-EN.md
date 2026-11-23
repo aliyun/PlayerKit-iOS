@@ -88,6 +88,7 @@ Create an `AliPlayerView` programmatically in your ViewController and add it to 
 
 ```objc
 AliPlayerView *playerView = [[AliPlayerView alloc] initWithFrame:self.view.bounds];
+playerView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
 [self.view addSubview:playerView];
 ```
 
@@ -95,10 +96,13 @@ AliPlayerView *playerView = [[AliPlayerView alloc] initWithFrame:self.view.bound
 
 ```swift
 let playerView = AliPlayerView(frame: view.bounds)
+playerView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
 view.addSubview(playerView)
 ```
 
 `AliPlayerView` can be placed anywhere in your view hierarchy, and the frame can be set according to your actual needs. If fullscreen switching is needed, the component internally handles view hierarchy adjustments automatically.
+
+> **Dynamic resizing**: The examples use `autoresizingMask` to fill the parent container and follow its size changes. This setting is unnecessary if Auto Layout or a layout callback continuously updates the `frame`. PlayerKit adapts its internal UI; the host owns the outer container. See [iPhone Duo Best Practices](./advanced/iPhoneDuo-EN.md) for integration boundaries.
 
 ### **Step 2: Attach the Controller and Start Playback**
 
@@ -128,6 +132,7 @@ Create the controller, configure data, and attach the view in your ViewControlle
 
     // 1. Create the player view
     self.playerView = [[AliPlayerView alloc] initWithFrame:self.view.bounds];
+    self.playerView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     [self.view addSubview:self.playerView];
 
     // 2. Create the playback controller
@@ -167,6 +172,7 @@ class VideoPlayerViewController: UIViewController {
 
         // 1. Create the player view
         playerView.frame = view.bounds
+        playerView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         view.addSubview(playerView)
 
         // 2. Configure playback data (VidAuth is recommended)
@@ -357,6 +363,7 @@ Scene module source code serves as a best-practice reference for Component Layer
 - (void)setupPlayerKit {
     // 1. Create the player component view
     self.playerView = [[AliPlayerView alloc] initWithFrame:self.view.bounds];
+    self.playerView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     [self.view addSubview:self.playerView];
 
     // Optional: Set back button callback

@@ -393,6 +393,8 @@ Slots adopt independent View lifecycle and Data lifecycle:
 | `host` | `id<SlotHost>` (weak, readonly) | The host this slot is attached to |
 | `slotType` | `SlotType` | The type identifier of the current slot (injected by `SlotHostLayout` during construction) |
 | `safeAreaEdges` | `SlotSafeAreaEdge` | Safe area edges to respect (default `SlotSafeAreaEdgeAll`) |
+| `avoidsOcclusion` | `BOOL` | Whether the root view additionally avoids camera occlusions; follows `safeAreaEdges` unless explicitly set |
+| `contentLayoutBounds` | `CGRect` (readonly) | Interaction area in local coordinates, avoiding safe areas, folds, and occlusions |
 | `deferContentCreation` | `BOOL` | Deferred content creation toggle |
 | `contentReady` | `BOOL` (readonly) | Whether content has been created |
 | `touchPassthrough` | `BOOL` | Touch passthrough toggle (default `YES`) |
@@ -425,6 +427,8 @@ typedef NS_OPTIONS(NSUInteger, SlotSafeAreaEdge) {
 ```
 
 `SlotHostLayout` shrinks the corresponding edge of the frame based on `safeAreaEdges` during `layoutSubviews`, allowing internal slot layout to use its own anchors to avoid areas like the notch and Home Indicator. Subclasses can set this property in `initWithFrame:`.
+
+Where system reserved regions are supported, slots also avoid fold divisions; `SlotSafeAreaEdgeNone` does not disable fold avoidance. Backgrounds may use `bounds`, while buttons and text should reread `contentLayoutBounds` during layout without adding the host's safe-area insets again. See [iPhone Duo Best Practices](../advanced/iPhoneDuo-EN.md) for integration and compatibility requirements.
 
 **Deferred Content Creation (deferContentCreation)**:
 

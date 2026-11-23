@@ -35,6 +35,7 @@ static const CGFloat kButtonHeight = 44.0;
 
 @property (nonatomic, strong) AliPlayerView *playerView;
 @property (nonatomic, strong) AliPlayerController *playerController;
+@property (nonatomic, strong) UIScrollView *mainScrollView;
 
 @property (nonatomic, strong) UISwitch *preloadSwitch;
 @property (nonatomic, strong) UILabel *switchLabel;
@@ -73,42 +74,49 @@ static const CGFloat kButtonHeight = 44.0;
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
 
-    CGFloat width = self.view.bounds.size.width;
-    CGFloat contentWidth = width - kHorizontalPadding * 2;
-    CGFloat safeTop = 0;
+    CGRect safeBounds = self.view.bounds;
     if (@available(iOS 11.0, *)) {
-        safeTop = self.view.safeAreaInsets.top;
+        safeBounds = UIEdgeInsetsInsetRect(safeBounds, self.view.safeAreaInsets);
     }
-    CGFloat top = safeTop;
+    CGFloat width = MAX(0, CGRectGetWidth(safeBounds));
+    CGFloat availableHeight = MAX(0, CGRectGetHeight(safeBounds));
+    CGFloat contentWidth = MAX(0, width - kHorizontalPadding * 2);
 
-    // Player view (16:9)
-    CGFloat playerHeight = width * 9.0 / 16.0;
-    self.playerView.frame = CGRectMake(0, top, width, playerHeight);
-    top += playerHeight;
+    // 宽矮窗口保留下方操作区，画面比例仍由播放器渲染模式控制。
+    CGFloat playerHeight = MIN(width * 9.0 / 16.0, availableHeight * 0.5);
+    CGRect embeddedPlayerFrame = CGRectMake(CGRectGetMinX(safeBounds), CGRectGetMinY(safeBounds),
+                                            width, playerHeight);
+    if (self.playerView.superview == self.view) {
+        self.playerView.frame = embeddedPlayerFrame;
+    }
+    CGFloat scrollTop = CGRectGetMaxY(embeddedPlayerFrame);
+    CGFloat scrollHeight = MAX(0, CGRectGetMaxY(safeBounds) - scrollTop);
+    self.mainScrollView.frame = CGRectMake(CGRectGetMinX(safeBounds), scrollTop, width, scrollHeight);
 
-    top += kSectionSpacing;
+    CGFloat top = kSectionSpacing;
 
-    // Switch row
+    // 开关与说明共用一行，窄窗口允许说明换行。
     CGSize switchSize = [self.preloadSwitch sizeThatFits:CGSizeZero];
-    self.preloadSwitch.frame = CGRectMake(width - kHorizontalPadding - switchSize.width,
-                                          top + (kButtonHeight - switchSize.height) / 2.0,
+    CGFloat labelWidth = MAX(0, contentWidth - switchSize.width - 8.0);
+    CGSize labelSize = [self.switchLabel sizeThatFits:CGSizeMake(labelWidth, CGFLOAT_MAX)];
+    CGFloat rowHeight = MAX(kButtonHeight, MAX(switchSize.height, labelSize.height));
+    self.preloadSwitch.frame = CGRectMake(MAX(kHorizontalPadding, width - kHorizontalPadding - switchSize.width),
+                                          top + (rowHeight - switchSize.height) / 2.0,
                                           switchSize.width, switchSize.height);
-    self.switchLabel.frame = CGRectMake(kHorizontalPadding, top,
-                                        contentWidth - switchSize.width - 8.0, kButtonHeight);
-    top += kButtonHeight + 8.0;
+    self.switchLabel.frame = CGRectMake(kHorizontalPadding, top, labelWidth, rowHeight);
+    top += rowHeight + 8.0;
 
-    // Action button
     self.actionButton.frame = CGRectMake(kHorizontalPadding, top, contentWidth, kButtonHeight);
     top += kButtonHeight + kSectionSpacing;
 
-    // Status title
     CGSize titleSize = [self.statusTitleLabel sizeThatFits:CGSizeMake(contentWidth, CGFLOAT_MAX)];
     self.statusTitleLabel.frame = CGRectMake(kHorizontalPadding, top, contentWidth, titleSize.height);
     top += titleSize.height + 8.0;
 
-    // Status scroll view (fill remaining space)
-    CGFloat statusHeight = MAX(100, self.view.bounds.size.height - top - 8.0);
+    // 状态区保留最小阅读高度，空间不足时由外层滚动承载。
+    CGFloat statusHeight = MAX(100.0, scrollHeight - top - 8.0);
     self.statusScrollView.frame = CGRectMake(kHorizontalPadding, top, contentWidth, statusHeight);
+    self.mainScrollView.contentSize = CGSizeMake(width, top + statusHeight + 8.0);
 
     [self updateStatusLayout];
 }
@@ -160,38 +168,45 @@ static const CGFloat kButtonHeight = 44.0;
 #pragma mark - Private Methods
 
 - (void)setupUI {
-    // Player view (16:9)
+    // 播放器视图（置于顶部）
     self.playerView = [[AliPlayerView alloc] init];
     [self.view addSubview:self.playerView];
+
+    self.mainScrollView = [[UIScrollView alloc] init];
+    if (@available(iOS 11.0, *)) {
+        self.mainScrollView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
+    }
+    [self.view addSubview:self.mainScrollView];
 
     // Preload switch row
     self.switchLabel = [[UILabel alloc] init];
     self.switchLabel.text = @"预加载开关";
     self.switchLabel.font = [UIFont systemFontOfSize:15.0];
     self.switchLabel.textColor = [UIColor blackColor];
-    [self.view addSubview:self.switchLabel];
+    self.switchLabel.numberOfLines = 0;
+    [self.mainScrollView addSubview:self.switchLabel];
 
     self.preloadSwitch = [[UISwitch alloc] init];
     [self.preloadSwitch addTarget:self action:@selector(onPreloadSwitchChanged:) forControlEvents:UIControlEventValueChanged];
-    [self.view addSubview:self.preloadSwitch];
+    [self.mainScrollView addSubview:self.preloadSwitch];
 
     // Action button
     self.actionButton = [self createButtonWithTitle:@"播放" color:[UIColor systemBlueColor]];
     [self.actionButton addTarget:self action:@selector(onActionButtonTapped) forControlEvents:UIControlEventTouchUpInside];
-    [self.view addSubview:self.actionButton];
+    [self.mainScrollView addSubview:self.actionButton];
 
     // Status log area
     self.statusTitleLabel = [[UILabel alloc] init];
     self.statusTitleLabel.text = @"预加载状态";
     self.statusTitleLabel.font = [UIFont boldSystemFontOfSize:16.0];
     self.statusTitleLabel.textColor = [UIColor blackColor];
-    [self.view addSubview:self.statusTitleLabel];
+    [self.mainScrollView addSubview:self.statusTitleLabel];
 
     self.statusScrollView = [[UIScrollView alloc] init];
     self.statusScrollView.backgroundColor = [UIColor colorWithWhite:0.95 alpha:1.0];
     self.statusScrollView.layer.cornerRadius = 8.0;
     self.statusScrollView.clipsToBounds = YES;
-    [self.view addSubview:self.statusScrollView];
+    [self.mainScrollView addSubview:self.statusScrollView];
 
     self.statusLabel = [[UILabel alloc] init];
     self.statusLabel.font = [UIFont fontWithName:@"Menlo" size:11.0];

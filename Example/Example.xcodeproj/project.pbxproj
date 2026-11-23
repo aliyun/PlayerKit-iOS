@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		09C6BB17ACF44C7DA5ED5C11 /* SceneDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 3A1E52D0B9F84D5DBA7C9E33 /* SceneDelegate.m */; };
 		4776470A563048F4B931AF77 /* DemoSettingsModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 77F662EA10564054EA482152 /* DemoSettingsModule.m */; };
 		8709676865E432F39479B6FB /* license.crt in Resources */ = {isa = PBXBuildFile; fileRef = 442E19F96051C59838404276 /* license.crt */; };
 		987467C3139F8260B99A0980 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = A0EA229EFCBC2782EEF93FD6 /* main.m */; };
@@ -17,6 +18,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		27AD2B61A8C84B5AB54B2D22 /* SceneDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SceneDelegate.h; sourceTree = "<group>"; };
+		3A1E52D0B9F84D5DBA7C9E33 /* SceneDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SceneDelegate.m; sourceTree = "<group>"; };
 		16D45F02A25A970F510C6752 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
 		21A0F9EBCC95768D165D07AA /* Pods_Example.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Example.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		442E19F96051C59838404276 /* license.crt */ = {isa = PBXFileReference; lastKnownFileType = text; path = license.crt; sourceTree = "<group>"; };
@@ -66,6 +69,8 @@
 			children = (
 				87B334354F2640E7378FC53C /* AppDelegate.h */,
 				16D45F02A25A970F510C6752 /* AppDelegate.m */,
+				27AD2B61A8C84B5AB54B2D22 /* SceneDelegate.h */,
+				3A1E52D0B9F84D5DBA7C9E33 /* SceneDelegate.m */,
 				9351729A4E35979B7CDBD831 /* Assets.xcassets */,
 				D1990F110751F7AFF50A3D69 /* DemoSettingsModule.h */,
 				77F662EA10564054EA482152 /* DemoSettingsModule.m */,
@@ -227,6 +232,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B53FC9452FCD86250170A8F4 /* AppDelegate.m in Sources */,
+				09C6BB17ACF44C7DA5ED5C11 /* SceneDelegate.m in Sources */,
 				4776470A563048F4B931AF77 /* DemoSettingsModule.m in Sources */,
 				987467C3139F8260B99A0980 /* main.m in Sources */,
 				F2E1D0C9B8A7F6E5D4C3B2A1 /* SwiftLinkSupport.swift in Sources */,
@@ -282,7 +288,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = com.aliyun.playerkit.example;
@@ -385,7 +391,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

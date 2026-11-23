@@ -466,6 +466,14 @@ The `SceneType` enum defines playback scenarios, affecting slot visibility confi
 
 See [Scene Types](./advanced/SceneType-EN.md) for details.
 
+### **3.14 iPhone Duo Support**
+
+**iPhone Duo support** handles display transitions, dynamic resizing, and fold avoidance within the player UI layer, reducing repeated adaptation work for controls, gestures, and panels. The default UI retains its existing style and adjusts to available space rather than introducing a separate layout for each device pose.
+
+The host still owns the player container's size and page layout; custom UIs extend through slots. Reserved-region support requires building with an SDK that includes iOS 27.1 APIs and running on a supported system. Older environments retain conventional layout and Safe Area handling.
+
+See [iPhone Duo Player Adaptation Best Practices](./advanced/iPhoneDuo-EN.md).
+
 ---
 
 With the overview above, you now have a solid understanding of AliPlayerKit's core components and overall architectural design.

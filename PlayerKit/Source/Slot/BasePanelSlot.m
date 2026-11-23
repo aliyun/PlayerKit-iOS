@@ -8,15 +8,84 @@
 
 #import "BasePanelSlot.h"
 #import "Log.h"
+#import "../Utils/PlayerLayout+Private.h"
 
 #pragma mark - Defaults
 
 static const NSTimeInterval kDefaultAnimationDuration = 0.3;
 static const CGFloat kDefaultOverlayAlpha = 0.5;
 
+// 外部承载视图的几何变化需通知插槽重新布局。
+@interface PanelLayoutObserverView : UIView
+@property (nonatomic, weak) BasePanelSlot *owner;
+@property (nonatomic, assign) BOOL hasSnapshot;
+@property (nonatomic, assign) CGRect previousBounds;
+@property (nonatomic, assign) CGRect previousReadableBounds;
+@property (nonatomic, assign) UIEdgeInsets previousInsets;
+@property (nonatomic, weak) UIWindow *previousWindow;
+@end
+
+@implementation PanelLayoutObserverView
+
+- (void)didMoveToWindow {
+    [super didMoveToWindow];
+    [self setNeedsUpdateConstraints];
+}
+
+- (void)updateConstraints {
+    PlayerLayoutReadableRect(self, self.bounds, YES);
+    [self setNeedsLayout];
+    [super updateConstraints];
+}
+
+- (void)safeAreaInsetsDidChange {
+    [super safeAreaInsetsDidChange];
+    [self setNeedsLayout];
+}
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    UIView *host = self.superview;
+    if (!host) return;
+    CGRect readable = PlayerLayoutReadableRect(self, self.bounds, YES);
+    UIEdgeInsets insets = UIEdgeInsetsZero;
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 110000
+    if (@available(iOS 11.0, *)) insets = host.safeAreaInsets;
+#endif
+    BOOL changed = !self.hasSnapshot || !CGRectEqualToRect(host.bounds, self.previousBounds) ||
+        !CGRectEqualToRect(readable, self.previousReadableBounds) ||
+        !UIEdgeInsetsEqualToEdgeInsets(insets, self.previousInsets) || self.window != self.previousWindow;
+    self.hasSnapshot = YES;
+    self.previousBounds = host.bounds;
+    self.previousReadableBounds = readable;
+    self.previousInsets = insets;
+    self.previousWindow = self.window;
+    if (changed) {
+        [self.owner setNeedsLayout];
+        [self.owner layoutIfNeeded];
+    }
+}
+
+@end
+
+// 容器空白区域不拦截触摸，以保留蒙层点击关闭行为。
+@interface PanelContentHostView : UIView
+@end
+
+@implementation PanelContentHostView
+- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+    UIView *hit = [super hitTest:point withEvent:event];
+    return hit == self ? nil : hit;
+}
+@end
+
 @interface BasePanelSlot ()
 
 @property (nonatomic, assign) BOOL isPanelShowing;
+@property (nonatomic, strong) PanelLayoutObserverView *panelLayoutObserver;
+@property (nonatomic, strong) UIView *panelContentContainer;
+@property (nonatomic, assign) NSUInteger panelAnimationGeneration;
+@property (nonatomic, assign) BOOL slideOutAnimating;
 
 @end
 
@@ -70,9 +139,24 @@ static const CGFloat kDefaultOverlayAlpha = 0.5;
     return self;
 }
 
+- (void)updateConstraints {
+    [self panelLayoutBounds];
+    [self setNeedsLayout];
+    [super updateConstraints];
+}
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    if (self.panelContentContainer.superview == [self panelHostView]) {
+        self.panelContentContainer.frame = [self panelLayoutBounds];
+    }
+}
+
 /// 从宿主分离：复位显示状态并清除蒙层 / 面板的残留动画（子类重写时须调用 super）
 - (void)onDetach {
     _isPanelShowing = NO;
+    self.panelAnimationGeneration++;
+    self.slideOutAnimating = NO;
 
     // 直接访问 ivar，避免在销毁路径上惰性创建蒙层
     if (_overlayView) {
@@ -89,6 +173,10 @@ static const CGFloat kDefaultOverlayAlpha = 0.5;
         [panel.layer removeAllAnimations];
     }
 
+    [self.panelLayoutObserver removeFromSuperview];
+    self.panelLayoutObserver = nil;
+    // 内容就绪状态不随分离重置，需保留容器内的内容供再次显示。
+    [self.panelContentContainer removeFromSuperview];
     [super onDetach];
 }
 
@@ -122,7 +210,14 @@ static const CGFloat kDefaultOverlayAlpha = 0.5;
     self.hidden = NO;
     [self.superview bringSubviewToFront:self];
 
+    // 仅恢复基类容器，不迁移子类自行挂载的面板。
+    if (self.panelContentContainer) {
+        [self panelContentHostView];
+    }
+    [self installPanelLayoutObserver];
     [self installOverlayIfNeeded];
+    // 承载视图可能已变更，需重新追踪其保留区变化。
+    [self setNeedsUpdateConstraints];
 
     if (_overlayView) {
         _overlayView.alpha = 0;
@@ -130,6 +225,8 @@ static const CGFloat kDefaultOverlayAlpha = 0.5;
 
     // 先把面板的布局结算到位，再开始动画：延迟创建的内容此刻可能尚未走过一次
     // layoutSubviews，若不结算，进场动画会从零尺寸的位置起跳
+    [self setNeedsLayout];
+    [self layoutIfNeeded];
     UIView *panelToLayout = [self panelView];
 
     if (panelToLayout) {
@@ -158,6 +255,8 @@ static const CGFloat kDefaultOverlayAlpha = 0.5;
     }
 
     // 无动画路径：清除在途动画并直接落到终态，随后收尾
+    self.panelAnimationGeneration++;
+    self.slideOutAnimating = NO;
     if (_overlayView) {
         [_overlayView.layer removeAllAnimations];
         _overlayView.alpha = 0;
@@ -229,17 +328,56 @@ static const CGFloat kDefaultOverlayAlpha = 0.5;
 
 #pragma mark - Layout Helper
 
+- (CGRect)panelLayoutBounds {
+    UIView *host = [self panelHostView];
+    return PlayerLayoutReadableRect(host, host.bounds, YES);
+}
+
+- (UIView *)panelContentHostView {
+    UIView *host = [self panelHostView];
+    if (!self.panelContentContainer) {
+        UIView *container = [[PanelContentHostView alloc] init];
+        container.backgroundColor = [UIColor clearColor];
+        container.layoutMargins = UIEdgeInsetsZero;
+        container.clipsToBounds = YES;
+        self.panelContentContainer = container;
+    }
+    if (self.panelContentContainer.superview != host) {
+        [host addSubview:self.panelContentContainer];
+    }
+    self.panelContentContainer.frame = [self panelLayoutBounds];
+    return self.panelContentContainer;
+}
+
+- (CGRect)panelFrameForSize:(CGSize)preferredSize {
+    CGRect bounds = [self panelLayoutBounds];
+    CGFloat width = MIN(MAX(0, preferredSize.width), MAX(0, CGRectGetWidth(bounds)));
+    CGFloat height = MIN(MAX(0, preferredSize.height), MAX(0, CGRectGetHeight(bounds)));
+    return CGRectMake(CGRectGetMaxX(bounds) - width, CGRectGetMaxY(bounds) - height, width, height);
+}
+
 - (void)layoutPanelView:(nullable UIView *)panel toShownFrame:(CGRect)frame {
     if (!panel) {
         return;
     }
+    if (self.panelContentContainer && panel.superview == self.panelContentContainer) {
+        self.panelContentContainer.frame = [self panelLayoutBounds];
+        frame = [self.panelContentContainer convertRect:frame fromView:[self panelHostView]];
+    }
 
     // 只写 bounds 与 center（两者均为未变换几何），不写 frame——
     // frame 在 transform 非 identity 时是未定义的，赋值会把正在滑出的面板拽回显示位置
+    BOOL sizeChanged = !CGSizeEqualToSize(panel.bounds.size, frame.size);
     CGRect bounds = panel.bounds;
     bounds.size = frame.size;
     panel.bounds = bounds;
     panel.center = CGPointMake(CGRectGetMidX(frame), CGRectGetMidY(frame));
+    if (sizeChanged && self.slideOutAnimating && !self.isPanelShowing &&
+        self.panelContentContainer && panel.superview == self.panelContentContainer) {
+        // 尺寸变化后需更新退场位移，动画代次检查可避免旧回调重复收尾。
+        CGAffineTransform offscreen = [self panelOffscreenTransformForSize:frame.size];
+        [self animateHide:^{ panel.transform = offscreen; }];
+    }
 }
 
 #pragma mark - Subclass Hooks (Lifecycle)
@@ -255,6 +393,11 @@ static const CGFloat kDefaultOverlayAlpha = 0.5;
 /// 默认在完全隐藏后置 hidden = YES（子类重写时须调用 super）
 - (void)onPanelHidden {
     self.hidden = YES;
+    [self.panelLayoutObserver removeFromSuperview];
+    self.panelLayoutObserver = nil;
+    if (self.panelContentContainer.superview != self) {
+        [self.panelContentContainer removeFromSuperview];
+    }
 }
 
 /// 默认点击蒙层即关闭面板
@@ -348,12 +491,15 @@ static const CGFloat kDefaultOverlayAlpha = 0.5;
     }
 
     CGAffineTransform offscreen = [self panelOffscreenTransform];
+    self.slideOutAnimating = YES;
     [self animateHide:^{
         panel.transform = offscreen;
     }];
 }
 
 - (void)animateShow:(nullable void (^)(void))animations {
+    NSUInteger generation = ++self.panelAnimationGeneration;
+    self.slideOutAnimating = NO;
     UIView *overlay = self.overlayView;
     CGFloat targetAlpha = [self overlayAlpha];
 
@@ -366,14 +512,15 @@ static const CGFloat kDefaultOverlayAlpha = 0.5;
             animations();
         }
     } completion:^(BOOL finished) {
-        // 动画期间显示意图可能已反转，此时不派发进场收尾
-        if (self.isPanelShowing) {
+        // 仅当前动画且显示意图仍成立时收尾，避免过期回调干扰新状态。
+        if (generation == self.panelAnimationGeneration && self.isPanelShowing) {
             [self onPanelShown];
         }
     }];
 }
 
 - (void)animateHide:(nullable void (^)(void))animations {
+    NSUInteger generation = ++self.panelAnimationGeneration;
     UIView *overlay = self.overlayView;
 
     [UIView animateWithDuration:[self animationDuration]
@@ -385,14 +532,35 @@ static const CGFloat kDefaultOverlayAlpha = 0.5;
             animations();
         }
     } completion:^(BOOL finished) {
-        // 动画期间面板可能已被重新显示，此时不派发退场收尾
-        if (!self.isPanelShowing) {
+        // 仅当前动画且隐藏意图仍成立时收尾，避免过期回调移除面板。
+        if (generation == self.panelAnimationGeneration && !self.isPanelShowing) {
+            self.slideOutAnimating = NO;
             [self onPanelHidden];
         }
     }];
 }
 
 #pragma mark - Private
+
+- (void)installPanelLayoutObserver {
+    UIView *host = [self panelHostView];
+    if (host == self) return;
+    if (self.panelLayoutObserver.superview == host) return;
+    [self.panelLayoutObserver removeFromSuperview];
+    PanelLayoutObserverView *observer = [[PanelLayoutObserverView alloc] init];
+    observer.owner = self;
+    observer.userInteractionEnabled = NO;
+    observer.accessibilityElementsHidden = YES;
+    observer.translatesAutoresizingMaskIntoConstraints = NO;
+    [host insertSubview:observer atIndex:0];
+    [NSLayoutConstraint activateConstraints:@[
+        [observer.leadingAnchor constraintEqualToAnchor:host.leadingAnchor],
+        [observer.trailingAnchor constraintEqualToAnchor:host.trailingAnchor],
+        [observer.topAnchor constraintEqualToAnchor:host.topAnchor],
+        [observer.bottomAnchor constraintEqualToAnchor:host.bottomAnchor],
+    ]];
+    self.panelLayoutObserver = observer;
+}
 
 /// 按 panelSlideEdge 与 panelSize 计算面板的屏外位移
 - (CGAffineTransform)panelOffscreenTransform {
@@ -402,8 +570,11 @@ static const CGFloat kDefaultOverlayAlpha = 0.5;
         return CGAffineTransformIdentity;
     }
 
-    CGSize size = [self panelSize];
-    switch (edge) {
+    return [self panelOffscreenTransformForSize:[self panelSize]];
+}
+
+- (CGAffineTransform)panelOffscreenTransformForSize:(CGSize)size {
+    switch ([self panelSlideEdge]) {
         case PanelSlideEdgeLeft:
             return CGAffineTransformMakeTranslation(-size.width, 0);
 

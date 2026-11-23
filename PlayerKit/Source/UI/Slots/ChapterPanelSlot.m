@@ -196,9 +196,13 @@ static NSString *const kChapterCellIdentifier = @"ChapterPanelCell";
     return PanelSlideEdgeRight;
 }
 
-/// 宽度固定为 kPanelWidth，直接给出确定尺寸，不依赖布局是否已结算
+// 动画位移采用实际面板尺寸，适应窄区域
 - (CGSize)panelSize {
-    return CGSizeMake(kPanelWidth, self.bounds.size.height);
+    return [self shownPanelFrame].size;
+}
+
+- (CGRect)shownPanelFrame {
+    return [self panelFrameForSize:CGSizeMake(kPanelWidth, CGRectGetHeight([self panelLayoutBounds]))];
 }
 
 /// 无章节数据时不具备显示条件；有数据则刷新列表
@@ -221,12 +225,14 @@ static NSString *const kChapterCellIdentifier = @"ChapterPanelCell";
     // 面板容器
     self.panelContainer = [[UIView alloc] init];
     self.panelContainer.backgroundColor = [UIColor clearColor];
+    self.panelContainer.layoutMargins = UIEdgeInsetsZero;
     self.panelContainer.clipsToBounds = YES;
     if (@available(iOS 11.0, *)) {
         self.panelContainer.layer.cornerRadius = 16.0;
         self.panelContainer.layer.maskedCorners = kCALayerMinXMinYCorner | kCALayerMaxXMinYCorner;
     }
-    [self addSubview:self.panelContainer];
+    // 使用基类内容承载视图，统一面板布局与动画坐标
+    [self.panelContentHostView addSubview:self.panelContainer];
 
     // 毛玻璃背景层
     UIBlurEffect *blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleDark];
@@ -253,18 +259,28 @@ static NSString *const kChapterCellIdentifier = @"ChapterPanelCell";
     self.tableView.backgroundColor = [UIColor clearColor];
     // 消除 layoutMargins 留白
     self.tableView.layoutMargins = UIEdgeInsetsZero;
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 110000
     if (@available(iOS 11.0, *)) {
         self.tableView.insetsContentViewsToSafeArea = NO;
+        self.tableView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
     }
+#endif
     [self.tableView registerClass:[ChapterPanelCell class]
            forCellReuseIdentifier:kChapterCellIdentifier];
     [self.panelContainer addSubview:self.tableView];
 
+    // 列表使用面板自身安全区，避免叠加自动滚动内边距
+    UILayoutGuide *contentGuide = self.panelContainer.layoutMarginsGuide;
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 110000
+    if (@available(iOS 11.0, *)) {
+        contentGuide = self.panelContainer.safeAreaLayoutGuide;
+    }
+#endif
     [NSLayoutConstraint activateConstraints:@[
         [self.tableView.topAnchor constraintEqualToAnchor:self.headerView.bottomAnchor],
-        [self.tableView.leadingAnchor constraintEqualToAnchor:self.panelContainer.leadingAnchor],
-        [self.tableView.trailingAnchor constraintEqualToAnchor:self.panelContainer.trailingAnchor],
-        [self.tableView.bottomAnchor constraintEqualToAnchor:self.panelContainer.bottomAnchor],
+        [self.tableView.leadingAnchor constraintEqualToAnchor:contentGuide.leadingAnchor],
+        [self.tableView.trailingAnchor constraintEqualToAnchor:contentGuide.trailingAnchor],
+        [self.tableView.bottomAnchor constraintEqualToAnchor:contentGuide.bottomAnchor],
     ]];
 
     SLOGI(@"ChapterPanelSlot content view setup complete");
@@ -279,12 +295,18 @@ static NSString *const kChapterCellIdentifier = @"ChapterPanelCell";
     // 标题 + 副标题（水平排列）
     UIView *titleContainer = [[UIView alloc] init];
     titleContainer.translatesAutoresizingMaskIntoConstraints = NO;
+    titleContainer.clipsToBounds = YES;
     [self.headerView addSubview:titleContainer];
 
     self.chapterCountLabel = [[UILabel alloc] init];
     self.chapterCountLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.chapterCountLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
     self.chapterCountLabel.textColor = [UIColor whiteColor];
+    self.chapterCountLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    [self.chapterCountLabel setContentHuggingPriority:UILayoutPriorityDefaultHigh
+                                           forAxis:UILayoutConstraintAxisHorizontal];
+    [self.chapterCountLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultHigh
+                                                          forAxis:UILayoutConstraintAxisHorizontal];
     [titleContainer addSubview:self.chapterCountLabel];
 
     self.subtitleLabel = [[UILabel alloc] init];
@@ -292,6 +314,11 @@ static NSString *const kChapterCellIdentifier = @"ChapterPanelCell";
     self.subtitleLabel.font = [UIFont systemFontOfSize:12];
     self.subtitleLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.4];
     self.subtitleLabel.text = LocalizedString(@"ai_education_ai_generated");
+    self.subtitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    [self.subtitleLabel setContentHuggingPriority:UILayoutPriorityDefaultLow
+                                       forAxis:UILayoutConstraintAxisHorizontal];
+    [self.subtitleLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
+                                                      forAxis:UILayoutConstraintAxisHorizontal];
     [titleContainer addSubview:self.subtitleLabel];
 
     // 关闭按钮
@@ -307,21 +334,31 @@ static NSString *const kChapterCellIdentifier = @"ChapterPanelCell";
                forControlEvents:UIControlEventTouchUpInside];
     [self.headerView addSubview:self.closeButton];
 
+    UILayoutGuide *contentGuide = self.panelContainer.layoutMarginsGuide;
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 110000
+    if (@available(iOS 11.0, *)) {
+        contentGuide = self.panelContainer.safeAreaLayoutGuide;
+    }
+#endif
     [NSLayoutConstraint activateConstraints:@[
-        [self.headerView.topAnchor constraintEqualToAnchor:self.panelContainer.topAnchor],
-        [self.headerView.leadingAnchor constraintEqualToAnchor:self.panelContainer.leadingAnchor],
-        [self.headerView.trailingAnchor constraintEqualToAnchor:self.panelContainer.trailingAnchor],
+        [self.headerView.topAnchor constraintEqualToAnchor:contentGuide.topAnchor],
+        [self.headerView.leadingAnchor constraintEqualToAnchor:contentGuide.leadingAnchor],
+        [self.headerView.trailingAnchor constraintEqualToAnchor:contentGuide.trailingAnchor],
         [self.headerView.heightAnchor constraintEqualToConstant:kHeaderHeight],
 
         [titleContainer.leadingAnchor constraintEqualToAnchor:self.headerView.leadingAnchor constant:16],
+        [titleContainer.trailingAnchor constraintLessThanOrEqualToAnchor:self.closeButton.leadingAnchor constant:-8],
         [titleContainer.centerYAnchor constraintEqualToAnchor:self.headerView.centerYAnchor],
+        [titleContainer.heightAnchor constraintEqualToAnchor:self.headerView.heightAnchor],
 
         [self.chapterCountLabel.leadingAnchor constraintEqualToAnchor:titleContainer.leadingAnchor],
         [self.chapterCountLabel.centerYAnchor constraintEqualToAnchor:titleContainer.centerYAnchor],
+        [self.chapterCountLabel.widthAnchor constraintGreaterThanOrEqualToConstant:0],
 
         [self.subtitleLabel.leadingAnchor constraintEqualToAnchor:self.chapterCountLabel.trailingAnchor constant:6],
         [self.subtitleLabel.centerYAnchor constraintEqualToAnchor:titleContainer.centerYAnchor],
         [self.subtitleLabel.trailingAnchor constraintEqualToAnchor:titleContainer.trailingAnchor],
+        [self.subtitleLabel.widthAnchor constraintGreaterThanOrEqualToConstant:0],
 
         [self.closeButton.trailingAnchor constraintEqualToAnchor:self.headerView.trailingAnchor constant:-12],
         [self.closeButton.centerYAnchor constraintEqualToAnchor:self.headerView.centerYAnchor],
@@ -356,13 +393,9 @@ static NSString *const kChapterCellIdentifier = @"ChapterPanelCell";
 - (void)layoutSubviews {
     [super layoutSubviews];
 
-    // 始终按"已显示"的位置布局，隐藏态由基类通过 transform 平移到屏外，因此无需区分显示状态。
-    // 必须走基类的 layoutPanelView:toShownFrame:（内部只写 bounds / center）而不能直接赋值
-    // frame——滑动动画进行中面板的 transform 非 identity，此时写 frame 会把它拽回显示位置
-    CGFloat parentWidth = self.bounds.size.width;
-    CGFloat parentHeight = self.bounds.size.height;
-    [self layoutPanelView:self.panelContainer
-             toShownFrame:CGRectMake(parentWidth - kPanelWidth, 0, kPanelWidth, parentHeight)];
+    // 按显示位置布局，隐藏位移由基类管理
+    // 使用基类布局入口，避免直接修改 frame 干扰动画变换
+    [self layoutPanelView:self.panelContainer toShownFrame:[self shownPanelFrame]];
 }
 
 #pragma mark - SlotActionNotificationDelegate

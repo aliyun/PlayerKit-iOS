@@ -28,6 +28,7 @@
 #import "GestureNotificationDispatcher.h"
 #import "SlotActionNotificationDispatcher.h"
 #import "Log.h"
+#import "../Utils/PlayerLayout+Private.h"
 
 @interface SlotHostLayout ()
 
@@ -61,17 +62,31 @@
     SLOGI(@"[LC][dealloc] ~~~ <%@: %p>", NSStringFromClass([self class]), self);
 }
 
+- (void)didMoveToWindow {
+    [super didMoveToWindow];
+    [self setNeedsUpdateConstraints];
+}
+
+- (void)updateConstraints {
+    // 读取保留区，跟踪 bounds 不变时的保留区变化。
+    PlayerLayoutReadableRect(self, self.bounds, YES);
+    [self setNeedsLayout];
+    [super updateConstraints];
+}
+
+- (void)safeAreaInsetsDidChange {
+    [super safeAreaInsetsDidChange];
+    [self setNeedsLayout];
+}
+
 - (void)layoutSubviews {
     [super layoutSubviews];
-    CGRect bounds = self.bounds;
-    SLOGI(@"layoutSubviews: bounds = %@, superview.bounds = %@",
-          NSStringFromCGRect(bounds), NSStringFromCGRect(self.superview.bounds));
-    
-    UIEdgeInsets safeArea = self.safeAreaInsets;
-    for (UIView<SlotProtocol> *slotView in self.slotViews.allValues) {
-        slotView.frame = [self frameForSlot:slotView bounds:bounds safeArea:safeArea];
+    CGRect bounds = PlayerLayoutReadableRect(self, self.bounds, NO);
+    UIEdgeInsets safeArea = UIEdgeInsetsZero;
+    if (@available(iOS 11.0, *)) {
+        safeArea = self.safeAreaInsets;
     }
-    for (UIView<SlotProtocol> *slotView in self.customSlotViews.allValues) {
+    for (UIView<SlotProtocol> *slotView in [self allSlotViews]) {
         slotView.frame = [self frameForSlot:slotView bounds:bounds safeArea:safeArea];
     }
 }
@@ -79,31 +94,50 @@
 - (CGRect)frameForSlot:(UIView<SlotProtocol> *)slotView
                 bounds:(CGRect)bounds
               safeArea:(UIEdgeInsets)safeArea {
-    if (![slotView isKindOfClass:[BaseSlot class]]) {
-        return bounds;
-    }
-    SlotSafeAreaEdge edges = ((BaseSlot *)slotView).safeAreaEdges;
-    if (edges == SlotSafeAreaEdgeNone) {
-        return bounds;
-    }
-    CGRect frame = bounds;
+    SlotSafeAreaEdge edges = [slotView respondsToSelector:@selector(safeAreaEdges)]
+        ? slotView.safeAreaEdges : SlotSafeAreaEdgeNone;
+    BOOL avoidsOcclusion = [slotView respondsToSelector:@selector(avoidsOcclusion)]
+        ? slotView.avoidsOcclusion : edges != SlotSafeAreaEdgeNone;
+    return [self frameForEdges:edges bounds:bounds safeArea:safeArea avoidsOcclusion:avoidsOcclusion];
+}
+
+- (CGRect)frameForEdges:(SlotSafeAreaEdge)edges
+                 bounds:(CGRect)bounds
+               safeArea:(UIEdgeInsets)safeArea
+        avoidsOcclusion:(BOOL)avoidsOcclusion {
+    CGRect safeBounds = self.bounds;
     if (edges & SlotSafeAreaEdgeTop) {
-        frame.origin.y += safeArea.top;
-        frame.size.height -= safeArea.top;
+        safeBounds.origin.y += safeArea.top;
+        safeBounds.size.height -= safeArea.top;
     }
     if (edges & SlotSafeAreaEdgeLeft) {
-        frame.origin.x += safeArea.left;
-        frame.size.width -= safeArea.left;
+        safeBounds.origin.x += safeArea.left;
+        safeBounds.size.width -= safeArea.left;
     }
     if (edges & SlotSafeAreaEdgeBottom) {
-        frame.size.height -= safeArea.bottom;
+        safeBounds.size.height -= safeArea.bottom;
     }
     if (edges & SlotSafeAreaEdgeRight) {
-        frame.size.width -= safeArea.right;
+        safeBounds.size.width -= safeArea.right;
     }
-    frame.size.width = MAX(0, frame.size.width);
-    frame.size.height = MAX(0, frame.size.height);
-    return frame;
+    safeBounds.size.width = MAX(0, safeBounds.size.width);
+    safeBounds.size.height = MAX(0, safeBounds.size.height);
+    CGRect frame = PlayerLayoutIntersection(bounds, safeBounds);
+    return avoidsOcclusion ? PlayerLayoutReadableRect(self, frame, YES) : frame;
+}
+
+- (CGRect)readableContentBoundsForSlot:(UIView<SlotProtocol> *)slotView {
+    UIEdgeInsets safeArea = UIEdgeInsetsZero;
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 110000
+    if (@available(iOS 11.0, *)) {
+        safeArea = self.safeAreaInsets;
+    }
+#endif
+    CGRect bounds = PlayerLayoutReadableRect(self, self.bounds, NO);
+    CGRect frame = [self frameForEdges:SlotSafeAreaEdgeAll bounds:bounds
+                             safeArea:safeArea avoidsOcclusion:YES];
+    CGRect localFrame = [slotView convertRect:frame fromView:self];
+    return PlayerLayoutIntersection(slotView.bounds, localFrame);
 }
 
 #pragma mark - Public Methods
@@ -214,34 +248,27 @@
         [self bindData:self.currentModel];
     }
 
+    [self setNeedsLayout];
     NSUInteger total = self.slotViews.count + self.customSlotViews.count;
     SLOGI(@"Rebuild complete, %lu slots attached", (unsigned long)total);
 }
 
 - (void)bindData:(AliPlayerModel *)model {
     self.currentModel = model;
-    for (UIView<SlotProtocol> *slotView in self.slotViews.allValues) {
-        if ([slotView isKindOfClass:[BaseSlot class]]) {
-            BaseSlot *slot = (BaseSlot *)slotView;
-            if (slot.deferContentCreation && !slot.contentReady) {
-                continue;
-            }
+    for (UIView<SlotProtocol> *slotView in [self allSlotViews]) {
+        if ([self canBindSlotContent:slotView]) {
+            [slotView onBindData:model];
         }
-        [slotView onBindData:model];
-    }
-    for (UIView<SlotProtocol> *slotView in self.customSlotViews.allValues) {
-        [slotView onBindData:model];
     }
     NSUInteger total = self.slotViews.count + self.customSlotViews.count;
     SLOGI(@"Data bound to %lu slots", (unsigned long)total);
 }
 
 - (void)unbindData {
-    for (UIView<SlotProtocol> *slotView in self.slotViews.allValues) {
-        [slotView onUnbindData];
-    }
-    for (UIView<SlotProtocol> *slotView in self.customSlotViews.allValues) {
-        [slotView onUnbindData];
+    for (UIView<SlotProtocol> *slotView in [self allSlotViews]) {
+        if ([self canBindSlotContent:slotView]) {
+            [slotView onUnbindData];
+        }
     }
     self.currentModel = nil;
     SLOGI(@"Data unbound from all slots");
@@ -299,31 +326,26 @@
         return;
     }
 
+    // 按实例查找归属，避免自定义 BaseSlot 的 slotType 误指向内置插槽。
     NSNumber *keyToRemove = nil;
-    if ([slotView isKindOfClass:[BaseSlot class]]) {
-        keyToRemove = @(((BaseSlot *)slotView).slotType);
-    } else {
-        for (NSNumber *key in [self.slotViews.allKeys copy]) {
-            if (self.slotViews[key] == slotView) {
-                keyToRemove = key;
-                break;
-            }
+    NSString *customKeyToRemove = nil;
+    for (NSNumber *key in self.slotViews.allKeys) {
+        if (self.slotViews[key] == slotView) {
+            keyToRemove = key;
+            break;
         }
     }
-
     if (keyToRemove) {
         [self.slotViews removeObjectForKey:keyToRemove];
     } else {
-        NSString *customKeyToRemove = nil;
-        for (NSString *key in [self.customSlotViews.allKeys copy]) {
+        for (NSString *key in self.customSlotViews.allKeys) {
             if (self.customSlotViews[key] == slotView) {
                 customKeyToRemove = key;
                 break;
             }
         }
-        if (customKeyToRemove) {
-            [self.customSlotViews removeObjectForKey:customKeyToRemove];
-        }
+        if (!customKeyToRemove) return;
+        [self.customSlotViews removeObjectForKey:customKeyToRemove];
     }
 
     [slotView onDetach];
@@ -342,6 +364,12 @@
 }
 
 #pragma mark - Private Methods
+
+- (BOOL)canBindSlotContent:(UIView<SlotProtocol> *)slotView {
+    if (![slotView isKindOfClass:[BaseSlot class]]) return YES;
+    BaseSlot *slot = (BaseSlot *)slotView;
+    return !slot.deferContentCreation || slot.contentReady;
+}
 
 - (void)wireGestureNotifications {
     UIView<SlotProtocol> *gestureSlotView = self.slotViews[@(SlotTypeGestureControl)];
@@ -379,13 +407,13 @@
  * @see BaseSlot.slotActionDispatcher
  */
 - (void)wireSlotActionNotifications {
-    for (NSNumber *key in self.slotViews) {
-        UIView<SlotProtocol> *slotView = self.slotViews[key];
+    NSArray<UIView<SlotProtocol> *> *slots = [self allSlotViews];
+    for (UIView<SlotProtocol> *slotView in slots) {
         if ([slotView isKindOfClass:[BaseSlot class]]) {
             ((BaseSlot *)slotView).slotActionDispatcher = self.slotActionDispatcher;
         }
     }
-    SLOGI(@"Wired %lu slots to slot action dispatcher", (unsigned long)self.slotViews.count);
+    SLOGI(@"Wired %lu slots to slot action dispatcher", (unsigned long)slots.count);
 }
 
 - (void)detachAllSlots {

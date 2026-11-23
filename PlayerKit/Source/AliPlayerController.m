@@ -36,10 +36,13 @@
 @property (nonatomic, strong, readwrite) StrategyManager *strategyManager;
 @property (nonatomic, weak, nullable) AliPlayerView *playerView;
 @property (nonatomic, assign) BOOL lifecycleObserversRegistered;
+@property (nonatomic, assign) NSUInteger fullscreenRequestGeneration;
 
 @end
 
 @implementation AliPlayerController
+
+@synthesize playerView = _playerView;
 
 #pragma mark - Lifecycle
 
@@ -243,6 +246,13 @@
 
 #pragma mark - Fullscreen
 
+- (void)setPlayerView:(nullable AliPlayerView *)playerView {
+    if (_playerView == playerView) return;
+    _playerView = playerView;
+    // 绑定变化使旧全屏回调失效，包括同一视图解绑后重新挂载。
+    self.fullscreenRequestGeneration++;
+}
+
 - (void)setFullscreen:(BOOL)fullscreen {
     [self setFullscreen:fullscreen animated:YES];
 }
@@ -253,25 +263,37 @@
         return;
     }
 
+    NSUInteger requestGeneration = ++self.fullscreenRequestGeneration;
     // 状态先更新，保证 UI 层及记录者可立即读取最新全屏状态
     [self.playerView.viewState updateFullscreen:fullscreen];
 
     AliPlayerView *playerView = self.playerView;
     id<FullscreenTransition> transition = playerView.fullscreenTransition;
 
-    // 过渡完成后统一分发通知，确保状态与视觉同步
-    __weak typeof(self) weakSelf = self;
-    void (^completion)(void) = ^{
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (!strongSelf) return;
-        [strongSelf.notificationDispatcher dispatchFullscreenChanged:fullscreen];
-    };
-
     // 未关联 view 或过渡实现不可用时，仅更新状态并分发通知
     if (!playerView || !transition) {
-        completion();
+        [self.notificationDispatcher dispatchFullscreenChanged:fullscreen];
         return;
     }
+
+    // 过渡可拒绝请求；仅由仍匹配视图与过渡实例的当前请求同步实际状态。
+    __weak typeof(self) weakSelf = self;
+    __weak AliPlayerView *weakPlayerView = playerView;
+    __weak id<FullscreenTransition> weakTransition = transition;
+    void (^completion)(void) = ^{
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        AliPlayerView *requestedView = weakPlayerView;
+        id<FullscreenTransition> completedTransition = weakTransition;
+        if (!strongSelf || !requestedView || !completedTransition ||
+            strongSelf.fullscreenRequestGeneration != requestGeneration ||
+            strongSelf.playerView != requestedView ||
+            requestedView.fullscreenTransition != completedTransition) {
+            return;
+        }
+        BOOL actualFullscreen = completedTransition.isInFullscreen;
+        [requestedView.viewState updateFullscreen:actualFullscreen];
+        [strongSelf.notificationDispatcher dispatchFullscreenChanged:actualFullscreen];
+    };
 
     if (fullscreen) {
         [transition enterFullscreenWithPlayerView:playerView

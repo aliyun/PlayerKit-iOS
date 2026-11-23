@@ -65,6 +65,8 @@ static const CGFloat kButtonSpacing = 10.0;
 @property (nonatomic, strong) UIView *videoButtonContainer;
 @property (nonatomic, strong) NSArray<UIButton *> *videoButtons;
 @property (nonatomic, strong) UILabel *statusOverlay;
+@property (nonatomic, strong) NSLayoutConstraint *statusOverlayWidthConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *statusOverlayHeightConstraint;
 @property (nonatomic, strong) UILabel *logOutputTitleLabel;
 @property (nonatomic, strong) UIScrollView *logScrollView;
 @property (nonatomic, strong) UILabel *logOutputLabel;
@@ -103,31 +105,25 @@ static const CGFloat kButtonSpacing = 10.0;
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
 
-    CGFloat width = self.view.bounds.size.width;
-    CGFloat contentWidth = width - kHorizontalPadding * 2;
-
-    // 播放器视图：固定高度，从顶部开始
-    CGFloat safeTop = 0;
+    CGRect safeBounds = self.view.bounds;
     if (@available(iOS 11.0, *)) {
-        safeTop = self.view.safeAreaInsets.top;
+        safeBounds = UIEdgeInsetsInsetRect(self.view.bounds, self.view.safeAreaInsets);
     }
-    CGFloat playerHeight = width * 9.0 / 16.0;
-    self.playerView.frame = CGRectMake(0, safeTop, width, playerHeight);
+    CGFloat width = MAX(0, CGRectGetWidth(safeBounds));
+    CGFloat availableHeight = MAX(0, CGRectGetHeight(safeBounds));
+    CGFloat contentWidth = MAX(0, width - kHorizontalPadding * 2);
 
-    // 状态覆盖层：右上角
-    CGFloat overlayPadding = 12.0;
-    [self.statusOverlay sizeToFit];
-    CGFloat overlayWidth = self.statusOverlay.bounds.size.width + 16.0;
-    CGFloat overlayHeight = self.statusOverlay.bounds.size.height + 8.0;
-    self.statusOverlay.frame = CGRectMake(width - overlayWidth - overlayPadding,
-                                          overlayPadding,
-                                          overlayWidth,
-                                          overlayHeight);
+    // 宽矮窗口保留下方操作区，画面比例仍由播放器渲染模式控制。
+    CGFloat playerHeight = MIN(width * 9.0 / 16.0, availableHeight * 0.5);
+    CGRect embeddedPlayerFrame = CGRectMake(CGRectGetMinX(safeBounds), CGRectGetMinY(safeBounds), width, playerHeight);
+    if (self.playerView.superview == self.view) {
+        self.playerView.frame = embeddedPlayerFrame;
+    }
 
     // 主滚动视图
-    CGFloat scrollTop = CGRectGetMaxY(self.playerView.frame);
-    CGFloat scrollHeight = self.view.bounds.size.height - scrollTop;
-    self.mainScrollView.frame = CGRectMake(0, scrollTop, width, scrollHeight);
+    CGFloat scrollTop = CGRectGetMaxY(embeddedPlayerFrame);
+    CGFloat scrollHeight = MAX(0, CGRectGetMaxY(safeBounds) - scrollTop);
+    self.mainScrollView.frame = CGRectMake(CGRectGetMinX(safeBounds), scrollTop, width, scrollHeight);
 
     CGFloat top = kSectionSpacing;
 
@@ -146,7 +142,7 @@ static const CGFloat kButtonSpacing = 10.0;
     top += videoTitleSize.height + 8.0;
 
     // 视频按钮（水平排列）
-    CGFloat buttonWidth = (contentWidth - kButtonSpacing * 2) / 3.0;
+    CGFloat buttonWidth = MAX(0, (contentWidth - kButtonSpacing * 2) / 3.0);
     self.videoButtonContainer.frame = CGRectMake(kHorizontalPadding, top, contentWidth, kButtonHeight);
     for (NSInteger i = 0; i < self.videoButtons.count; i++) {
         self.videoButtons[i].frame = CGRectMake(i * (buttonWidth + kButtonSpacing), 0, buttonWidth, kButtonHeight);
@@ -200,6 +196,7 @@ static const CGFloat kButtonSpacing = 10.0;
 
     // 4. 更新 UI
     self.statusOverlay.text = @"READY";
+    [self updateStatusOverlayLayout];
     [self appendLog:@"------------------------------------------"];
     [self appendLog:[NSString stringWithFormat:@"Switch: Strategy -> %@",
                      NSStringFromClass([self.lifecycleStrategy class])]];
@@ -249,9 +246,12 @@ static const CGFloat kButtonSpacing = 10.0;
     // 核心 API：configure 内部通过当前策略执行 recycle(旧) + acquire(新)
     [self.controller configure:model];
     [self.playerView attach:self.controller];
+    // 挂载可能新增渲染宿主，保持状态标签位于其上方。
+    [self.playerView bringSubviewToFront:self.statusOverlay];
 
     self.playCount++;
     self.statusOverlay.text = status;
+    [self updateStatusOverlayLayout];
     [self appendLog:[NSString stringWithFormat:@"Play: Video %ld | Status: %@", (long)(index + 1), status]];
 }
 
@@ -284,21 +284,49 @@ static const CGFloat kButtonSpacing = 10.0;
 }
 
 - (void)setupUI {
-    // 播放器视图（固定高度，置于顶部）
+    // 播放器视图（置于顶部）
     self.playerView = [[AliPlayerView alloc] init];
     [self.view addSubview:self.playerView];
 
     // 状态覆盖层（显示 NEW/REUSED/HIT）
     self.statusOverlay = [[UILabel alloc] init];
+    self.statusOverlay.translatesAutoresizingMaskIntoConstraints = NO;
     self.statusOverlay.font = [UIFont boldSystemFontOfSize:10.0];
     self.statusOverlay.textColor = [UIColor colorWithRed:0 green:1 blue:0 alpha:1];
     self.statusOverlay.backgroundColor = [UIColor colorWithWhite:0 alpha:0.5];
     self.statusOverlay.textAlignment = NSTextAlignmentCenter;
-    self.statusOverlay.text = @"READY";
     [self.playerView addSubview:self.statusOverlay];
+
+    NSLayoutYAxisAnchor *overlayTopAnchor = self.playerView.topAnchor;
+    NSLayoutXAxisAnchor *overlayTrailingAnchor = self.playerView.trailingAnchor;
+    NSLayoutXAxisAnchor *overlayLeadingAnchor = self.playerView.leadingAnchor;
+    if (@available(iOS 11.0, *)) {
+        overlayTopAnchor = self.playerView.safeAreaLayoutGuide.topAnchor;
+        overlayTrailingAnchor = self.playerView.safeAreaLayoutGuide.trailingAnchor;
+        overlayLeadingAnchor = self.playerView.safeAreaLayoutGuide.leadingAnchor;
+    }
+    self.statusOverlayWidthConstraint = [self.statusOverlay.widthAnchor constraintEqualToConstant:0];
+    self.statusOverlayWidthConstraint.priority = UILayoutPriorityDefaultHigh;
+    self.statusOverlayHeightConstraint = [self.statusOverlay.heightAnchor constraintEqualToConstant:0];
+    NSLayoutConstraint *overlayLeadingConstraint = [self.statusOverlay.leadingAnchor constraintGreaterThanOrEqualToAnchor:overlayLeadingAnchor constant:12.0];
+    // 零宽过渡时允许左侧间距让步，避免负宽度约束冲突。
+    overlayLeadingConstraint.priority = UILayoutPriorityRequired - 1;
+    [NSLayoutConstraint activateConstraints:@[
+        [self.statusOverlay.topAnchor constraintEqualToAnchor:overlayTopAnchor constant:12.0],
+        [self.statusOverlay.trailingAnchor constraintEqualToAnchor:overlayTrailingAnchor constant:-12.0],
+        overlayLeadingConstraint,
+        [self.statusOverlay.widthAnchor constraintGreaterThanOrEqualToConstant:0],
+        self.statusOverlayWidthConstraint,
+        self.statusOverlayHeightConstraint
+    ]];
+    self.statusOverlay.text = @"READY";
+    [self updateStatusOverlayLayout];
 
     // 播放器下方的主滚动视图
     self.mainScrollView = [[UIScrollView alloc] init];
+    if (@available(iOS 11.0, *)) {
+        self.mainScrollView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
+    }
     [self.view addSubview:self.mainScrollView];
 
     // 描述
@@ -384,6 +412,12 @@ static const CGFloat kButtonSpacing = 10.0;
 
     self.logOutputLabel.text = [self.logEntries componentsJoinedByString:@"\n"];
     [self updateLogOutputLayout];
+}
+
+- (void)updateStatusOverlayLayout {
+    CGSize textSize = [self.statusOverlay sizeThatFits:CGSizeZero];
+    self.statusOverlayWidthConstraint.constant = textSize.width + 16.0;
+    self.statusOverlayHeightConstraint.constant = textSize.height + 8.0;
 }
 
 - (void)updateLogOutputLayout {

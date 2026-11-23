@@ -88,6 +88,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
 ```objc
 AliPlayerView *playerView = [[AliPlayerView alloc] initWithFrame:self.view.bounds];
+playerView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
 [self.view addSubview:playerView];
 ```
 
@@ -95,10 +96,13 @@ AliPlayerView *playerView = [[AliPlayerView alloc] initWithFrame:self.view.bound
 
 ```swift
 let playerView = AliPlayerView(frame: view.bounds)
+playerView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
 view.addSubview(playerView)
 ```
 
 `AliPlayerView` 可放置在您视图层级的任意位置，frame 可根据实际需求设置。如需支持全屏切换，组件内部会自动处理视图层级调整。
+
+> **动态尺寸适配**：上述示例通过 `autoresizingMask` 让播放器填满父容器并跟随尺寸变化。若使用 Auto Layout 或在布局回调中持续更新 `frame`，无需添加此设置。PlayerKit 负责内部 UI 适配，宿主负责外层容器；iPhone Duo 接入边界详见 [最佳实践](./advanced/iPhoneDuo.md)。
 
 ### **步骤 2：绑定控制器并播放**
 
@@ -128,6 +132,7 @@ view.addSubview(playerView)
 
     // 1. 创建播放器视图
     self.playerView = [[AliPlayerView alloc] initWithFrame:self.view.bounds];
+    self.playerView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     [self.view addSubview:self.playerView];
 
     // 2. 创建播放控制器
@@ -167,6 +172,7 @@ class VideoPlayerViewController: UIViewController {
 
         // 1. 创建播放器视图
         playerView.frame = view.bounds
+        playerView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         view.addSubview(playerView)
 
         // 2. 配置播放数据（推荐使用 VidAuth 方式）
@@ -357,6 +363,7 @@ AppSchemaRouter.navigate(toSchema: "playerkit://scenes/longvideo", from: self)
 - (void)setupPlayerKit {
     // 1. 创建播放器组件视图
     self.playerView = [[AliPlayerView alloc] initWithFrame:self.view.bounds];
+    self.playerView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     [self.view addSubview:self.playerView];
 
     // 可选：设置返回键回调

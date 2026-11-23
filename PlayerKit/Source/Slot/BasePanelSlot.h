@@ -240,26 +240,66 @@ typedef NS_ENUM(NSInteger, PanelSlideEdge) {
 #pragma mark - 布局辅助（子类复用）
 
 /**
- * @brief 把面板视图布局到它"完全显示"时应处的位置。
+ * @brief 返回面板承载视图内避让折叠区和内部遮挡的最大连续矩形。
  *
- * @discussion 手动摆放面板（而非用 Auto Layout 约束）的子类，必须在
- *             @c layoutSubviews 中通过本方法设置面板位置，不可直接赋值
- *             @c panel.frame 。
+ * @discussion 调用前须确保 @c panelHostView 已创建且布局可用；在布局变化后重新读取。
+ *             仅避让系统提供的保留区，面板内容仍须自行处理 Safe Area。
  *
- *             原因：@c UIView.frame 在 @c transform 非 identity 时是未定义的——
- *             对它赋值会使 UIKit 反推 @c center ，令"变换后"的 frame 等于所赋矩形。
- *             滑出动画进行中面板的 transform 正处于屏外位移，此时若有一次布局
- *             （旋转、bounds 变化、@c layoutIfNeeded 等）直接赋值 frame，
- *             面板会被瞬间拽回显示位置，产生跳变。
+ * @return @c panelHostView 坐标系内的矩形；系统不支持或无相关保留区时返回其 bounds。
  *
- *             本方法改为设置 @c bounds 与 @c center ——两者描述的都是未经变换的
- *             几何，因此不会干扰在途的 transform 动画。
- *             （Auto Layout 驱动的面板天然安全，约束求解的目标同样是未变换的 frame。）
+ * @warning 必须在主线程调用。
+ * @see panelHostView
+ * @see layoutPanelView:toShownFrame:
+ */
+- (CGRect)panelLayoutBounds;
+
+/**
+ * @brief 用于裁剪面板滑动内容的透明容器。
+ *
+ * @discussion 调用前须确保 @c panelHostView 已创建。访问时按需创建并挂载容器，
+ *             其 frame 在承载视图坐标系内与 @c panelLayoutBounds 一致。
+ *             子类须将面板添加到此容器才会获得裁剪；蒙层仍位于 @c panelHostView。
+ *             基类不迁移其他父视图中的面板，也不改写其约束。
+ *
+ * @warning 必须在主线程访问。
+ * @see panelHostView
+ * @see panelLayoutBounds
+ * @see layoutPanelView:toShownFrame:
+ */
+@property (nonatomic, strong, readonly) UIView *panelContentHostView;
+
+/**
+ * @brief 返回布局区域内右侧、底部对齐的面板显示矩形。
+ *
+ * @discussion 调用前须确保 @c panelHostView 已创建且布局可用。
+ *             尺寸限制在零与 @c panelLayoutBounds 尺寸之间；不直接布局面板。
+ *
+ * @param preferredSize 期望的面板尺寸，单位为点。
+ * @return @c panelHostView 坐标系内的显示矩形。
+ *
+ * @warning 必须在主线程调用。
+ * @see panelLayoutBounds
+ * @see layoutPanelView:toShownFrame:
+ */
+- (CGRect)panelFrameForSize:(CGSize)preferredSize;
+
+/**
+ * @brief 设置手动布局面板完全显示时的位置和尺寸。
+ *
+ * @discussion 面板须已挂载到父视图；使用 @c panelContentHostView 时，
+ *             还须确保 @c panelHostView 已创建且布局可用。
+ *             手动布局的子类应在 @c layoutSubviews 中调用本方法，避免在 transform
+ *             非 identity 时直接赋值 frame 导致位置跳变；约束驱动的面板仍由子类管理约束。
+ *             容器内面板在基类滑动退场期间尺寸变化时，会按新尺寸续接退场动画。
  *
  * @param panel 面板视图，传 nil 时不做任何事。
- * @param frame 面板完全显示时在其父视图坐标系中的目标矩形。
+ * @param frame 完全显示时的目标矩形。面板直接位于 @c panelContentHostView 时，
+ *              使用 @c panelHostView 坐标系并由基类转换；其他情况使用面板父视图坐标系。
  *
+ * @warning 必须在主线程调用。
  * @see panelView
+ * @see panelContentHostView
+ * @see panelFrameForSize:
  * @see panelSlideEdge
  */
 - (void)layoutPanelView:(nullable UIView *)panel toShownFrame:(CGRect)frame;

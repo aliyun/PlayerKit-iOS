@@ -26,22 +26,6 @@ NS_ASSUME_NONNULL_BEGIN
 FOUNDATION_EXPORT const NSTimeInterval SlotAutoHideDelay;
 
 /**
- * @brief 插槽需要避让的安全区域边缘。
- *
- * @discussion SlotHostLayout 在 layoutSubviews 中根据此标志收缩对应边的 frame，
- *             使得插槽内部布局直接使用自身锚点即可避开刘海、Home Indicator 等区域。
- *             未声明的边保持与 SlotHostLayout.bounds 齐平。
- */
-typedef NS_OPTIONS(NSUInteger, SlotSafeAreaEdge) {
-    SlotSafeAreaEdgeNone   = 0,
-    SlotSafeAreaEdgeTop    = 1 << 0,
-    SlotSafeAreaEdgeLeft   = 1 << 1,
-    SlotSafeAreaEdgeBottom = 1 << 2,
-    SlotSafeAreaEdgeRight  = 1 << 3,
-    SlotSafeAreaEdgeAll    = (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3),
-};
-
-/**
  * @brief 播放器视图插槽系统中所有插槽视图的基类。
  *
  * @discussion 提供 SlotProtocol 协议生命周期方法的默认实现。
@@ -74,6 +58,33 @@ typedef NS_OPTIONS(NSUInteger, SlotSafeAreaEdge) {
  * @see SlotSafeAreaEdge
  */
 @property (nonatomic, assign) SlotSafeAreaEdge safeAreaEdges;
+
+/**
+ * @brief 插槽根视图是否额外避让摄像头等内部遮挡。
+ *
+ * @discussion 由支持此策略的宿主布局时读取。未显式赋值时随 @c safeAreaEdges 变化：
+ *             非 @c SlotSafeAreaEdgeNone 时为 YES，否则为 NO；显式赋值后两者独立。
+ *             赋值会请求已挂载的宿主重新布局；NO 不表示取消安全区或折叠区避让。
+ *
+ * @warning 必须在主线程访问或修改。
+ * @see safeAreaEdges
+ * @see contentLayoutBounds
+ */
+@property (nonatomic, assign) BOOL avoidsOcclusion;
+
+/**
+ * @brief 插槽自身坐标系内用于布局交互内容的连续矩形。
+ *
+ * @discussion 挂载到支持区域查询的宿主且布局可用后，返回避让全部安全区边缘、
+ *             折叠区和内部遮挡的区域，与根视图的避让策略独立。应在布局变化后重新读取。
+ *             未挂载或宿主未实现查询时，返回本视图的 Safe Area 布局矩形；
+ *             编译或运行环境不支持 Safe Area 时返回 bounds。读取不改变根视图布局。
+ *
+ * @warning 必须在主线程访问。
+ * @see SlotHost.readableContentBoundsForSlot:
+ * @see avoidsOcclusion
+ */
+@property (nonatomic, assign, readonly) CGRect contentLayoutBounds;
 
 /**
  * @brief 延迟内容创建。

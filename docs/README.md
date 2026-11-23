@@ -40,6 +40,7 @@
 | [多语言](./advanced/Locale.md) | 支持多语言切换与自定义语言包 |
 | [多视频源支持](./advanced/VideoSource.md) | 配置 VidAuth、VidSts、URL 等多种视频源 |
 | [场景类型](./advanced/SceneType.md) | 指定不同场景自动适配 UI 行为、手势控制和插槽可见性 |
+| [iPhone Duo 最佳实践](./advanced/iPhoneDuo.md) | 了解折叠屏适配价值、PlayerKit 接入边界及播放器 SDK 自定义 UI 的适配方法 |
 
 ---
 

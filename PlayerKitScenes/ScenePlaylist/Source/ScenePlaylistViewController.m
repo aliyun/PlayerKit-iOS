@@ -131,7 +131,9 @@
 
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
-    self.playerView.frame = self.view.bounds;
+    if (self.playerView.superview == self.view) {
+        self.playerView.frame = self.view.bounds;
+    }
 
     CGFloat hintPadding = 16.0;
     CGFloat hintTop = 96.0;
