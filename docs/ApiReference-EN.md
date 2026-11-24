@@ -182,6 +182,8 @@ AliPlayerKit provides a rich set of APIs that allow developers to directly contr
 | `- (void)setThumbnailUrl:` | `NSString *` url | `void` | Dynamically set the thumbnail URL (only VTT sprite sheet format supported) |
 | `- (void)requestThumbnailAtPosition:` | `int64_t` positionMs (milliseconds) | `void` | Request the thumbnail at the specified position |
 
+> **Note**: In live (LIVE) and restricted (RESTRICTED) scenarios the `seekTo:` request is intercepted and not forwarded to the player; configure the start position via `AliPlayerModel.startTime` instead. See [Scene Type](./advanced/SceneType-EN.md) for the capability scope of each scene.
+
 ### **4.4 UI Control**
 
 | Method | Parameters | Return Value | Description |
@@ -488,6 +490,8 @@ Abstract base class for all built-in slots (`UIView` subclass), implementing `Sl
 | `host` | `id<SlotHost>` (weak, readonly) | The host this slot is attached to |
 | `slotType` | `SlotType` | Slot type identifier (injected by SlotHostLayout) |
 | `safeAreaEdges` | `SlotSafeAreaEdge` | Safe area edges to respect (default: All) |
+| `avoidsOcclusion` | `BOOL` | Whether the root view also avoids occlusions such as the camera; follows `safeAreaEdges` unless set explicitly |
+| `contentLayoutBounds` | `CGRect` (readonly) | Interactive content rect in the slot's own coordinate space, excluding safe areas, division regions and occlusions |
 | `deferContentCreation` | `BOOL` | Deferred content creation toggle |
 | `contentReady` | `BOOL` (readonly) | Whether content is ready |
 | `touchPassthrough` | `BOOL` | Touch passthrough toggle (default: YES) |
@@ -500,6 +504,35 @@ Abstract base class for all built-in slots (`UIView` subclass), implementing `Sl
 | `- isElementVisible:` | `NSUInteger` element | Query the final visibility of a specific element |
 | `- currentSceneType` | - | Safely read the current scene type |
 | `- ensureContentReady` | - | Ensure deferred content has been created |
+
+### **8.2.1 BasePanelSlot (Panel Slot Base Class)**
+
+Subclass of `BaseSlot` that encapsulates the complete popup-panel presentation flow with the template method pattern: display state machine, overlay, slide-in / slide-out animation and z-order management. The simplest subclass only implements `setupContentView`, `panelView` and `panelSlideEdge`. `SettingMenuSlot`, `OptionPanelSlot` and `ChapterPanelSlot` are all built on it.
+
+| Member | Type | Description |
+|--------|------|-------------|
+| `isPanelShowing` | `BOOL` (readonly) | Display intent: YES right after a successful `showPanel`, NO as soon as `hidePanel` starts; already the target state during animation |
+| `overlayView` | `UIView *` (readonly, nullable) | Overlay view with tap-to-close bound automatically; always nil when `needsOverlay` returns NO |
+| `panelContentHostView` | `UIView *` (readonly) | Clipping container for sliding panel content, its frame matches `panelLayoutBounds`; the panel must be added to this container to get clipping (new in 7.19.0) |
+| `- panelLayoutBounds` | `CGRect` | Largest continuous rect inside the host view that avoids division regions and internal occlusions; returns the host bounds when the system reports none (new in 7.19.0) |
+| `- panelFrameForSize:` | `CGSize` preferredSize | Shown rect aligned to the trailing / bottom of the layout area, size clamped to `panelLayoutBounds` (new in 7.19.0) |
+| `- layoutPanelView:toShownFrame:` | `UIView *` panel, `CGRect` frame | Transform-safe way to set the panel's fully shown position; manual-layout subclasses should call it in `layoutSubviews` |
+| `- showPanel` / `- hidePanel` / `- hidePanelAnimated:` | - | Show / hide the panel; use `hidePanelAnimated:NO` when it must collapse immediately (backgrounding, data unbinding) |
+
+**Optional overrides:**
+
+| Method | Description |
+|--------|-------------|
+| `- panelView` | The panel view that participates in the slide animation; required when `panelSlideEdge` is not `PanelSlideEdgeNone` |
+| `- panelHostView` | Host view for the panel and overlay (defaults to `self`, i.e. presented inside the slot hierarchy) |
+| `- panelSlideEdge` | Slide direction (`PanelSlideEdge`, default None — overlay fade only) |
+| `- panelSize` | Panel size; defaults to `bounds.size` after `layoutIfNeeded` on the superview |
+| `- needsOverlay` / `- overlayColor` / `- overlayAlpha` | Overlay switch, color and opacity (defaults YES / black / 0.5) |
+| `- animationDuration` / `- showAnimationOptions` / `- hideAnimationOptions` | Animation duration and options (OR your additions onto the `super` result when overriding) |
+| `- onPrepareForShow` | Preparation before showing; return NO to cancel this presentation |
+| `- onPerformShowAnimation` / `- onPanelShown` | Custom show animation / shown callback |
+| `- onPerformHideAnimation` / `- onPanelHidden` | Custom hide animation / hidden callback |
+| `- onOverlayClicked` | Overlay tap callback (collapses the panel by default) |
 
 ### **8.3 SlotManager (Slot Manager)**
 

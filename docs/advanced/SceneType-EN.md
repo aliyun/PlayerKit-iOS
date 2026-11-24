@@ -42,7 +42,7 @@ AliPlayerKit includes 6 built-in scene types that cover the vast majority of pla
 | Video List | `SceneTypeVideoList` | Disables vertical gestures to avoid conflicts with list scrolling | News feeds, short video lists | Disables volume/brightness vertical gestures; otherwise same as VOD |
 | Restricted | `SceneTypeRestricted` | Prevents skipping, ensures users watch content completely | Exam monitoring, training courses | Disables progress dragging/speed control; hides cover image |
 | Minimal | `SceneTypeMinimal` | Clean canvas; all controls must be implemented manually | Background playback, fully custom UI | Hides all control components and gestures |
-| AI VOD | `SceneTypeAIVod` | AI-enhanced VOD with chapter navigation and AI content understanding | AI courses, knowledge videos | Adds chapter data model and chapter navigation slot; otherwise same as VOD |
+| AI VOD | `SceneTypeAIVod` | AI-enhanced VOD that marks an AI content-understanding scene | AI courses, knowledge videos | Chapter capabilities (`chapters` + `ChapterPanelSlot`) are available in every scene except LIVE / MINIMAL since 7.19.0; AIVod only serves as a semantic marker |
 
 ### **2.2 Enum Definition**
 
@@ -118,6 +118,26 @@ The slot system automatically controls component visibility based on scene type.
 - **Live / Restricted**: Long press and horizontal drag are filtered (checked in `handleLongPress:` and `tryStartDragWithCurrentPoint:`)
 - **VideoList**: Vertical drag is filtered (directly `return` when checking `SceneTypeVideoList` in `tryStartDragWithCurrentPoint:`)
 
+### **3.3 Playback Control Scope (Command-Layer Constraints)**
+
+Besides the UI-level gesture filtering, **some restrictions are enforced in the `AliPlayerController` command layer**, independent of whether the built-in UI is shown. Custom UIs that call the controller APIs directly are subject to the same constraints.
+
+| Scene | `seekTo:` (command layer) | Chapter display | Chapter tap-to-seek | Start position |
+|-------|---------------------------|-----------------|---------------------|----------------|
+| `SceneTypeVOD` | ✓ Available | ✓ Shown when data is non-empty | ✓ Available | `startTime` |
+| `SceneTypeLive` | ✗ Blocked | ✗ Setting has no effect | ✗ Unavailable | `startTime` |
+| `SceneTypeVideoList` | ✓ Available | ✓ Shown when data is non-empty | ✓ Available | `startTime` |
+| `SceneTypeRestricted` | ✗ Blocked | ✓ Read-only display | ✗ No seek | `startTime` |
+| `SceneTypeMinimal` | ✓ Available | ✗ Setting has no effect | ✗ No chapter UI | `startTime` |
+| `SceneTypeAIVod` | ✓ Available | ✓ Shown when data is non-empty | ✓ Available | `startTime` |
+
+**Controller-layer notes**:
+
+- **Seek is blocked inside `AliPlayerController`**: `- seekTo:` checks the scene type first and returns immediately in LIVE / RESTRICTED scenes without calling the underlying player's seek API, logging `[LC][seekTo] Seek is disabled in current scene`. Built-in entries (progress dragging, timeline taps, chapter jumps) are blocked as well; a custom UI calling `seekTo:` directly still has no effect
+- **Start position does not go through seek**: to start playback at a specific position, set `AliPlayerModel.startTime` (ms). It is applied via the SDK's `setStartTime:seekMode:` before prepare and is not affected by the interception above
+- **Chapters are owned by the controller**: chapter data lives in `AliPlayerController.chapters` and is shown in any scene except LIVE / MINIMAL when non-empty; in RESTRICTED scenes chapters are read-only and taps do not seek (they would be blocked anyway)
+- **The scene is fixed at configuration time**: `sceneType` comes from `AliPlayerModel` and cannot be switched at runtime; the table above applies once `configure:` returns
+
 ---
 
 ## **4. Usage**
@@ -185,6 +205,7 @@ model.autoPlay = YES;
 
 **Key differences from VOD**:
 - **Disabled**: Progress dragging (horizontal gesture), speed playback (long press gesture) — because live streams have no fixed duration
+- **Blocked**: `AliPlayerController`'s `seekTo:` returns at the command layer without touching the underlying player (see 3.3 Playback Control Scope)
 - **Hidden**: Cover image slot — live streams do not need a cover
 - **Retained**: Single tap/double tap gestures, volume/brightness adjustment
 
@@ -219,6 +240,8 @@ model.autoPlay = YES;
 
 **Key differences from VOD**:
 - **Disabled**: Progress dragging (horizontal gesture), speed playback (long press gesture) — ensures users watch content sequentially and completely
+- **Blocked**: `AliPlayerController`'s `seekTo:` returns at the command layer without touching the underlying player; to start at a specific position set `AliPlayerModel.startTime` (see 3.3 Playback Control Scope)
+- **Read-only chapters**: chapter data is still displayed, but taps do not seek
 - **Hidden**: Cover image slot
 - **Retained**: Single tap/double tap gestures, volume/brightness adjustment
 
@@ -256,18 +279,21 @@ model.sceneType = SceneTypeMinimal;
 **Applicable scenarios**: Online education, knowledge videos, and other scenarios requiring AI chapter understanding and navigation.
 
 **Key differences from VOD**:
-- **Added**: `ChapterPanelSlot` chapter content panel for chapter navigation
-- **Added**: Chapter data model (`chapters`) with structured chapter data from AI services
+- **Generalized chapters**: `ChapterPanelSlot` is available in every scene except LIVE / MINIMAL by default (nothing is shown when chapter data is empty); AIVod differs from other scenes only in semantics (marking AI content understanding)
+- **Chapter data**: `AliPlayerModel.chapters` sets the initial value at `configure:`; after asynchronous loading completes, write `AliPlayerController.chapters` and the UI refreshes automatically
 - **Retained**: All other slot visibility and gesture behavior identical to VOD
 
 ```objc
 AliPlayerModel *model = [[AliPlayerModel alloc] initWithVideoSource:source];
 model.sceneType = SceneTypeAIVod;
 model.videoTitle = @"AI Course Video";
-model.chapters = chaptersFromServer;  // Chapter data from AI service
+model.chapters = chaptersFromServer;  // Optional: initial chapters at configuration time
 model.autoPlay = YES;
 
 [controller configure:model];
+
+// Runtime lazy loading: write chapters when AI content is ready, the chapter UI appears / updates automatically
+controller.chapters = chaptersFromAI;
 ```
 
 ---
@@ -372,7 +398,7 @@ Do you need player control UI?
                    ├── Yes → SceneTypeVideoList
                    └── No → Do you need to prevent users from skipping?
                              ├── Yes → SceneTypeRestricted
-                             └── No → Do you need AI chapter navigation?
+                             └── No → Do you need to mark an AI content-understanding scene?
                                        ├── Yes → SceneTypeAIVod
                                        └── No → SceneTypeVOD (default)
 ```
@@ -387,7 +413,7 @@ Do you need player control UI?
 | Training/exam/copyright protection | `SceneTypeRestricted` | Automatically prevents skipping and speed control |
 | Fully custom UI | `SceneTypeMinimal` | Clean canvas with zero built-in UI interference |
 | Background/Picture-in-Picture playback | `SceneTypeMinimal` | No UI control components needed |
-| AI courses/knowledge videos | `SceneTypeAIVod` | Built-in chapter navigation with AI-enhanced content understanding |
+| AI courses/knowledge videos | `SceneTypeAIVod` | Marks an AI content-understanding scene (chapter capabilities are shared by every scene except LIVE / MINIMAL) |
 
 ---
 
@@ -469,7 +495,7 @@ Do you need player control UI?
 | Prioritize list scene | Always use `SceneTypeVideoList` when the player is embedded in a `UIScrollView`/`UICollectionView` |
 | Minimal requires manual control | After choosing Minimal, all playback controls must be implemented by the developer via the `AliPlayerController` API |
 | Composable fine-tuning | When preset behavior does not fully meet your needs, further fine-tuning is available via `SlotConfig` and `SlotManager` |
-| Live and Restricted share behavior | Both have identical gesture filtering rules (disable progress dragging and speed control); differences are only in cover image visibility (both hidden) and business semantics |
+| Live and Restricted share behavior | Both have identical gesture filtering rules (disable progress dragging and speed control), and `seekTo:` is blocked at the `AliPlayerController` command layer in both; differences are only in cover image visibility (both hidden), whether chapters are read-only, and business semantics |
 
 ### **8.2 FAQ**
 

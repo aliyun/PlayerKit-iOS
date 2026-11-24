@@ -82,10 +82,10 @@ target 'YourApp' do
   pod 'PlayerKit', :path => './PlayerKit'
 
   # 底层播放器 SDK（必选）
-  pod 'AliPlayerSDK_iOS', '~> 7.15.0'
+  pod 'AliPlayerSDK_iOS', '~> 7.19.0'
 
   # 直播 RTS 超低延时（可选，仅直播场景需要）
-  # pod 'AliPlayerSDK_iOS_ARTC', '~> 7.15.0'
+  # pod 'AliPlayerSDK_iOS_ARTC', '~> 7.19.0'
   # pod 'RtsSDK', '~> 7.12.0'
 end
 ```
@@ -203,7 +203,7 @@ target 'YourApp' do
 
   # 核心组件（必选）
   pod 'PlayerKit', :path => './PlayerKit'
-  pod 'AliPlayerSDK_iOS', '~> 7.15.0'
+  pod 'AliPlayerSDK_iOS', '~> 7.19.0'
 
   # 播放场景方案（通过本地路径引用，按需引入）
   pod 'PlayerKitScenes', :path => './PlayerKitScenes'    # 全部场景（默认包含 LongVideo/ShortVideo/Live/Playlist/AiEducation）

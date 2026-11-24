@@ -386,6 +386,8 @@ Slots adopt independent View lifecycle and Data lifecycle:
 
 `BaseSlot` is the recommended base class for all UI slots, encapsulating lifecycle management, notification subscription, scene adaptation, and other common logic.
 
+> **Panel slots**: if the slot is presented as a popup panel (needs an overlay and slide-in / slide-out animation), subclass `BasePanelSlot` instead of `BaseSlot`. Subclasses only implement `setupContentView`, `panelView` and `panelSlideEdge`; the overlay, animations and state machine are handled by the base class, and panel layout should use `panelLayoutBounds`, `panelContentHostView` and `panelFrameForSize:`. See [API Reference](../ApiReference-EN.md) 8.2.1.
+
 **Core Properties**:
 
 | Property | Type | Description |
@@ -633,6 +635,8 @@ Slots send commands to the controller through `host.controller`, implementing un
 }
 ```
 
+> **Note**: `seekTo:` is intercepted by the controller in `SceneTypeLive` and `SceneTypeRestricted` (a command-layer restriction, independent of the UI); to set the start position, use `AliPlayerModel.startTime` during configuration. See [Scene Type](./SceneType-EN.md) 3.3 for the capability scope of each scene.
+
 ### **4.8 SlotBehavior (Composition Pattern)**
 
 `SlotBehavior` uses the composition pattern, enabling non-`UIView` objects to gain slot capabilities (lifecycle management, event subscription). It is suitable for scenarios where pure logic components need to listen to player events.
@@ -772,6 +776,7 @@ Through this "events bubble up, state sinks down" pattern, mesh-like UI coupling
 |--------|------|
 | `SlotProtocol` | Slot protocol, defines minimal lifecycle contract |
 | `BaseSlot` | Slot base class, encapsulates common logic |
+| `BasePanelSlot` | Panel slot base class, unifies the display state machine, overlay, slide animations and panel layout |
 | `SlotManager` | Slot manager, unified registration, visibility control, and runtime access |
 | `SlotHost` | Host protocol, provides context access capabilities |
 | `SlotHostLayout` | Internal implementation of the host protocol (`UIView` subclass) |

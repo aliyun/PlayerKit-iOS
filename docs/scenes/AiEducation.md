@@ -74,7 +74,7 @@ AI 教育场景对应信息：
 | ViewController | `SceneAiEducationViewController` |
 | Schema | `playerkit://scenes/aieducation` |
 
-页面启动后，视频将自动加载。播放器显示章节入口按钮，点击后可以查看章节列表和 AI 分析内容，说明接入成功。
+页面启动后，视频将在获取到播放凭证后立即开始播放。AI 内容（章节 / 摘要）懒加载完成后，播放器才显示章节入口按钮，点击后可以查看章节列表和 AI 分析内容，说明接入成功。
 
 ---
 
@@ -98,11 +98,11 @@ AI 教育场景由客户端、App Server、ICE / AI 工作流和 VOD 服务共�
 
 客户端交互流程描述用户进入 AI 教育播放页后，客户端、PlayerKit 与 App Server 之间的调用关系。
 
-页面初始化时，客户端依次获取播放凭证和 AI 分析结果；数据加载完成后，用户可以通过章节内容面板查看章节、摘要和知识点，并跳转到对应的视频位置。
+页面初始化时，客户端先获取播放凭证并立即起播，AI 分析结果随后懒加载；结果就绪后写入 `AliPlayerController.chapters`，控制器广播 `playerDidUpdateChapters`，章节 UI 自动出现。用户可以通过章节内容面板查看章节、摘要和知识点，并跳转到对应的视频位置。
 
 ![CallSequence](../_media/ai_education/CallSequence.png)
 
-当 AI 分析接口请求失败或结果为空时，客户端仍可使用播放凭证完成普通视频播放，但不展示章节和 AI 分析面板。
+当 AI 分析接口请求失败或结果为空时，客户端仍可正常播放，但不展示章节和 AI 分析面板。
 
 ### **5.3 客户端分层架构**
 
@@ -327,11 +327,12 @@ Server JSON → AiAnalysisResponse (DTO) → AiContentAssembler → AiContentVie
 AiContentLoader *loader = [[AiContentLoader alloc] initWithBaseURL:@"http://your-server"];
 [loader loadPlayAuthWithVideoId:@"your-vid"
                      completion:^(NSString * _Nullable playAuth) {
-    // 获取到 playAuth 后继续加载 AI 内容...
+    // 获取到 playAuth 后立即起播，不阻塞 AI 内容加载...
 }];
 [loader loadAiAnalysisWithMediaId:@"your-vid"
-             completion:^(AiAnalysisResponse * _Nullable response) {
-    // 获取到 AiAnalysisResponse 后配置播放器...
+                       completion:^(AiAnalysisResponse * _Nullable response) {
+    // AI 内容就绪后写入章节，章节 UI 随广播自动刷新...
+    playerController.chapters = [AiContentAssembler buildChaptersFromResponse:response];
 }];
 ```
 
@@ -347,10 +348,9 @@ AiContentLoader *loader = [[AiContentLoader alloc] initWithBaseURL:@"http://your
 
 1. 初始化 `AliPlayerView` 和 `AliPlayerController`
 2. 配置 `AliPlayerModel` 的 `sceneType` 为 `SceneTypeAIVod`
-3. 加载播放凭证和 AI 数据
-4. 设置 `AliPlayerModel` 的 `chapters`
-5. 注册 `ChapterButtonSlot` 自定义插槽
-6. 启动播放
+3. 加载播放凭证并起播
+4. 注册 `ChapterButtonSlot` 自定义插槽
+5. AI 内容就绪后写入 `AliPlayerController.chapters`（懒加载）
 
 ```objc
 // 1. 创建播放器组件
@@ -359,11 +359,10 @@ AliPlayerView *playerView = [[AliPlayerView alloc] initWithFrame:self.view.bound
 
 AliPlayerController *playerController = [[AliPlayerController alloc] init];
 
-// 2. 配置播放源（VidAuth 方式）
+// 2. 配置播放源（VidAuth 方式），此时章节数据可以尚未就绪
 VideoSource *source = [VideoSource vidAuthSourceWithVid:mediaId playAuth:playAuth];
 AliPlayerModel *model = [[AliPlayerModel alloc] initWithVideoSource:source];
 model.sceneType = SceneTypeAIVod;
-model.chapters = response.chapters;
 
 // 3. 注册章节按钮自定义插槽
 CustomSlotType *slotType = [CustomSlotType typeWithKey:@"chapter_button" order:85];
@@ -375,6 +374,10 @@ CustomSlotType *slotType = [CustomSlotType typeWithKey:@"chapter_button" order:8
 // 4. 配置并挂载（挂载后自动开始播放）
 [playerController configure:model];
 [playerView attach:playerController];
+
+// 5. AI 内容就绪后写入章节：运行期写入即广播 playerDidUpdateChapters，
+//    进度条标记、章节 Chip、章节面板等 UI 自动刷新，无需重新 configure
+playerController.chapters = [AiContentAssembler buildChaptersFromResponse:response];
 ```
 
 ---
@@ -390,5 +393,6 @@ CustomSlotType *slotType = [CustomSlotType typeWithKey:@"chapter_button" order:8
 | 如何关闭某个 AI 能力 | 服务端接口中不返回对应 ResultType 即可 |
 | SDK 版本兼容性 | 需要阿里云播放器 SDK ≥ 7.16.0 |
 | Markdown 渲染异常 | 确认 Podfile 中已正确引入 GMarkdown 依赖（~> 0.1.1） |
-| 章节按钮不显示 | 确认 `AiAnalysisResponse.chapters` 非空，`ChapterButtonSlot` 依据章节数据可用性控制显隐 |
+| 章节按钮延迟出现 | 章节支持懒加载：起播后 AI 内容仍在加载，就绪后写入 `AliPlayerController.chapters` 才会显示；确认 `AiAnalysisResponse` 中章节 / 摘要结果非空 |
+| 章节数据更新后 UI 未刷新 | 修改 `ChapterInfo` 元素属性不会触发广播，需重新赋值 `AliPlayerController.chapters` |
 | 网络超时 | `AiContentLoader` 连接和读取超时均为 5 秒，可通过自定义 Loader 调整 |

@@ -182,6 +182,8 @@ AliPlayerKit 提供了丰富的 API 接口，方便开发者直接控制播放�
 | `- (void)setThumbnailUrl:` | `NSString *` url | `void` | 动态设置缩略图 URL（仅支持 VTT 雪碧图格式） |
 | `- (void)requestThumbnailAtPosition:` | `int64_t` positionMs（毫秒） | `void` | 请求指定位置的缩略图 |
 
+> **说明**：直播（LIVE）与受限播放（RESTRICTED）场景下 `seekTo:` 请求会被拦截，不透传至播放器；起播位置请通过 `AliPlayerModel.startTime` 配置。各场景的能力范围见 [场景类型](./advanced/SceneType.md)。
+
 ### **4.4 UI 控制**
 
 | 方法 | 参数 | 返回值 | 说明 |
@@ -488,6 +490,8 @@ iOS 端通过三组独立的通知协议实现分类事件分发：
 | `host` | `id<SlotHost>`（weak, readonly） | 所附属的宿主 |
 | `slotType` | `SlotType` | 插槽类型标识（由 SlotHostLayout 注入） |
 | `safeAreaEdges` | `SlotSafeAreaEdge` | 需要避让的安全区域边缘（默认 All） |
+| `avoidsOcclusion` | `BOOL` | 根视图是否额外避让摄像头等遮挡；未显式设置时随 `safeAreaEdges` 变化 |
+| `contentLayoutBounds` | `CGRect`（readonly） | 自身坐标系内避让安全区、折叠区与遮挡的交互内容区域 |
 | `deferContentCreation` | `BOOL` | 延迟内容创建开关 |
 | `contentReady` | `BOOL`（readonly） | 内容是否已就绪 |
 | `touchPassthrough` | `BOOL` | 触摸穿透开关（默认 YES） |
@@ -500,6 +504,35 @@ iOS 端通过三组独立的通知协议实现分类事件分发：
 | `- isElementVisible:` | `NSUInteger` element | 查询指定元素的最终可见性 |
 | `- currentSceneType` | - | 安全读取当前场景类型 |
 | `- ensureContentReady` | - | 确保延迟创建的内容已就绪 |
+
+### **8.2.1 BasePanelSlot（面板插槽基类）**
+
+继承 `BaseSlot`，以模板方法模式统一弹窗面板的显示状态机、蒙层、滑入滑出动画与 z-order 管理。最简子类只需实现 `setupContentView`、`panelView`、`panelSlideEdge` 三处。`SettingMenuSlot`、`OptionPanelSlot`、`ChapterPanelSlot` 均基于它。
+
+| 属性 / 方法 | 类型 | 说明 |
+|------------|------|------|
+| `isPanelShowing` | `BOOL`（readonly） | 显示意图状态：`showPanel` 成功后即 YES，`hidePanel` 进入即为 NO，动画期间已是目标态 |
+| `overlayView` | `UIView *`（readonly, nullable） | 蒙层视图，自动绑定点击关闭；`needsOverlay` 返回 NO 时恒为 nil |
+| `panelContentHostView` | `UIView *`（readonly） | 面板滑动内容的裁剪容器，frame 与 `panelLayoutBounds` 一致；面板须添加到此容器才获得裁剪（7.19.0 新增） |
+| `- panelLayoutBounds` | `CGRect` | 承载视图内避让折叠区与内部遮挡的最大连续矩形，系统无保留区时返回 bounds（7.19.0 新增） |
+| `- panelFrameForSize:` | `CGSize` preferredSize | 布局区域内右侧、底部对齐的显示矩形，尺寸自动限制在 `panelLayoutBounds` 内（7.19.0 新增） |
+| `- layoutPanelView:toShownFrame:` | `UIView *` panel, `CGRect` frame | transform 安全地设置面板完全显示时的位置，手动布局的子类应在 `layoutSubviews` 中调用 |
+| `- showPanel` / `- hidePanel` / `- hidePanelAnimated:` | - | 显示 / 隐藏面板；`hidePanelAnimated:NO` 用于进后台、数据解绑等需立即收起的场景 |
+
+**可选覆写：**
+
+| 方法 | 说明 |
+|------|------|
+| `- panelView` | 参与滑动动画的面板视图；`panelSlideEdge` 非 `PanelSlideEdgeNone` 时必须返回 |
+| `- panelHostView` | 面板与蒙层的承载视图（默认 `self`，即呈现在插槽层级内） |
+| `- panelSlideEdge` | 滑入 / 滑出方向（`PanelSlideEdge`，默认 None，仅蒙层淡入淡出） |
+| `- panelSize` | 面板尺寸，默认对父视图 `layoutIfNeeded` 后取 `bounds.size` |
+| `- needsOverlay` / `- overlayColor` / `- overlayAlpha` | 蒙层开关、颜色与不透明度（默认 YES / 黑 / 0.5） |
+| `- animationDuration` / `- showAnimationOptions` / `- hideAnimationOptions` | 动画时长与选项（重写时应以 `super` 结果为基础按位或） |
+| `- onPrepareForShow` | 显示前准备，返回 NO 可否决本次显示 |
+| `- onPerformShowAnimation` / `- onPanelShown` | 自定义进场动画 / 进场完成回调 |
+| `- onPerformHideAnimation` / `- onPanelHidden` | 自定义退场动画 / 退场完成回调 |
+| `- onOverlayClicked` | 蒙层点击回调（默认收起面板） |
 
 ### **8.3 SlotManager（插槽管理器）**
 

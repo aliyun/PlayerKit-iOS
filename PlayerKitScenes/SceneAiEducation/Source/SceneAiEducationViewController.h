@@ -19,7 +19,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  *             错误降级策略：
  *             - 播放凭证获取失败：Toast 提示后关闭页面；
- *             - AI 内容获取失败：Toast 提示后仅用播放凭证正常起播。
+ *             - AI 内容获取失败：Toast 提示。
  */
 @interface SceneAiEducationViewController : UIViewController
 

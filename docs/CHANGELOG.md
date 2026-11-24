@@ -1,5 +1,57 @@
 # 更新日志
 
+## [7.19.0] - 2026-11-24
+
+### SDK 升级
+
+- AliPlayerSDK_iOS: 7.16.0 → 7.19.0
+- AliPlayerSDK_iOS_ARTC: 7.16.0 → 7.19.0
+- RtsSDK: 保持 7.12.0（低延时直播组件本次不升级）
+
+### 新增
+
+- **章节能力通用化与懒加载**
+  - 新增 `AliPlayerController.chapters`，作为章节数据的唯一存储点。可在控制器生命周期内任意时刻写入（同步或异步加载均可），`configure:` 时以 `AliPlayerModel.chapters` 写入初始值，`destroy` 后清空
+  - 新增 `PlayerNotificationDelegate -playerDidUpdateChapters` 与 `PlayerNotificationDispatcher -dispatchDidUpdateChapters`：章节写入即广播，进度条章节标记、章节 Chip、章节面板等 UI 收到通知后读取控制器数据自动显示 / 更新 / 隐藏，无需重新 `configure`
+  - 章节由「仅 `SceneTypeAIVod` 可用」扩展为通用能力：非 LIVE / MINIMAL 场景且数据非空时生效；RESTRICTED 场景下仅只读展示，点击不发起跳转
+- **受限场景 Seek 门禁**：`AliPlayerController.seekTo:` 增加场景判断，LIVE / RESTRICTED 场景的跳转请求在命令层被拦截并记录日志，不再透传至播放器。各场景的播放控制能力范围详见 [场景类型](./advanced/SceneType.md)
+- **iPhone Duo / 折叠屏适配**
+  - 插槽新增 `avoidsOcclusion`（是否额外避让摄像头等内部遮挡）与 `contentLayoutBounds`（避让安全区、折叠分区与遮挡后的交互内容区域）
+  - `SlotHost` 新增可选方法 `- readableContentBoundsForSlot:`，宿主可返回插槽坐标系内的可用内容区域
+  - 内置 UI（顶栏、底栏、设置 / 选项面板、手势、缩略图预览）按实际可用空间动态调整布局，不再按设备形态分支
+  - 详见 [iPhone Duo 播放器适配最佳实践](./advanced/iPhoneDuo.md)
+- **面板布局接口**：`BasePanelSlot` 新增 `panelLayoutBounds`、`panelContentHostView`、`panelFrameForSize:`，统一面板布局入口、滑动裁剪容器与 transform 安全的显示位置计算
+
+### 变更（接入层需关注）
+
+- `SlotSafeAreaEdge` 枚举定义从 `BaseSlot.h` 移至 `SlotProtocol.h`：通过 `BaseSlot.h` 引入的工程无需改动，直接实现 `SlotProtocol` 的插槽请改为引入 `SlotProtocol.h`
+- `SlotHostLayout` 不再依赖 `isKindOfClass:BaseSlot` 判断，改为通过 `SlotProtocol` 可选方法读取 `safeAreaEdges` / `avoidsOcclusion`，自定义实现该协议的插槽遵循同一语义
+- `AliPlayerModel.chapters` 仅在 `configure:` 时作为初始配置生效，运行期增删改请直接写 `AliPlayerController.chapters`
+- `seekTo:` 在 LIVE / RESTRICTED 场景不再生效（行为变更），起播位置请在配置阶段通过 `AliPlayerModel.startTime` 指定；各场景能力范围见 [场景类型](./advanced/SceneType.md)
+- Example 迁移至 UIScene 生命周期（新增 `SceneDelegate`，`AppDelegate` 移除 `window` 属性）；`project.yml` 部署版本 13.0 → 15.0，`Podfile` 的 `post_install` 将 Pods 构建下限提升至 iOS 15，Podspec 兼容声明不变
+
+### 修复
+
+- **全屏切换**：全屏窗口按来源窗口的 scene 归属创建与复用，拒绝跨 scene 迁移；`setFullscreen:` 增加请求代际校验，过渡实现可拒绝请求且仅由当前请求同步实际状态；退出时按需恢复宿主 keyWindow；迁回原父视图前重新读取占位视图 frame 并请求重新布局，修复多 scene、快速切换全屏与退出后位置错乱
+- **底部控制栏**：尺寸或全屏布局切换时取消滑块触摸跟踪与点击识别，忽略已取消拖动的松手回调，避免按新坐标误跳转；松手只在有效拖动时提交预览位置
+- **手势控制**：尺寸变化或插槽解绑时结束拖动 / 长按并重置累计位移，避免沿用旧坐标产生跳变
+- **章节面板**：章节列表整体替换后按当前位置重算高亮；异步滚动前校验表格已加载行数，修复数据变化时的越界崩溃；面板改用 `panelContentHostView` 承载并统一布局
+- **选项面板**：改用滚动容器承载并按安全区约束，低高度区域不再裁切选项
+- **设置菜单**：弹层容器改为 autoresizing 跟随窗口尺寸，修复旋转 / 尺寸变化后的错位
+- **Seek 缩略图**：高度不足时收缩图片占位与底距，优先保留时间与章节文本
+- **顶栏**：窄全屏区域沿用紧凑边距，尺寸变化时重新评估间距
+
+### 文档
+
+- 新增 [iPhone Duo 播放器适配最佳实践](./advanced/iPhoneDuo.md)，说明版本与环境要求、职责边界及验证方法
+- [场景类型](./advanced/SceneType.md) 新增播放控制能力范围矩阵，逐场景说明 `seekTo:` 拦截、章节展示 / 跳转与起播位置配置
+- [AI 教育场景](./scenes/AiEducation.md) 补充章节懒加载流程、集成示例与常见问题
+- [核心能力](./CoreFeatures.md) 补充章节运行期更新与版本门槛说明、iPhone Duo 适配章节
+- [插槽系统](./advanced/SlotSystem.md) 与 [API 参考](./ApiReference.md) 补充 `BasePanelSlot` 面板布局接口、`avoidsOcclusion` / `contentLayoutBounds`、`chapters` 懒加载语义与 `seekTo:` 场景限制
+- [通知系统](./advanced/NotificationSystem.md) 补充章节通知 `playerDidUpdateChapters` 及便捷分发方法清单
+
+---
+
 ## [7.16.0] - 2026-08-26
 
 ### SDK 升级

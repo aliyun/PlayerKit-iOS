@@ -103,8 +103,13 @@ PlayerKit 通知系统由三组 Dispatcher + Delegate 协议组成：
 | `dispatchDidChangeRotateMode:` | 旋转模式变化 |
 | `dispatchDidTrackReady:` | 轨道信息就绪 |
 | `dispatchDidTrackChanged:` | 轨道切换完成 |
+| `dispatchDidReadyCoverUrl:` | Vid 播放 prepared 后解析到封面 URL |
+| `dispatchDidReadyVideoTitle:` | Vid 播放 prepared 后解析到视频标题 |
+| `dispatchDidReadyThumbnailUrl:` | Vid 播放 prepared 后解析到缩略图 URL |
+| `dispatchDidRetrieveThumbnail:image:` | 缩略图请求返回图片 |
+| `dispatchDidUpdateChapters` | 章节数据被写入（增删改或清空） |
 
-> **说明**：`PlayerNotificationDelegate` 定义了 22 个 `@optional` 回调方法，但 Dispatcher 提供了 17 个便捷分发方法。`playerDidChangeControlsVisible:` 通知由 `GestureControlSlot` 通过通用的 `notifyObservers:withBlock:` 方法分发，而非专属便捷方法。
+> **说明**：`PlayerNotificationDelegate` 定义了 23 个 `@optional` 回调方法，但 Dispatcher 提供了 22 个便捷分发方法。`playerDidChangeControlsVisible:` 通知由 `GestureControlSlot` 通过通用的 `notifyObservers:withBlock:` 方法分发，而非专属便捷方法。
 
 ### **2.2 GestureNotificationDispatcher**
 
@@ -339,7 +344,7 @@ PlayerKit 通知系统由三组 Dispatcher + Delegate 协议组成：
 
 ## **4. 通知列表**
 
-### **4.1 PlayerNotificationDelegate（22 个 @optional 方法）**
+### **4.1 PlayerNotificationDelegate（23 个 @optional 方法）**
 
 #### **播放状态通知**
 
@@ -405,6 +410,14 @@ PlayerKit 通知系统由三组 Dispatcher + Delegate 协议组成：
 |------|---------|---------|
 | `playerDidTrackReady:` | 可用轨道信息就绪时 | `tracks` — `NSArray<TrackQuality *>` |
 | `playerDidTrackChanged:` | 轨道切换完成时 | `quality` — 切换后的 `TrackQuality` |
+
+#### **章节通知**
+
+| 方法 | 触发时机 | 参数说明 |
+|------|---------|---------|
+| `playerDidUpdateChapters` | 章节数据被写入（增删改或清空）后，由 `AliPlayerController.chapters` 的 setter 触发 | — ；回调中从 `AliPlayerController.chapters` 读取最新数据 |
+
+> **说明**：章节只在 `chapters` 写入时广播，进度条章节标记、章节 Chip、章节面板等 UI 收到通知后自行读取控制器数据完成显示 / 更新 / 隐藏，无需重新 `configure:`。详见 [场景类型](./SceneType.md) 与 [AI 教育场景](../scenes/AiEducation.md)。
 
 #### **VID 信息就绪通知**
 
@@ -579,7 +592,7 @@ SlotActionNotificationDispatcher：
 
 | 协议 | 方法数量 | 职责范围 |
 |------|---------|---------|
-| `PlayerNotificationDelegate` | 22 个 `@optional` 方法 | 播放状态、进度、错误、截图、全屏、控制栏、加载、显示模式、轨道、VID 信息、缩略图 |
+| `PlayerNotificationDelegate` | 23 个 `@optional` 方法 | 播放状态、进度、错误、截图、全屏、控制栏、加载、显示模式、轨道、章节、VID 信息、缩略图 |
 | `GestureNotificationDelegate` | 7 个 `@optional` 方法 | 单击、长按、亮度调节、音量调节 |
 | `SlotActionNotificationDelegate` | 7 个 `@optional` 方法 | 设置菜单切换、倍速面板、画质面板、Seek 预览、章节面板 |
 
@@ -605,4 +618,4 @@ SlotActionNotificationDispatcher：
 | 方法 | 说明 |
 |------|------|
 | `notifyObservers:withBlock:` | 仅向实现了指定 selector 的观察者分发（selector 过滤） |
-| `dispatchDidChangeState:` 等 17 个便捷方法 | 播放器状态、进度、错误、截图、全屏、加载、显示模式、轨道的便捷分发 |
+| `dispatchDidChangeState:` 等 22 个便捷方法 | 播放器状态、进度、错误、截图、全屏、加载、显示模式、轨道、章节、VID 信息、缩略图的便捷分发 |

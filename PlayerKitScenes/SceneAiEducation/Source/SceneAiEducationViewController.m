@@ -97,7 +97,7 @@ static const NSTimeInterval kExitDelayOnAuthFailure = 1.5;
 
 #pragma mark - PlayerKit Methods
 
-// 请求播放凭证 → 请求 AI 内容 → 起播
+// 请求播放凭证 → 起播 → 懒加载 AI 内容
 - (void)loadConfigurationAndStart {
     self.mediaId = AiContentDefaultMediaId;
     self.contentLoader = [[AiContentLoader alloc] initWithBaseURL:AiContentAppServerBaseURL];
@@ -114,12 +114,15 @@ static const NSTimeInterval kExitDelayOnAuthFailure = 1.5;
             [strongSelf handlePlayAuthFailure];
             return;
         }
-        [strongSelf loadAiContentWithPlayAuth:playAuth];
+        // 播放凭证就绪即起播，不等待 AI 内容，避免首帧被 AI 分析接口阻塞
+        [strongSelf setupPlayerKitWithPlayAuth:playAuth];
+        // 章节 / 摘要随后懒加载，就绪后写入播放器
+        [strongSelf loadAiContent];
     }];
 }
 
 // 请求 AI 内容：失败降级为无 AI 内容的普通播放
-- (void)loadAiContentWithPlayAuth:(NSString *)playAuth {
+- (void)loadAiContent {
     __weak typeof(self) weakSelf = self;
     [self.contentLoader loadAiAnalysisWithMediaId:self.mediaId
                                        completion:^(AiAnalysisResponse * _Nullable response) {
@@ -130,18 +133,32 @@ static const NSTimeInterval kExitDelayOnAuthFailure = 1.5;
         // 判断是否有 AI 内容，chapter 和 summary 有其一即可
         BOOL hasContent = response.chapterResult || response.summaryResult;
         if (!hasContent) {
-            // AI 内容失败：Toast 提示，仍用 playAuth 正常起播
+            // AI 内容失败：Toast 提示，播放不受影响
             [ToastUtils showToast:LocalizedString(@"ai_education_error_ai_content_load_failed")
                  inViewController:strongSelf];
         }
         strongSelf.aiResponse = hasContent ? response : nil;
-        [strongSelf setupPlayerKitWithPlayAuth:playAuth response:strongSelf.aiResponse];
+        [strongSelf applyAiContent];
     }];
 }
 
+// AI 内容就绪后写入已起播的播放器：章节走 controller.chapters 运行期写入（懒加载）
+- (void)applyAiContent {
+    // 写入后控制器广播 playerDidUpdateChapters，底栏章节标记、章节 Chip、章节面板
+    // 收到广播后自动刷新，无需重新 configure
+    NSArray<ChapterInfo *> *chapters = [AiContentAssembler buildChaptersFromResponse:self.aiResponse];
+    if (chapters.count > 0) {
+        self.playerController.chapters = chapters;
+    }
+
+    // 章节入口按钮可用状态与面板内容由场景层在数据就绪后显式配置
+    BOOL chapterAvailable = (self.aiResponse.chapterResult != nil || self.aiResponse.summaryResult != nil);
+    [self.chapterButtonSlot updateChapterAvailable:chapterAvailable];
+    [self.chapterContentPanelSlot updateAiContent:self.aiResponse];
+}
+
 // 初始化 AliPlayerKit 播放组件并起播
-- (void)setupPlayerKitWithPlayAuth:(NSString *)playAuth
-                          response:(nullable AiAnalysisResponse *)response {
+- (void)setupPlayerKitWithPlayAuth:(NSString *)playAuth {
     // 1. 创建播放器组件视图
     self.playerView = [[AliPlayerView alloc] initWithFrame:self.view.bounds];
     self.playerView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
@@ -156,17 +173,12 @@ static const NSTimeInterval kExitDelayOnAuthFailure = 1.5;
     // 2. 创建播放器组件控制器
     self.playerController = [[AliPlayerController alloc] init];
 
-    // 3. 配置播放器组件数据（场景类型 AI_VOD，注入章节列表）
+    // 3. 配置播放器组件数据（场景类型 AI_VOD）
+    //    章节此时可能尚未就绪，起播不依赖 AI 内容，就绪后经 controller.chapters 懒加载写入
     VideoSource *source = [VideoSource vidAuthSourceWithVid:self.mediaId
                                                    playAuth:playAuth];
     AliPlayerModel *model = [[AliPlayerModel alloc] initWithVideoSource:source];
     model.sceneType = SceneTypeAIVod;
-
-    // 当 AI 分析结果中包含有效章节数据时，将章节列表注入播放器，用于展示章节入口及章节内容。
-    NSArray<ChapterInfo *> *chapters = [AiContentAssembler buildChaptersFromResponse:response];
-    if (response && chapters.count > 0) {
-        model.chapters = chapters;
-    }
 
     // 4. 注册章节入口按钮与章节内容面板两个自定义插槽
     [self registerChapterButtonSlot];

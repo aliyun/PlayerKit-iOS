@@ -103,8 +103,13 @@ The player core notification dispatcher, responsible for distributing playback s
 | `dispatchDidChangeRotateMode:` | Rotation mode change |
 | `dispatchDidTrackReady:` | Track info ready |
 | `dispatchDidTrackChanged:` | Track switch complete |
+| `dispatchDidReadyCoverUrl:` | Cover URL resolved after Vid playback prepared |
+| `dispatchDidReadyVideoTitle:` | Video title resolved after Vid playback prepared |
+| `dispatchDidReadyThumbnailUrl:` | Thumbnail URL resolved after Vid playback prepared |
+| `dispatchDidRetrieveThumbnail:image:` | Thumbnail request returned an image |
+| `dispatchDidUpdateChapters` | Chapter data written (added, removed, updated or cleared) |
 
-> **Note**: `PlayerNotificationDelegate` defines 22 `@optional` callback methods, but the Dispatcher provides 17 convenience dispatch methods. The `playerDidChangeControlsVisible:` notification is dispatched by `GestureControlSlot` through the generic `notifyObservers:withBlock:` method, rather than a dedicated convenience method.
+> **Note**: `PlayerNotificationDelegate` defines 23 `@optional` callback methods, but the Dispatcher provides 22 convenience dispatch methods. The `playerDidChangeControlsVisible:` notification is dispatched by `GestureControlSlot` through the generic `notifyObservers:withBlock:` method, rather than a dedicated convenience method.
 
 ### **2.2 GestureNotificationDispatcher**
 
@@ -339,7 +344,7 @@ The following demonstrates how a complete player page subscribes to player notif
 
 ## **4. Notification List**
 
-### **4.1 PlayerNotificationDelegate (22 @optional Methods)**
+### **4.1 PlayerNotificationDelegate (23 @optional Methods)**
 
 #### **Playback State Notifications**
 
@@ -405,6 +410,14 @@ The following demonstrates how a complete player page subscribes to player notif
 |--------|---------------|----------------------|
 | `playerDidTrackReady:` | When available track info is ready | `tracks` — `NSArray<TrackQuality *>` |
 | `playerDidTrackChanged:` | When track switch completes | `quality` — The `TrackQuality` after switching |
+
+#### **Chapter Notifications**
+
+| Method | Trigger Timing | Parameter Description |
+|--------|---------------|----------------------|
+| `playerDidUpdateChapters` | After chapter data is written (added, removed, updated or cleared), triggered by the `AliPlayerController.chapters` setter | — ; read the latest data from `AliPlayerController.chapters` in the callback |
+
+> **Note**: Chapters are broadcast only when `chapters` is written. UI such as progress-bar chapter markers, chapter chips and the chapter panel then reads the controller data and shows / updates / hides itself without re-configuring. See [Scene Type](./SceneType-EN.md) and [AI Education Scene](../scenes/AiEducation-EN.md).
 
 #### **VID Info Ready Notifications**
 
@@ -579,7 +592,7 @@ SlotActionNotificationDispatcher:
 
 | Protocol | Method Count | Responsibility Scope |
 |----------|-------------|---------------------|
-| `PlayerNotificationDelegate` | 22 `@optional` methods | Playback state, progress, errors, snapshots, fullscreen, controls, loading, display modes, tracks, VID info, thumbnails |
+| `PlayerNotificationDelegate` | 23 `@optional` methods | Playback state, progress, errors, snapshots, fullscreen, controls, loading, display modes, tracks, chapters, VID info, thumbnails |
 | `GestureNotificationDelegate` | 7 `@optional` methods | Single tap, long press, brightness adjustment, volume adjustment |
 | `SlotActionNotificationDelegate` | 7 `@optional` methods | Settings menu toggle, speed panel, quality panel, seek preview, chapter panel |
 
@@ -605,4 +618,4 @@ SlotActionNotificationDispatcher:
 | Method | Description |
 |--------|-------------|
 | `notifyObservers:withBlock:` | Dispatch only to observers that implement the specified selector (selector filtering) |
-| `dispatchDidChangeState:` and 17 other convenience methods | Convenience dispatch for player state, progress, errors, snapshots, fullscreen, loading, display modes, and tracks |
+| `dispatchDidChangeState:` and 22 other convenience methods | Convenience dispatch for player state, progress, errors, snapshots, fullscreen, loading, display modes, tracks, chapters, VID info and thumbnails |

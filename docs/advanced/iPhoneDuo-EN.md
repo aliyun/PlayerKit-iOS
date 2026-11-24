@@ -13,6 +13,10 @@ Drawing on PlayerKit's practical adaptation experience, this document covers the
 
 Starting in **April 2027**, Apple requires iOS apps submitted to App Store Connect to be built with the iOS 27 SDK or later, with iOS 15 as the minimum deployment target. To ensure correct presentation and interaction on iPhone Duo, developers should complete layout adaptation and compatibility verification in advance.
 
+iPhone Duo can be held or folded in different ways, and apps need to adapt to changes in the available display space.
+
+![Six iPhone Duo device postures](../_media/iPhoneDuoPostures.png)
+
 The core principle is to **lay out dynamically based on the actual available space, rather than adapting separately to specific device models**. According to the [Apple iPhone Duo design guidelines](https://developer.apple.com/design/human-interface-guidelines/designing-for-iphone-duo), developers should use container dimensions, Size Class, Safe Area, and system reserved regions to drive dynamic layout, rather than designing separate interfaces for different device postures.
 
 Even after PlayerKit has been adapted, the host app still needs to check the compatibility of its page layouts and custom components to ensure that the overall experience works correctly.
@@ -48,8 +52,6 @@ Also, although the PlayerKit core podspec declares a minimum supported version o
 
 Apple provides iPhone Duo adaptation capabilities for both UIKit and SwiftUI. Both emphasize dynamic layout based on container dimensions and system reserved regions, without requiring separate UIs for different device postures.
 
-![Diagram of PlayerKit's continuous rendering region and interaction region](../_media/iPhoneDuoLayout-EN.png)
-
 | Framework | Adaptation approach | PlayerKit support |
 | --------- | ------------------- | ----------------- |
 | UIKit | Use Auto Layout, Safe Area, and the Reserved Region API to adjust the layout dynamically based on the available space | PlayerKit is currently implemented in UIKit and centrally handles fold-region and occlusion avoidance in the slot layout layer |
@@ -72,6 +74,8 @@ For an embedded player, use the actual container dimensions as the basis for lay
 ### **3.2 Adapt Custom Slots to the Interactive Area**
 
 Based on the currently available space, PlayerKit selects a continuous layout region that avoids the fold region for rendering and control slots, then adjusts content layout according to each slot's avoidance strategy. The host continues to control the size of the outer `AliPlayerView`, and the actual video presentation also depends on the scale mode.
+
+![Inputs and results of PlayerKit's default layout](../_media/iPhoneDuoLayout-EN.png)
 
 For custom UI, `BaseSlot` provides the read-only property `contentLayoutBounds`, which represents the content layout bounds after avoidance has been applied, expressed in the slot's own coordinate space. Controls and content that need to avoid system reserved regions should be laid out within these bounds.
 
@@ -131,6 +135,12 @@ It is important to distinguish between **presentation state and layout capacity*
 
 Adaptive layout does not mean that every control should scale proportionally with the screen. Button sizes and component spacing can retain their existing design. The key is to avoid hard-coding screen widths or assuming that a particular orientation always provides enough space. When space is insufficient, first rearrange components or collapse secondary actions while retaining access to essential actions, rather than shrinking the entire UI until it becomes difficult to tap.
 
+The following diagram shows the same 16:9 video in aspect-fit mode to illustrate player layouts as available space changes. The host chooses arrangements of primary and secondary content; the default UI does not switch to these arrangements automatically.
+
+![Player layouts across six postures and optional host arrangements](../_media/iPhoneDuoPostureLayouts-EN.png)
+
+*Conceptual layouts, not device screenshots. Blue represents the rendering container; green dashed outlines mark safe layout bounds for controls. Actual layouts depend on system reserved regions and the currently available space.*
+
 **Practical experience:** Presentation state determines what actions mean; available space determines layout capacity. When space changes, prioritize reorganizing the UI rather than designing a separate interface for every posture or scaling all controls proportionally.
 
 ### **5.2 Fold-Region Adaptation: Balancing Picture Continuity and Control Reachability**
@@ -149,11 +159,11 @@ Short-form video, long-form video, and live streaming have different requirement
 
 If the application needs to show video alongside secondary content such as comments or episode selection, the host can organize a dual-region layout and consider using UIKit's [UIArrangementViewController](https://developer.apple.com/documentation/uikit/uiarrangementviewcontroller) or SwiftUI's [ArrangementView](https://developer.apple.com/documentation/swiftui/arrangementview) to compose content across regions.
 
-![Diagram of PlayerKit's continuous rendering region and interaction region](../_media/iPhoneDuoLayoutRegions-EN.png)
+In the default layout, the rendering region and control layout bounds use different avoidance strategies:
 
-*Layout principle: the host continues to control the outer player's dimensions; the internal rendering region avoids the fold region, and the interaction region additionally avoids Safe Area and camera occlusion.*
+![Rendering and control regions in PlayerKit's default layout](../_media/iPhoneDuoLayoutRegions-EN.png)
 
-The implementation needs to distinguish between two types of regions:
+*Conceptual layout: blue represents the rendering container, with controls overlaid within it; the visible video area depends on the scale mode.*
 
 - **Rendering region:** Prioritizes video picture continuity and may extend into system occlusion regions, such as the camera area, according to application requirements. However, part of the picture in those regions may be physically obscured, and the actual presentation also depends on the video scale mode.
 - **Interaction region:** Key controls, such as buttons and progress bars, must remain visible and operable, requiring additional consideration of Safe Area and camera occlusion.
@@ -174,15 +184,13 @@ With centralized region calculation and updates, custom slots can reuse `content
 
 ### **5.3 State Continuity: Decoupling Layout Changes from the Playback Lifecycle**
 
-![Playback state continuity in PlayerKit](../_media/iPhoneDuoStateContinuity-EN.png)
-
 Folding, unfolding, or rotating the device is fundamentally a change in display space and should not trigger player reinitialization. Otherwise, even if the final layout is correct, playback may be interrupted, progress may be lost, or UI state may be reset. Adaptation therefore requires checking not only screenshots after a change, but also whether playback and interaction behave as expected throughout the transition.
+
+![Playback state continuity in PlayerKit](../_media/iPhoneDuoStateContinuity-EN.png)
 
 PlayerKit confines layout adjustments to the UI layer, adapting to new display space by updating container and slot layouts without reconfiguring or recreating the player instance. This preserves continuity in playback state, including the playback source, progress, paused state, and playback speed. UI states, such as control bar visibility and panel state, are retained or adjusted according to the existing application logic.
 
-**State continuity does not mean preserving every state unchanged.** Playback state should not reset because of a layout change. Temporary states, such as drag starting positions and gesture displacement, depend on the old coordinates and need to be recalculated, or the interaction must explicitly end or cancel.
-
-For example, after the progress bar width changes, do not continue using the old width to convert gesture displacement into playback progress. After a layout change, check whether interactions such as long-press speed-up can continue; if not, end or cancel them. When the interaction ends or is cancelled, restore the playback speed according to the existing rules.
+**State continuity does not mean preserving every state unchanged.** Playback state should not reset because of a layout change. Temporary states, such as drag starting positions and gesture displacement, depend on the old coordinates and need to be recalculated, or the interaction must explicitly end or cancel. For example, after the progress bar width changes, do not continue using the old width to convert gesture displacement into playback progress. After a layout change, check whether interactions such as long-press speed-up can continue; if not, end or cancel them. When the interaction ends or is cancelled, restore the playback speed according to the existing rules.
 
 Compatibility means not only keeping public APIs unchanged, but also preserving the meaning of existing actions and their behavioral contracts. Controls may move, but the meaning of playback actions should not change; back navigation and restoration after fullscreen should continue to follow the host's existing strategies.
 
@@ -193,8 +201,6 @@ Compatibility means not only keeping public APIs unchanged, but also preserving 
 ## **6. Adaptation Verification and Testing Recommendations**
 
 **We recommend prioritizing a physical iPhone Duo for adaptation and debugging**, combining the six device postures with portrait and landscape orientations to create twelve baseline verification scenarios. In addition to checking the layout in each scenario, cover posture transitions, container resizing, and reserved-region changes to verify playback continuity and interaction stability.
-
-![Six iPhone Duo device postures](../_media/iPhoneDuoPostures.png)
 
 | Verification item | Pass criteria |
 | ----------------- | ------------- |

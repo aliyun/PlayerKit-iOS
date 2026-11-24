@@ -74,7 +74,7 @@ AI Education scene information:
 | ViewController | `SceneAiEducationViewController` |
 | Schema | `playerkit://scenes/aieducation` |
 
-After the page launches, the video will load automatically. The player displays a chapter entry button — tap it to view the chapter list and AI analysis content, confirming successful integration.
+After the page launches, the video starts playing as soon as the play credential is obtained. The chapter entry button appears only after the AI content (chapters / summary) is lazily loaded — tap it to view the chapter list and AI analysis content, confirming successful integration.
 
 ---
 
@@ -98,11 +98,11 @@ VOD is responsible for unified storage of media assets and AI analysis results; 
 
 The client interaction flow describes the calling relationships between the client, PlayerKit, and App Server after the user enters the AI Education playback page.
 
-During page initialization, the client sequentially obtains play credentials and AI analysis results; after data loading completes, users can view chapters, summaries, and knowledge points through the chapter content panel and jump to corresponding video positions.
+During page initialization, the client first obtains the play credential and starts playback immediately, then lazily loads the AI analysis results. Once ready, the results are written to `AliPlayerController.chapters`, the controller broadcasts `playerDidUpdateChapters`, and the chapter UI appears automatically. Users can then view chapters, summaries, and knowledge points through the chapter content panel and jump to corresponding video positions.
 
 ![CallSequence](../_media/ai_education/CallSequence-EN.png)
 
-When the AI analysis request fails or returns empty results, the client can still use play credentials for normal video playback without displaying the chapter and AI analysis panel.
+When the AI analysis request fails or returns empty results, playback still works normally without displaying the chapter and AI analysis panel.
 
 ### **5.3 Client Layered Architecture**
 
@@ -327,11 +327,12 @@ The built-in `SceneAiEducationViewController` loads data internally through `AiC
 AiContentLoader *loader = [[AiContentLoader alloc] initWithBaseURL:@"http://your-server"];
 [loader loadPlayAuthWithVideoId:@"your-vid"
                      completion:^(NSString * _Nullable playAuth) {
-    // After obtaining playAuth, continue loading AI content...
+    // Start playback as soon as playAuth is available; AI content loads afterwards...
 }];
 [loader loadAiAnalysisWithMediaId:@"your-vid"
-             completion:^(AiAnalysisResponse * _Nullable response) {
-    // After obtaining AiAnalysisResponse, configure the player...
+                       completion:^(AiAnalysisResponse * _Nullable response) {
+    // Write chapters once AI content is ready; chapter UI refreshes on broadcast...
+    playerController.chapters = [AiContentAssembler buildChaptersFromResponse:response];
 }];
 ```
 
@@ -347,10 +348,9 @@ If you prefer not to use the built-in `SceneAiEducationViewController`, refer to
 
 1. Initialize `AliPlayerView` and `AliPlayerController`
 2. Set `AliPlayerModel`'s `sceneType` to `SceneTypeAIVod`
-3. Load play credentials and AI data
-4. Set `AliPlayerModel`'s `chapters`
-5. Register `ChapterButtonSlot` custom slot
-6. Start playback
+3. Load the play credential and start playback
+4. Register the `ChapterButtonSlot` custom slot
+5. Write `AliPlayerController.chapters` once AI content is ready (lazy loading)
 
 ```objc
 // 1. Create player components
@@ -359,11 +359,10 @@ AliPlayerView *playerView = [[AliPlayerView alloc] initWithFrame:self.view.bound
 
 AliPlayerController *playerController = [[AliPlayerController alloc] init];
 
-// 2. Configure video source (VidAuth method)
+// 2. Configure video source (VidAuth method); chapter data may not be ready yet
 VideoSource *source = [VideoSource vidAuthSourceWithVid:mediaId playAuth:playAuth];
 AliPlayerModel *model = [[AliPlayerModel alloc] initWithVideoSource:source];
 model.sceneType = SceneTypeAIVod;
-model.chapters = response.chapters;
 
 // 3. Register chapter button custom slot
 CustomSlotType *slotType = [CustomSlotType typeWithKey:@"chapter_button" order:85];
@@ -375,6 +374,10 @@ CustomSlotType *slotType = [CustomSlotType typeWithKey:@"chapter_button" order:8
 // 4. Configure and attach (playback starts automatically after attach)
 [playerController configure:model];
 [playerView attach:playerController];
+
+// 5. Write chapters once AI content is ready: the runtime write broadcasts
+//    playerDidUpdateChapters, so markers, chips and the chapter panel refresh automatically
+playerController.chapters = [AiContentAssembler buildChaptersFromResponse:response];
 ```
 
 ---
@@ -390,5 +393,6 @@ CustomSlotType *slotType = [CustomSlotType typeWithKey:@"chapter_button" order:8
 | How to disable a specific AI capability | Simply don't return the corresponding ResultType from the server-side API |
 | SDK version compatibility | Requires Alibaba Cloud Player SDK ≥ 7.16.0 |
 | Markdown rendering issues | Confirm that the GMarkdown dependency (~> 0.1.1) is correctly included in the Podfile |
-| Chapter button not showing | Confirm that `AiAnalysisResponse.chapters` is non-empty; `ChapterButtonSlot` controls visibility based on chapter data availability |
+| Chapter button appears late | Chapters support lazy loading: AI content is still loading after playback starts, and the button shows only after it is written to `AliPlayerController.chapters`; confirm the `AiAnalysisResponse` contains chapter / summary results |
+| Chapter UI not refreshed after data update | Mutating `ChapterInfo` properties does not trigger a broadcast; reassign `AliPlayerController.chapters` instead |
 | Network timeout | `AiContentLoader` has a 5-second timeout for both connection and reading; customize by creating your own Loader |

@@ -383,6 +383,8 @@ typedef UIView<SlotProtocol> * _Nullable (^SlotProvider)(UIView *parentView);
 
 `BaseSlot` 是所有 UI 插槽的推荐基类，封装了生命周期管理、通知订阅、场景适配等通用逻辑。
 
+> **面板类插槽**：若插槽以弹窗面板形式呈现（需要蒙层、滑入滑出动画），请继承 `BasePanelSlot` 而非直接继承 `BaseSlot`。子类只需实现 `setupContentView`、`panelView`、`panelSlideEdge`，蒙层、动画与状态机由基类完成；面板布局请使用 `panelLayoutBounds`、`panelContentHostView`、`panelFrameForSize:`。详见 [API 参考](../ApiReference.md) 8.2.1。
+
 **核心属性**：
 
 | 属性 | 类型 | 说明 |
@@ -630,6 +632,8 @@ NSArray<CustomSlotType *> *types = [playerView.slotManager customSlotTypes];
 }
 ```
 
+> **注意**：`seekTo:` 在 `SceneTypeLive` 与 `SceneTypeRestricted` 场景下会被控制器直接拦截（命令层限制，与 UI 无关）；起播位置请在配置阶段通过 `AliPlayerModel.startTime` 指定。各场景能力范围见 [场景类型](./SceneType.md) 3.3。
+
 ### **4.8 SlotBehavior（组合模式）**
 
 `SlotBehavior` 采用组合模式设计，使非 `UIView` 对象也能获得插槽能力（生命周期管理、事件订阅）。适用于纯逻辑组件需要监听播放器事件的场景。
@@ -769,6 +773,7 @@ Slot → Command → Controller（命令上行，只发）
 |--------|------|
 | `SlotProtocol` | 插槽协议，定义最小生命周期契约 |
 | `BaseSlot` | 插槽基类，封装通用逻辑 |
+| `BasePanelSlot` | 面板插槽基类，统一显示状态机、蒙层、滑入滑出动画与面板布局 |
 | `SlotManager` | 插槽管理器，统一注册、可见性控制与运行时访问 |
 | `SlotHost` | 宿主协议，提供上下文访问能力 |
 | `SlotHostLayout` | 宿主协议的内部实现（`UIView` 子类） |

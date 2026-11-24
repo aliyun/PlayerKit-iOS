@@ -42,7 +42,7 @@ AliPlayerKit 内置 6 种场景类型，覆盖绝大多数播放业务：
 | 视频列表 | `SceneTypeVideoList` | 禁用垂直手势，避免与列表滚动冲突 | 信息流、短视频列表 | 禁用音量/亮度垂直手势；其余与 VOD 一致 |
 | 受限播放 | `SceneTypeRestricted` | 防跳播，确保用户完整观看 | 考试监控、培训课程 | 禁用进度拖拽/倍速；隐藏封面图 |
 | 极简模式 | `SceneTypeMinimal` | 纯净画面，所有控制需自行实现 | 背景播放、完全自定义 UI | 隐藏所有控制组件和手势 |
-| AI 点播 | `SceneTypeAIVod` | AI 增强点播，基于 VOD 增加章节导航与 AI 内容理解能力 | AI 课程、知识视频 | 新增章节数据模型和章节导航插槽；其余与 VOD 一致 |
+| AI 点播 | `SceneTypeAIVod` | AI 增强点播，标记 AI 内容理解场景 | AI 课程、知识视频 | 章节能力（`chapters` + `ChapterPanelSlot`）自 7.19.0 起对各非 LIVE / MINIMAL 场景通用；AIVod 仅用于语义标识 |
 
 ### **2.2 枚举定义**
 
@@ -118,6 +118,26 @@ typedef NS_ENUM(NSInteger, SceneType) {
 - **Live / Restricted**：长按和水平拖动被过滤（`handleLongPress:` 和 `tryStartDragWithCurrentPoint:` 中检查）
 - **VideoList**：垂直拖动被过滤（`tryStartDragWithCurrentPoint:` 中检查 `SceneTypeVideoList` 时直接 `return`）
 
+### **3.3 播放控制能力范围（命令层约束）**
+
+除 UI 层的手势过滤外，**部分能力限制发生在 `AliPlayerController` 的命令层**，与是否显示内置 UI 无关。因此自定义 UI 直接调用控制器 API 时，同样受下表约束。
+
+| 场景 | `seekTo:`（命令层） | 章节展示 | 章节点击跳转 | 起播位置 |
+|------|--------------------|----------|--------------|----------|
+| `SceneTypeVOD` | ✓ 可用 | ✓ 有数据即展示 | ✓ 可用 | `startTime` |
+| `SceneTypeLive` | ✗ 拦截 | ✗ 设置不生效 | ✗ 不可用 | `startTime` |
+| `SceneTypeVideoList` | ✓ 可用 | ✓ 有数据即展示 | ✓ 可用 | `startTime` |
+| `SceneTypeRestricted` | ✗ 拦截 | ✓ 只读展示 | ✗ 不发起跳转 | `startTime` |
+| `SceneTypeMinimal` | ✓ 可用 | ✗ 设置不生效 | ✗ 无章节 UI | `startTime` |
+| `SceneTypeAIVod` | ✓ 可用 | ✓ 有数据即展示 | ✓ 可用 | `startTime` |
+
+**特别说明（Controller 层限制）**：
+
+- **Seek 拦截发生在 `AliPlayerController`**：`- seekTo:` 在 LIVE / RESTRICTED 场景下先做场景判断，命中后直接返回，不调用底层播放器的 seek 接口，并输出日志 `[LC][seekTo] Seek is disabled in current scene`。内置 UI 的进度条拖拽、点击进度条、章节跳转等入口同样被拦截；自定义 UI 绕过内置插槽直接调用 `seekTo:` 也无法生效
+- **起播位置不走 Seek**：需要从指定位置开始播放时，请通过 `AliPlayerModel.startTime`（毫秒）配置，该值在 prepare 前通过 SDK 的 `setStartTime:seekMode:` 生效，不受上述拦截影响
+- **章节仅由控制器持有**：章节数据统一存储在 `AliPlayerController.chapters`，展示条件为非 LIVE / MINIMAL 场景且数据非空；RESTRICTED 场景下章节只读展示，点击不发起跳转（否则会被 Seek 拦截）
+- **场景在配置阶段确定**：`sceneType` 来自 `AliPlayerModel`，播放过程中不支持动态切换，上表约束在 `configure:` 后整体生效
+
 ---
 
 ## **4. 使用方式**
@@ -185,6 +205,7 @@ model.autoPlay = YES;
 
 **与 VOD 的关键差异**：
 - **禁用**：进度拖拽（水平手势）、倍速播放（长按手势）（因为直播无固定时长）
+- **拦截**：`AliPlayerController` 的 `seekTo:` 在命令层直接返回，不调用底层播放器（详见 3.3 播放控制能力范围）
 - **隐藏**：封面图插槽（直播流无需封面）
 - **保留**：单击/双击手势、音量/亮度调节
 
@@ -219,6 +240,8 @@ model.autoPlay = YES;
 
 **与 VOD 的关键差异**：
 - **禁用**：进度拖拽（水平手势）、倍速播放（长按手势）（确保用户按序完整观看）
+- **拦截**：`AliPlayerController` 的 `seekTo:` 在命令层直接返回，不调用底层播放器；如需从指定位置起播请配置 `AliPlayerModel.startTime`（详见 3.3 播放控制能力范围）
+- **章节只读**：章节数据仍会展示，但点击不发起跳转
 - **隐藏**：封面图插槽
 - **保留**：单击/双击手势、音量/亮度调节
 
@@ -256,18 +279,21 @@ model.sceneType = SceneTypeMinimal;
 **适用场景**：在线教育、知识视频等需要 AI 章节理解与导航的场景。
 
 **与 VOD 的关键差异**：
-- **新增**：`ChapterPanelSlot` 章节面板，支持章节导航
-- **新增**：章节数据模型（`chapters`），从 AI 服务获取章节结构化数据
+- **章节能力通用**：`ChapterPanelSlot` 默认对所有非 LIVE / MINIMAL 场景可用（章节数据为空时不展示内容），AIVod 与其他场景的差异仅在语义（标识 AI 内容理解）
+- **章节数据**：`configure:` 时可通过 `AliPlayerModel.chapters` 传入初始值，运行期异步加载完成后写入 `AliPlayerController.chapters` 即可自动刷新 UI
 - **保留**：其余所有插槽可见性与手势行为与 VOD 完全一致
 
 ```objc
 AliPlayerModel *model = [[AliPlayerModel alloc] initWithVideoSource:source];
 model.sceneType = SceneTypeAIVod;
 model.videoTitle = @"AI 课程视频";
-model.chapters = chaptersFromServer;  // 从 AI 服务获取的章节数据
+model.chapters = chaptersFromServer;  // 可选：配置阶段传入初始章节
 model.autoPlay = YES;
 
 [controller configure:model];
+
+// 运行期懒加载：AI 内容就绪后写入，章节 UI 自动显示 / 更新
+controller.chapters = chaptersFromAI;
 ```
 
 ---
@@ -372,7 +398,7 @@ SlotConfig *coverConfig = [SlotConfig configWithSlotType:SlotTypeCover
                    ├── 是 → SceneTypeVideoList
                    └── 否 → 需要防止用户跳播吗？
                              ├── 是 → SceneTypeRestricted
-                             └── 否 → 需要 AI 章节导航能力吗？
+                             └── 否 → 需要标识 AI 内容理解场景吗？
                                        ├── 是 → SceneTypeAIVod
                                        └── 否 → SceneTypeVOD（默认）
 ```
@@ -387,7 +413,7 @@ SlotConfig *coverConfig = [SlotConfig configWithSlotType:SlotTypeCover
 | 培训/考试/版权保护 | `SceneTypeRestricted` | 自动禁止跳播和倍速 |
 | 完全自定义 UI | `SceneTypeMinimal` | 纯净画布，零内置 UI 干扰 |
 | 后台/画中画播放 | `SceneTypeMinimal` | 无需 UI 控制组件 |
-| AI 课程/知识视频 | `SceneTypeAIVod` | 内置章节导航，AI 增强内容理解 |
+| AI 课程/知识视频 | `SceneTypeAIVod` | 标识 AI 内容理解场景（章节能力各非 LIVE / MINIMAL 场景通用） |
 
 ---
 
@@ -469,7 +495,7 @@ SlotConfig *coverConfig = [SlotConfig configWithSlotType:SlotTypeCover
 | 列表场景优先 | 当播放器嵌入 `UIScrollView`/`UICollectionView` 时务必使用 `SceneTypeVideoList` |
 | Minimal 需自行控制 | 选择 Minimal 后所有播放控制需开发者通过 `AliPlayerController` API 自行实现 |
 | 可组合微调 | 当预设行为不完全满足需求时，可通过 `SlotConfig` 和 `SlotManager` 进一步微调 |
-| Live 与 Restricted 行为一致 | 两者的手势过滤规则相同（禁用进度拖拽和倍速），差异仅在封面图可见性（两者都隐藏）和业务语义 |
+| Live 与 Restricted 行为一致 | 两者的手势过滤规则相同（禁用进度拖拽和倍速），且 `seekTo:` 均在 `AliPlayerController` 命令层被拦截；差异仅在封面图可见性（两者都隐藏）、章节是否只读和业务语义 |
 
 ### **8.2 常见问题**
 

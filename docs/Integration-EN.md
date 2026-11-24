@@ -82,10 +82,10 @@ target 'YourApp' do
   pod 'PlayerKit', :path => './PlayerKit'
 
   # Underlying player SDK (required)
-  pod 'AliPlayerSDK_iOS', '~> 7.15.0'
+  pod 'AliPlayerSDK_iOS', '~> 7.19.0'
 
   # Live RTS ultra-low latency (optional, only needed for live streaming)
-  # pod 'AliPlayerSDK_iOS_ARTC', '~> 7.15.0'
+  # pod 'AliPlayerSDK_iOS_ARTC', '~> 7.19.0'
   # pod 'RtsSDK', '~> 7.12.0'
 end
 ```
@@ -203,7 +203,7 @@ target 'YourApp' do
 
   # Core component (required)
   pod 'PlayerKit', :path => './PlayerKit'
-  pod 'AliPlayerSDK_iOS', '~> 7.15.0'
+  pod 'AliPlayerSDK_iOS', '~> 7.19.0'
 
   # Playback scene solutions (referenced via local path, include as needed)
   pod 'PlayerKitScenes', :path => './PlayerKitScenes'    # All scenes (includes LongVideo/ShortVideo/Live/Playlist/AiEducation by default)

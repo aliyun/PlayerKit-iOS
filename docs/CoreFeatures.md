@@ -443,6 +443,8 @@ AliPlayerKit 在播放器 prepared 后自动从云端 MediaInfo 中提取以下�
 
 将长视频按内容结构智能拆分为多个章节片段，帮助用户快速定位重点内容，提升视频学习与内容理解效率。章节数据由 AI 内容理解服务对视频进行分析后生成，可通过 `AliPlayerModel.chapters` 在配置时注入；数据最终存储于 `AliPlayerController.chapters`，支持运行期（如异步加载完成后）随时更新，章节 UI 会随之自动显示 / 更新 / 隐藏。
 
+> 💡 7.16.0 起支持在配置阶段通过 `AliPlayerModel.chapters` 传入章节；运行期写入 `AliPlayerController.chapters` 并广播 `playerDidUpdateChapters` 的懒加载能力为 7.19.0 新增。各场景下的章节展示与跳转范围见 [场景类型](./advanced/SceneType.md)。
+
 | 组件 | 能力 |
 |------|------|
 | `ChapterInfo` 数据模型 | 描述拆条片段的时间区间（`[startMs, endMs)`）与展示信息（标题、缩略图） |
